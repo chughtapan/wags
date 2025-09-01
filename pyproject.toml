@@ -1,0 +1,29 @@
+# Simple project configuration for evaluation scripts
+# No package building needed - just dependency management
+
+[project]
+name = "elicitation-evals"
+version = "0.1.0"
+description = "Evaluation scripts for MCP elicitation with BFCL integration"
+requires-python = ">=3.10"
+
+dependencies = [
+    "mcp>=1.0.0",
+    "fast-agent-mcp>=0.2.58",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio",
+    "black",
+    "ruff",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I"]
