@@ -1,16 +1,26 @@
-# Simple project configuration for evaluation scripts
-# No package building needed - just dependency management
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "elicitation-evals"
-version = "0.1.0"
-description = "Evaluation scripts for MCP elicitation with BFCL integration"
+version = "0.2.0"
+description = "BFCL evaluation framework for fast-agent with MCP servers"
 requires-python = ">=3.10"
 
 dependencies = [
     "mcp>=1.0.0",
     "fast-agent-mcp>=0.2.58",
+    "jinja2>=3.1.0",
+    "mpmath>=1.3.0",
+    "click>=8.0.0",
 ]
+
+[project.scripts]
+elicitation-evals = "elicitation_evals.__main__:cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [project.optional-dependencies]
 dev = [

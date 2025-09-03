@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""Auto-generated fast-agent script for test {{ test_id }}."""
+
+import asyncio
+import json
+from pathlib import Path
+from mcp_agent.core.fastagent import FastAgent
+from mcp_agent.mcp.prompt_serialization import save_messages_to_file
+
+async def run_test():
+    """Run the BFCL test conversation."""
+    
+    # Create the FastAgent application with custom config
+    fast = FastAgent("BFCL Test", config_path="{{ config_path }}")
+    
+    # List of involved servers
+    involved_servers = {{ servers | tojson }}
+    
+    # System prompt following BFCL format
+    system_prompt = """{{ instruction }}"""
+    
+    # Define agent with ALL tools from involved servers
+    @fast.agent(
+        name="bfcl_test",
+        model="{{ model }}",
+        servers=involved_servers,
+        instruction=system_prompt
+    )
+    async def test_agent():
+        pass
+    
+    # Run the agent
+    async with fast.run() as agent_app:
+        # Process each turn
+        questions = {{ questions | tojson(indent=8) }}
+        
+        turn_idx = 0
+        for turn in questions:
+            if turn.get("role") == "user":
+                turn_idx += 1
+                print(f"\nTurn {turn_idx}: {turn['content'][:100]}...")
+                
+                # Send message and get response
+                response = await agent_app.send(turn["content"])
+                print(f"Response: {len(response)} chars")
+        
+        # Save the complete message history with all tool calls
+        print("\nSaving complete conversation history...")
+        
+        # Access the actual agent instance to get message_history
+        actual_agent = agent_app._agent(None)  # Get default agent
+        history = actual_agent.message_history
+        
+        print(f"History has {len(history)} messages")
+        
+        # Create a detailed output with all content types
+        detailed_history = []
+        for msg in history:
+            msg_data = {
+                "role": msg.role,
+                "content": []
+            }
+            for content in msg.content:
+                content_data = {
+                    "type": getattr(content, 'type', 'unknown')
+                }
+                if hasattr(content, 'text'):
+                    content_data["text"] = content.text
+                if hasattr(content, 'name'):
+                    content_data["name"] = content.name
+                if hasattr(content, 'input'):
+                    content_data["input"] = content.input
+                if hasattr(content, 'tool_use_id'):
+                    content_data["tool_use_id"] = content.tool_use_id
+                msg_data["content"].append(content_data)
+            detailed_history.append(msg_data)
+        
+        # Save detailed history
+        output_file = Path("{{ detailed_output }}")
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_file, "w") as f:
+            json.dump(detailed_history, f, indent=2)
+        print(f"Detailed history saved to {output_file}")
+        
+        # Also save using the standard method
+        standard_output = Path("{{ standard_output }}")
+        save_messages_to_file(history, str(standard_output))
+        print(f"Standard history saved to {standard_output}")
+
+if __name__ == "__main__":
+    asyncio.run(run_test())

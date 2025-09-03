@@ -11,6 +11,7 @@ import os
 import importlib
 import inspect
 from typing import Any, Dict, List
+import copy
 
 # Add path to BFCL submodule
 bfcl_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'bfcl', 'berkeley-function-call-leaderboard')
@@ -26,6 +27,8 @@ from mcp.types import TextContent, Tool
 
 api_instance = None
 class_name = None
+state_history = []  # Track state changes after each function call
+ground_truth_state = None  # Expected final state from test case
 
 def load_api_class(target_class_name: str):
     """Load the specified API class dynamically."""
@@ -60,16 +63,54 @@ def load_function_docs(class_name: str) -> Dict[str, Dict]:
 
 def convert_bfcl_param_to_mcp(bfcl_param: Dict) -> Dict:
     """Convert BFCL parameter format to MCP schema format."""
-    mcp_param = {"type": "object", "properties": {}, "required": []}
+    # First handle the top-level type conversion
+    param_type = bfcl_param.get("type", "object")
+    if param_type == "dict":
+        param_type = "object"  # OpenAI expects "object" not "dict"
+    
+    mcp_param = {"type": param_type, "properties": {}, "required": []}
     
     if "properties" in bfcl_param:
         for prop_name, prop_def in bfcl_param["properties"].items():
+            # Convert BFCL types to OpenAI-compatible types
+            prop_type = prop_def.get("type", "string")
+            if prop_type == "float":
+                prop_type = "number"  # OpenAI expects "number" not "float"
+            elif prop_type == "dict":
+                prop_type = "object"  # OpenAI expects "object" not "dict"
+            
             mcp_param["properties"][prop_name] = {
-                "type": prop_def["type"],
+                "type": prop_type,
                 "description": prop_def.get("description", "")
             }
-            if prop_def["type"] == "array" and "items" in prop_def:
-                mcp_param["properties"][prop_name]["items"] = prop_def["items"]
+            
+            # Handle nested properties for object types
+            if prop_type == "object" and "properties" in prop_def:
+                mcp_param["properties"][prop_name]["properties"] = {}
+                for nested_name, nested_def in prop_def["properties"].items():
+                    nested_type = nested_def.get("type", "string")
+                    if nested_type == "float":
+                        nested_type = "number"
+                    elif nested_type == "dict":
+                        nested_type = "object"
+                    
+                    mcp_param["properties"][prop_name]["properties"][nested_name] = {
+                        "type": nested_type,
+                        "description": nested_def.get("description", "")
+                    }
+            
+            if prop_def.get("type") == "array" and "items" in prop_def:
+                items = prop_def["items"]
+                if isinstance(items, dict):
+                    item_type = items.get("type", "string")
+                    if item_type == "float":
+                        item_type = "number"
+                    elif item_type == "dict":
+                        item_type = "object"
+                    mcp_param["properties"][prop_name]["items"] = {"type": item_type}
+                else:
+                    mcp_param["properties"][prop_name]["items"] = items
+            
             if "default" in prop_def:
                 mcp_param["properties"][prop_name]["default"] = prop_def["default"]
     
@@ -123,15 +164,42 @@ def get_api_tools() -> List[Tool]:
     
     return tools
 
+def capture_state(instance):
+    """Capture the current state of an API instance."""
+    if instance is None:
+        return None
+    # Get all attributes that don't start with underscore
+    state = {}
+    for key, value in vars(instance).items():
+        if not key.startswith("_"):
+            # Deep copy to avoid reference issues
+            try:
+                state[key] = copy.deepcopy(value)
+            except:
+                state[key] = str(value)
+    return state
+
 async def call_api_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
     """Handle API tool calls by intercepting method calls."""
+    global state_history
     try:
         if not api_instance:
             raise ValueError("No API class loaded")
         if not hasattr(api_instance, name):
             raise ValueError(f"Method {name} not found")
         
+        # Execute the function
         result = getattr(api_instance, name)(**arguments)
+        
+        # Capture state after execution
+        current_state = capture_state(api_instance)
+        state_history.append({
+            "function": name,
+            "arguments": arguments,
+            "state_after": current_state,
+            "result": result
+        })
+        
         return [TextContent(type="text", text=json.dumps(result))]
     except Exception as e:
         return [TextContent(type="text", text=json.dumps({"error": str(e)}))]
@@ -148,6 +216,7 @@ async def main():
     
     try:
         load_api_class(target_class_name)
+        print(f"Successfully loaded {target_class_name}", file=sys.stderr)
         
         if hasattr(api_instance, '_load_scenario') and target_class_name not in STATELESS_CLASSES:
             scenario = {}

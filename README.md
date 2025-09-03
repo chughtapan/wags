@@ -1,83 +1,111 @@
-# Elicitation Evaluations
+# BFCL Evaluation for Fast-Agent
 
-Evaluation scripts for testing MCP (Model Context Protocol) elicitation with BFCL (Berkeley Function Call Leaderboard) integration.
+A clean evaluation framework for testing LLM function calling capabilities using the Berkeley Function Call Leaderboard (BFCL) with fast-agent and MCP servers.
 
-## Overview
-
-This repository contains scripts to evaluate how human-in-the-loop elicitation improves LLM function-calling accuracy using the BFCL benchmark.
-
-## Setup
+## Installation
 
 ```bash
-# Clone with submodules
-git clone --recursive <repository-url>
-cd elicitation_evals
-
-# Install dependencies
-pip install mcp
-
-# Install BFCL dependencies (if needed)
+# Install BFCL (without heavy dependencies)
 cd bfcl/berkeley-function-call-leaderboard
-pip install -r requirements.txt
+uv pip install --no-deps -e .
+
+# Install this package
+cd ../..
+uv pip install -e .
 ```
 
 ## Usage
 
-### Running the MCP Server
+### Command Line Interface
 
 ```bash
-# Run directly from source
-cd src/elicitation_evals/mcp_servers
-python bfcl_api_server.py TwitterAPI
+# Run a single test
+elicitation-evals test multi_turn_base_55 --model gpt-4o-mini
 
-# With scenario from BFCL test data
-python bfcl_api_server.py TwitterAPI \
-    ../../../bfcl/berkeley-function-call-leaderboard/bfcl_eval/data/BFCL_v4_multi_turn_base.json \
-    multi_turn_base_0
+# Run with different model
+elicitation-evals test multi_turn_base_55 --model gpt-4.1
 
-# Test with MCP Inspector
-npx @modelcontextprotocol/inspector python bfcl_api_server.py TwitterAPI
+# Evaluate existing results
+elicitation-evals evaluate multi_turn_base_55 outputs/raw/multi_turn_base_55_fastagent.jsonl
 ```
 
-### Available API Classes
+### Python API
 
-- `TwitterAPI` - Social media operations
-- `GorillaFileSystem` - File system operations
-- `MathAPI` - Mathematical calculations
-- `MessageAPI` - Messaging functionality
-- `TicketAPI` - Ticket management
-- `TradingBot` - Trading operations
-- `TravelAPI` - Travel booking
-- `VehicleControlAPI` - Vehicle control
-- `WebSearchAPI` - Web search
-- `MemoryAPI_kv` - Key-value memory
-- `MemoryAPI_vector` - Vector memory
-- `MemoryAPI_rec_sum` - Recursive summarization
+```python
+from elicitation_evals.runner import run_test
+from elicitation_evals.evaluator import evaluate_results
+from elicitation_evals.bfcl.data_loader import load_test_entry
 
-## Project Structure
+# Load and run a test
+test_case = load_test_entry("multi_turn_base_55")
+result = run_test(test_case, model="gpt-4o-mini")
+
+# Evaluate results
+if result["success"]:
+    evaluation = evaluate_results("multi_turn_base_55", result["output_file"])
+    print(f"Validation: {evaluation['validation']['valid']}")
+    print(f"Irrelevance: {evaluation['irrelevance_check']['valid']}")
+```
+
+## Architecture
 
 ```
-elicitation_evals/
-├── src/
-│   └── elicitation_evals/
-│       └── mcp_servers/
-│           └── bfcl_api_server.py   # MCP server wrapper
-├── bfcl/                             # BFCL submodule
-│   └── berkeley-function-call-leaderboard/
-├── CLAUDE.md                         # Claude AI instructions
-├── pyproject.toml                    # Project dependencies
-└── README.md
+src/elicitation_evals/
+├── __main__.py              # CLI entry point
+├── runner.py                # Test execution logic
+├── evaluator.py             # Evaluation logic
+├── parser.py                # JSONL log parsing
+├── config.py                # Config/script generation
+├── bfcl/                    # BFCL-specific code
+│   ├── data_loader.py       # BFCL data loading
+│   └── mcp_server.py        # MCP wrapper for BFCL APIs
+└── templates/               # Jinja2 templates
+    ├── config.yaml.j2       # Fast-agent YAML config
+    ├── script.py.j2         # Python script template
+    └── system_prompt.j2     # System prompt template
 ```
+
+## How It Works
+
+1. **Test Loading**: Loads BFCL test cases with function definitions and multi-turn conversations
+2. **MCP Server Setup**: Wraps BFCL API classes as MCP servers for fast-agent
+3. **Script Generation**: Creates fast-agent scripts using Jinja2 templates
+4. **Execution**: Runs tests capturing all tool calls in JSONL logs
+5. **Parsing**: Extracts tool calls from logs with proper turn detection
+6. **Evaluation**: Uses BFCL's validators to check correctness
+
+## Key Features
+
+- **Clean architecture**: Core logic separate from BFCL-specific code
+- **Proper packaging**: Installable via pip/uv with CLI commands
+- **Template-based**: System prompts and scripts in Jinja2 templates
+- **Turn detection**: Correctly identifies conversation boundaries using `finish_reason="stop"`
+- **Type conversion**: Handles BFCL→OpenAI type mappings (dict→object, float→number)
+- **Extensible**: Easy to add custom data sources and MCP servers
 
 ## Development
 
 ```bash
-# Format code
-black src/
-ruff check src/
+# Run tests on specific range
+for i in {50..60}; do
+    elicitation-evals test multi_turn_base_$i --model gpt-4o-mini
+done
 
-# Run tests
-pytest
+# Evaluate individual results
+elicitation-evals evaluate multi_turn_base_55 outputs/raw/multi_turn_base_55_fastagent.jsonl
+```
+
+## Output Structure
+
+```
+outputs/
+├── configs/                 # Generated YAML configs
+├── raw/                     # JSONL logs from fast-agent
+│   ├── *_fastagent.jsonl   # Raw conversation logs
+│   ├── *_detailed.json     # Structured message history
+│   └── *_complete.json     # Standard format
+└── evaluations/            # Evaluation results
+    └── *.json              # Validation results per test
 ```
 
 ## License

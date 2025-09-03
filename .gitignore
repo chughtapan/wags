@@ -44,3 +44,8 @@ htmlcov/
 *.json.tmp
 .env
 fastagent.secrets.yaml
+outputs/
+fastagent.config.yaml
+fastagent.jsonl
+test_script_*.py
+CLAUDE.md
