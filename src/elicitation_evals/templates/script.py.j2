@@ -6,9 +6,13 @@ import json
 from pathlib import Path
 from mcp_agent.core.fastagent import FastAgent
 from mcp_agent.mcp.prompt_serialization import save_messages_to_file
+from mcp_agent.logging.logger import get_logger
 
 async def run_test():
     """Run the BFCL test conversation."""
+    
+    # Create logger for turn tracking
+    logger = get_logger("bfcl_test.{{ test_id }}")
     
     # Create the FastAgent application with custom config
     fast = FastAgent("BFCL Test", config_path="{{ config_path }}")
@@ -40,9 +44,18 @@ async def run_test():
                 turn_idx += 1
                 print(f"\nTurn {turn_idx}: {turn['content'][:100]}...")
                 
+                # Log turn marker before sending message
+                logger.info(f"TURN_START:{turn_idx}", turn_number=turn_idx)
+                
                 # Send message and get response
                 response = await agent_app.send(turn["content"])
                 print(f"Response: {len(response)} chars")
+                
+                # Log turn end marker  
+                logger.info(f"TURN_END:{turn_idx}", turn_number=turn_idx)
+        
+        # Yield to event loop to let all logger tasks complete
+        await asyncio.sleep(0)
         
         # Save the complete message history with all tool calls
         print("\nSaving complete conversation history...")

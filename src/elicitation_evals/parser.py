@@ -8,6 +8,9 @@ def parse_jsonl(log_path: str) -> List[List[Dict[str, Any]]]:
     """
     Parse JSONL log and extract tool calls by turn.
     
+    Uses turn markers to properly group tool calls by which user message
+    triggered them, then creates separate BFCL turns for each tool call.
+    
     Args:
         log_path: Path to the JSONL log file
         
@@ -15,7 +18,8 @@ def parse_jsonl(log_path: str) -> List[List[Dict[str, Any]]]:
         List of turns, where each turn is a list of tool call dictionaries
     """
     all_turns = []
-    current_turn = []
+    current_turn_tools = []
+    in_turn = False
     
     with open(log_path) as f:
         for line in f:
@@ -27,20 +31,30 @@ def parse_jsonl(log_path: str) -> List[List[Dict[str, Any]]]:
             except json.JSONDecodeError:
                 continue
             
-            # Look for OpenAI completion responses
-            if (entry.get("namespace", "").endswith(".bfcl_test") and 
-                "OpenAI completion response" in entry.get("message", "")):
+            # Check for turn markers
+            message = entry.get("message", "")
+            if "TURN_START:" in message:
+                in_turn = True
+                current_turn_tools = []
+            elif "TURN_END:" in message:
+                # Add all tool calls from this turn as a single turn
+                # If no tool calls, add empty list for this turn
+                all_turns.append(current_turn_tools)
+                in_turn = False
+                current_turn_tools = []
+            
+            # Look for OpenAI completion responses within a turn
+            elif in_turn and (entry.get("namespace", "").endswith(".bfcl_test") and 
+                             "OpenAI completion response" in message):
                 
                 data = entry.get("data", {}).get("data", {})
                 choices = data.get("choices", [])
                 
                 for choice in choices:
-                    message = choice.get("message", {})
-                    finish_reason = choice.get("finish_reason")
-                    content = message.get("content")
+                    msg = choice.get("message", {})
                     
                     # Extract tool calls
-                    tool_calls = message.get("tool_calls")
+                    tool_calls = msg.get("tool_calls")
                     if tool_calls:
                         for tc in tool_calls:
                             func = tc.get("function", {})
@@ -55,20 +69,11 @@ def parse_jsonl(log_path: str) -> List[List[Dict[str, Any]]]:
                             except json.JSONDecodeError:
                                 args = {}
                             
-                            current_turn.append({
+                            # Add to current turn's tool calls
+                            current_turn_tools.append({
                                 "function": name,
                                 "arguments": args
                             })
-                    
-                    # Check for turn boundary (finish_reason="stop" with content)
-                    if finish_reason == "stop" and content:
-                        if current_turn:
-                            all_turns.append(current_turn)
-                            current_turn = []
-    
-    # Don't forget the last turn
-    if current_turn:
-        all_turns.append(current_turn)
     
     return all_turns
 
