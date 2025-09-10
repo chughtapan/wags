@@ -1,0 +1,95 @@
+[project]
+name = "wags"
+version = "0.0.0.dev0"
+description = "Web Agent Gateway System"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [{name = "WAGS Team"}]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pre-commit>=4.0.0",
+]
+docs = [
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.27.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/tapanc/wags"
+"Bug Reports" = "https://github.com/tapanc/wags/issues"
+"Source" = "https://github.com/tapanc/wags"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wags"]
+
+# Ruff replaces black, isort, flake8
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "C4",    # flake8-comprehensions
+    "C90",   # mccabe
+    "E",     # pycodestyle
+    "F",     # pyflakes
+    "I",     # isort
+    "PERF",  # Perflint
+    "PL",    # Pylint
+    "UP",    # pyupgrade
+]
+ignore = [
+    "PLR0913", # Too many arguments
+    "PLR2004", # Magic values
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "ARG001"]  # Allow assert and unused arguments in tests
+
+[tool.ruff.lint.isort]
+known-first-party = ["wags"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.format]
+# Matches black's defaults
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+no_implicit_reexport = true
+warn_unreachable = true
+show_error_codes = true
+pretty = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+addopts = "-v --strict-markers"
+asyncio_mode = "auto"
