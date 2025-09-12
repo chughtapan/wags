@@ -41,6 +41,7 @@ htmlcov/
 
 # Project specific
 *.log
+*undo-tree*
 *.json.tmp
 .env
 fastagent.secrets.yaml
