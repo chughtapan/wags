@@ -1,1 +1,0 @@
-"""BFCL evaluation package for fast-agent."""
