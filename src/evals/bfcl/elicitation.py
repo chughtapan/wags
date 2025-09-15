@@ -17,16 +17,16 @@ if TYPE_CHECKING:
 class GroundTruthElicitationHandler:
     """Handler for elicitation based on ground truth data."""
 
-    def __init__(self, ground_truth_data: list[list[str]], logger):
+    def __init__(self, ground_truth_data: list[list[str]], structured_logger=None):
         """
         Initialize the elicitation handler.
 
         Args:
             ground_truth_data: List of turns with function calls
-            logger: Logger instance for tracking events
+            structured_logger: Optional structured logger for event tracking
         """
         self.ground_truth_data = ground_truth_data
-        self.logger = logger
+        self.structured_logger = structured_logger
         self.function_counters = {}
 
     def parse_function_call(self, call_str: str) -> dict[str, Any] | None:
@@ -47,7 +47,6 @@ class GroundTruthElicitationHandler:
             if not isinstance(call_node, ast.Call):
                 return None
 
-            # Extract function name
             if isinstance(call_node.func, ast.Name):
                 func_name = call_node.func.id
             elif isinstance(call_node.func, ast.Attribute):
@@ -55,10 +54,7 @@ class GroundTruthElicitationHandler:
             else:
                 return None
 
-            # Extract parameters
             params = {}
-
-            # Handle keyword arguments
             for keyword in call_node.keywords:
                 key = keyword.arg
                 value = ast.literal_eval(keyword.value)
@@ -176,27 +172,32 @@ class GroundTruthElicitationHandler:
         ground_truth_params = self.find_ground_truth_params(message)
 
         if ground_truth_params:
-            # Extract function name for logging
             func_name = self.extract_function_name(message)
-            self.logger.info(f"ELICITATION_ACCEPTED:{func_name}")
+            if self.structured_logger:
+                self.structured_logger.log_elicitation(
+                    func_name, "accepted", ground_truth_params
+                )
             return ElicitResult(action="accept", content=ground_truth_params)
 
         # No matching function found or no text params
         func_name = self.extract_function_name(message)
-        self.logger.info(f"ELICITATION_DECLINED:{func_name}")
+        if self.structured_logger:
+            self.structured_logger.log_elicitation(
+                func_name, "declined", None
+            )
         return ElicitResult(action="decline")
 
 
-def create_elicitation_handler(ground_truth_data: list[list[str]], logger):
+def create_elicitation_handler(ground_truth_data: list[list[str]], structured_logger=None):
     """
     Factory function to create an elicitation handler.
 
     Args:
         ground_truth_data: Ground truth data from BFCL
-        logger: Logger instance
+        structured_logger: Optional structured logger for event tracking
 
     Returns:
         Async handler function for elicitation
     """
-    handler = GroundTruthElicitationHandler(ground_truth_data, logger)
+    handler = GroundTruthElicitationHandler(ground_truth_data, structured_logger)
     return handler.handle

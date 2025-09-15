@@ -8,24 +8,21 @@ from bfcl_eval.eval_checker.multi_turn_eval.multi_turn_checker import (
 )
 from bfcl_eval.utils import make_json_serializable
 
-from ..parser import parse_and_format
 from .loader import load_ground_truth, load_test_entry
 
 
-def evaluate_results(test_id: str, log_file: str) -> dict[str, Any]:
+def _run_evaluation(test_id: str, raw_calls: list, executable_responses: list) -> dict[str, Any]:
     """
-    Parse log and evaluate with BFCL validators.
+    Common evaluation logic for both JSON and JSONL sources.
 
     Args:
         test_id: Test case identifier
-        log_file: Path to JSONL log file
+        raw_calls: List of tool calls by turn
+        executable_responses: Executable format for BFCL
 
     Returns:
         Dictionary with evaluation results
     """
-    # Parse tool calls from log
-    raw_calls, executable_responses = parse_and_format(log_file)
-
     # Load test data and ground truth
     test_entry = load_test_entry(test_id)
     ground_truth = load_ground_truth(test_id)
@@ -72,3 +69,4 @@ def evaluate_results(test_id: str, log_file: str) -> dict[str, Any]:
             "raw_tool_calls": raw_calls,
         }
     )
+

@@ -118,10 +118,9 @@ mcp:
         - ${TEST_ID}
 
 logger:
-  level: debug
-  type: file
-  path: ${LOG_PATH}
-  show_chat: true
-  show_tools: true
+  level: error
+  type: console
+  show_chat: false
+  show_tools: false
   truncate_tools: false
   progress_display: false

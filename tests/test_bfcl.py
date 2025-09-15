@@ -1,13 +1,15 @@
 """BFCL evaluation tests using pytest."""
 
+import json
 from pathlib import Path
 
 import pytest
-from fast_agent.core.logging.logger import get_logger
 
 from src.evals.bfcl import evaluator, loader
 from src.evals.bfcl.elicitation import create_elicitation_handler
+from src.evals.message_serializer import MessageSerializer
 from src.evals.runner import TestConfig, run_test_async
+from src.evals.structured_logger import StructuredEventLogger
 
 
 def pytest_generate_tests(metafunc):
@@ -40,36 +42,40 @@ async def test_bfcl(test_id, model, output_dir, request):
     validate_only = request.config.getoption("--validate-only")
 
     if validate_only:
-        # VALIDATE MODE: Just evaluate existing log
+        # VALIDATE MODE: Extract from complete.json and evaluate
         log_dir = Path(request.config.getoption("--log-dir"))
-        log_file = log_dir / f"{test_id}_fastagent.jsonl"
+        complete_file = log_dir / f"{test_id}_complete.json"
 
-        if not log_file.exists():
-            pytest.skip(f"Log file not found: {log_file}")
+        if not complete_file.exists():
+            pytest.skip(f"Complete JSON file not found for {test_id}")
 
-        evaluation = evaluator.evaluate_results(test_id, str(log_file))
+        with open(complete_file) as f:
+            complete_data = json.load(f)
+
+        tool_calls = MessageSerializer.extract_tool_calls_by_turn(complete_data)
+        executable_format = MessageSerializer.format_to_executable(tool_calls)
+        evaluation = evaluator._run_evaluation(test_id, tool_calls, executable_format)
 
         # ONLY CHECK VALIDATION - not irrelevance
         assert evaluation["validation"]["valid"], f"Validation failed for {test_id}"
 
     else:
         # RUN MODE: Execute test directly
-        # Load data
         test_case = loader.load_test_entry(test_id)
         ground_truth = loader.load_ground_truth(test_id)
 
-        # Setup paths
         config_path = Path(__file__).parent.parent / "src/evals/bfcl/config.yaml"
         instruction_path = Path(__file__).parent.parent / "src/evals/bfcl/instruction.txt"
 
-        # Setup servers and elicitation
         server_names = [
             cls.lower().replace("_", "") for cls in test_case.get("involved_classes", [])
         ]
-        logger = get_logger(f"bfcl.{test_id}")
-        elicitation_handler = create_elicitation_handler(ground_truth, logger)
 
-        # Run test DIRECTLY with async function
+        structured_log_path = output_dir / "raw" / f"{test_id}_structured.jsonl"
+        structured_logger = StructuredEventLogger(structured_log_path)
+
+        elicitation_handler = create_elicitation_handler(ground_truth, structured_logger)
+
         config = TestConfig(
             test_case=test_case,
             config_path=config_path,
@@ -79,14 +85,20 @@ async def test_bfcl(test_id, model, output_dir, request):
             output_dir=output_dir,
             elicitation_handler=elicitation_handler,
             server_names=server_names,
+            structured_logger=structured_logger,
         )
         result = await run_test_async(config)
 
         if not result["success"]:
             pytest.fail(f"Test execution failed: {result.get('error')}")
 
-        # Evaluate
-        evaluation = evaluator.evaluate_results(test_id, result["output_file"])
+        # Load complete.json, extract tool calls, and evaluate
+        with open(result["complete_messages"]) as f:
+            complete_data = json.load(f)
+
+        tool_calls = MessageSerializer.extract_tool_calls_by_turn(complete_data)
+        executable_format = MessageSerializer.format_to_executable(tool_calls)
+        evaluation = evaluator._run_evaluation(test_id, tool_calls, executable_format)
 
         # ONLY CHECK VALIDATION - not irrelevance
         assert evaluation["validation"]["valid"], f"Validation failed for {test_id}"

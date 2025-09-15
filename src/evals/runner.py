@@ -1,6 +1,7 @@
 """Generic test execution logic."""
 
 import asyncio
+import json
 import os
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -8,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 from fast_agent import FastAgent
-from fast_agent.core.logging.logger import get_logger
 
 
 @dataclass
@@ -23,19 +23,27 @@ class TestConfig:
     output_dir: Path = field(default_factory=lambda: Path("outputs"))
     elicitation_handler: Callable | None = None
     server_names: list[str] | None = None
+    structured_logger: Any = None  # Optional StructuredEventLogger instance
 
 
 async def run_test_async(config: TestConfig) -> dict[str, Any]:
     """Run test - single async function with configuration object."""
-    from .logging import clear_log, save_conversation, save_test_data
+    from .message_serializer import MessageSerializer
+    from .structured_logger import StructuredEventLogger
 
     test_id = config.test_case["id"]
-    log_file = config.output_dir / "raw" / f"{test_id}_fastagent.jsonl"
 
-    # Prepare files
-    clear_log(log_file)
+    # Setup structured logger (use provided or create new)
+    if config.structured_logger:
+        structured_logger = config.structured_logger
+        structured_log_path = structured_logger.log_path
+    else:
+        structured_log_path = config.output_dir / "raw" / f"{test_id}_structured.jsonl"
+        structured_logger = StructuredEventLogger(structured_log_path)
+
     test_data_path = config.output_dir / f"{test_id}_test.json"
-    save_test_data(test_data_path, config.test_case)
+    test_data_path.parent.mkdir(parents=True, exist_ok=True)
+    test_data_path.write_text(json.dumps(config.test_case))
 
     # Environment setup
     os.environ.update(
@@ -43,7 +51,6 @@ async def run_test_async(config: TestConfig) -> dict[str, Any]:
             "DEFAULT_MODEL": config.model,
             "TEMPERATURE": str(config.temperature),
             "TEST_DATA_PATH": str(test_data_path),
-            "LOG_PATH": str(log_file),
             "TEST_ID": test_id,
             "SERVER_SCRIPT_PATH": str(Path(__file__).parent / "bfcl" / "mcp_server.py"),
         }
@@ -62,8 +69,6 @@ async def run_test_async(config: TestConfig) -> dict[str, Any]:
     async def test_agent():
         pass  # No implementation needed
 
-    logger = get_logger(f"test.{test_id}")
-
     # Run conversation
     async with fast.run() as agent_app:
         questions = config.test_case.get("question", [])
@@ -81,20 +86,27 @@ async def run_test_async(config: TestConfig) -> dict[str, Any]:
             else:
                 continue
 
-            logger.info(f"TURN_START:{turn_idx}", turn_number=turn_idx)
+            structured_logger.log_turn(turn_idx, "start", msg)
             await agent_app.send(msg)
-            logger.info(f"TURN_END:{turn_idx}", turn_number=turn_idx)
+            structured_logger.log_turn(turn_idx, "end")
 
             # Small yield to let logger flush
             await asyncio.sleep(0)
 
-        # Save results
-        save_conversation(
-            agent_app._agent(None).message_history,
-            config.output_dir / "raw" / f"{test_id}_detailed.json",
-        )
+        messages = agent_app._agent(None).message_history
+        structured_logger.log_message_summary(messages)
 
-    return {"success": True, "test_id": test_id, "output_file": str(log_file)}
+        # Save complete serialization
+        complete_json = MessageSerializer.serialize_complete(messages)
+        complete_path = config.output_dir / "raw" / f"{test_id}_complete.json"
+        complete_path.write_text(complete_json)
+
+    return {
+        "success": True,
+        "test_id": test_id,
+        "structured_log": str(structured_log_path),
+        "complete_messages": str(complete_path)
+    }
 
 
 def run_test(config: TestConfig) -> dict[str, Any]:
