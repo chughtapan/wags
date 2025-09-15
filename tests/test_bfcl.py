@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pytest
-from mcp_agent.logging.logger import get_logger
+from fast_agent.core.logging.logger import get_logger
 
 from src.evals.bfcl import evaluator, loader
 from src.evals.bfcl.elicitation import create_elicitation_handler

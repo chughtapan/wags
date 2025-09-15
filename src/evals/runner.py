@@ -7,8 +7,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from mcp_agent.core.fastagent import FastAgent
-from mcp_agent.logging.logger import get_logger
+from fast_agent import FastAgent
+from fast_agent.core.logging.logger import get_logger
 
 
 @dataclass
