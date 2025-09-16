@@ -1,99 +1,102 @@
-# BFCL Evaluation for Fast-Agent
+# Evaluation Framework for Fast-Agent
 
-A clean evaluation framework for testing LLM function calling capabilities using the Berkeley Function Call Leaderboard (BFCL) with fast-agent and MCP servers.
+A pytest-based evaluation framework for testing LLM function calling capabilities using the Berkeley Function Call Leaderboard (BFCL) with fast-agent and MCP servers.
 
 ## Installation
 
 ```bash
-# Install BFCL (without heavy dependencies)
-cd bfcl/berkeley-function-call-leaderboard
-uv pip install --no-deps -e .
+# Create and activate virtual environment
+uv venv
+source .venv/bin/activate
 
-# Install this package
-cd ../..
-uv pip install -e .
+# Install this package with dev dependencies
+uv pip install -e ".[dev]"
+
+# Install BFCL (without heavy dependencies) - MUST be done after main install
+cd submodules/bfcl/berkeley-function-call-leaderboard
+uv pip install --no-deps -e .
+cd ../../..
 ```
 
 ## Usage
 
-### Command Line Interface
+### Running Tests with Pytest
 
 ```bash
-# Run a single test
-elicitation-evals test multi_turn_base_55 --model gpt-4o-mini
+# Run all multi-turn tests
+.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py
+
+# Run specific test
+.venv/bin/pytest 'tests/benchmarks/bfcl/test_bfcl.py::test_bfcl[multi_turn_base_55]'
+
+# Run category of tests
+.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py -k "multi_turn_base"
 
 # Run with different model
-elicitation-evals test multi_turn_base_55 --model gpt-4.1
+.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --model gpt-4o
 
-# Evaluate existing results
-elicitation-evals evaluate multi_turn_base_55 outputs/raw/multi_turn_base_55_fastagent.jsonl
-```
+# Save outputs to specific directory
+.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --output-dir outputs/experiment1
 
-### Python API
+# Validate existing logs only (no new runs)
+.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --validate-only
 
-```python
-from elicitation_evals.runner import run_test
-from elicitation_evals.evaluator import evaluate_results
-from elicitation_evals.bfcl.data_loader import load_test_entry
-
-# Load and run a test
-test_case = load_test_entry("multi_turn_base_55")
-result = run_test(test_case, model="gpt-4o-mini")
-
-# Evaluate results
-if result["success"]:
-    evaluation = evaluate_results("multi_turn_base_55", result["output_file"])
-    print(f"Validation: {evaluation['validation']['valid']}")
-    print(f"Irrelevance: {evaluation['irrelevance_check']['valid']}")
+# Validate logs from specific directory
+.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --validate-only --log-dir outputs/experiment1/raw
 ```
 
 ## Architecture
 
 ```
-src/elicitation_evals/
-├── __main__.py              # CLI entry point
-├── runner.py                # Test execution logic
-├── evaluator.py             # Evaluation logic
-├── parser.py                # JSONL log parsing
-├── config.py                # Config/script generation
-├── bfcl/                    # BFCL-specific code
-│   ├── data_loader.py       # BFCL data loading
-│   └── mcp_server.py        # MCP wrapper for BFCL APIs
-└── templates/               # Jinja2 templates
-    ├── config.yaml.j2       # Fast-agent YAML config
-    ├── script.py.j2         # Python script template
-    └── system_prompt.j2     # System prompt template
+src/evals/
+├── core/                       # Generic evaluation framework
+│   ├── runner.py              # Generic async test execution
+│   ├── serializer.py          # Preserves tool calls FastAgent drops
+│   └── logger.py              # Typed event logging (replaces string matching)
+└── benchmarks/                 # Benchmark implementations
+    └── bfcl/                  # BFCL-specific implementation
+        ├── loader.py          # Data loading (currently multi_turn only)
+        ├── evaluator.py       # BFCL validation logic
+        ├── mcp_server.py      # MCP wrapper for BFCL APIs
+        ├── elicitation.py     # Ground truth elicitation handler
+        ├── config.yaml        # MCP server configuration
+        └── instruction.txt    # System prompt
+
+tests/
+├── conftest.py                # Pytest fixtures and configuration
+├── benchmarks/
+│   └── bfcl/
+│       └── test_bfcl.py      # Async test implementation
+└── unit/
+    └── core/
+        └── test_serializer.py # Unit tests for serialization
+
+submodules/
+└── bfcl/                      # BFCL git submodule
 ```
 
 ## How It Works
 
-1. **Test Loading**: Loads BFCL test cases with function definitions and multi-turn conversations
-2. **MCP Server Setup**: Wraps BFCL API classes as MCP servers for fast-agent
-3. **Script Generation**: Creates fast-agent scripts using Jinja2 templates
-4. **Execution**: Runs tests capturing all tool calls in JSONL logs
-5. **Parsing**: Extracts tool calls from logs with proper turn detection
+1. **Test Discovery**: pytest dynamically discovers tests from BFCL data files
+2. **Async Execution**: Tests run as native async functions using pytest-asyncio
+3. **MCP Server Setup**: Wraps BFCL API classes as MCP servers for fast-agent
+4. **Execution**: Runs tests, serializes complete message history to `complete.json`
+5. **Extraction**: Extracts tool calls directly from `complete.json` (no JSONL parsing)
 6. **Evaluation**: Uses BFCL's validators to check correctness
+7. **Pass/Fail**: Only `validation["valid"]` determines test outcome (ignores irrelevance checks)
 
 ## Key Features
 
-- **Clean architecture**: Core logic separate from BFCL-specific code
-- **Proper packaging**: Installable via pip/uv with CLI commands
-- **Template-based**: System prompts and scripts in Jinja2 templates
-- **Turn detection**: Correctly identifies conversation boundaries using `finish_reason="stop"`
-- **Type conversion**: Handles BFCL→OpenAI type mappings (dict→object, float→number)
-- **Extensible**: Easy to add custom data sources and MCP servers
-
-## Development
-
-```bash
-# Run tests on specific range
-for i in {50..60}; do
-    elicitation-evals test multi_turn_base_$i --model gpt-4o-mini
-done
-
-# Evaluate individual results
-elicitation-evals evaluate multi_turn_base_55 outputs/raw/multi_turn_base_55_fastagent.jsonl
-```
+- **Pytest-native**: No CLI, pure pytest with async support
+- **Two modes**: Run new tests OR validate from `complete.json` with `--validate-only`
+- **Tool call preservation**: MessageSerializer preserves tool calls that FastAgent drops
+- **Single extraction path**: Both run and validate modes use same JSON extraction
+- **Structured logging**: Typed events replace fragile string matching in logs
+- **Minimal storage**: Only saves `complete.json` (extracts tool calls on-demand)
+- **Clean architecture**: Generic runner, benchmark-specific logic isolated in bfcl/
+- **Pattern matching**: Use pytest's `-k` flag for test selection
+- **Sequential by default**: No concurrency issues, no rate limiting problems
+- **Extensible**: Easy to add new benchmarks (copy bfcl/ folder pattern)
 
 ## Output Structure
 

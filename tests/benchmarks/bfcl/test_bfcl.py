@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from src.evals.bfcl import evaluator, loader
-from src.evals.bfcl.elicitation import create_elicitation_handler
-from src.evals.message_serializer import MessageSerializer
-from src.evals.runner import TestConfig, run_test_async
-from src.evals.structured_logger import StructuredEventLogger
+from src.evals.benchmarks.bfcl import evaluator, loader
+from src.evals.benchmarks.bfcl.elicitation import create_elicitation_handler
+from src.evals.core.serializer import MessageSerializer
+from src.evals.core.runner import TestConfig, run_test_async
+from src.evals.core.logger import StructuredEventLogger
 
 
 def pytest_generate_tests(metafunc):

@@ -5,7 +5,7 @@ import json
 from fast_agent.types import PromptMessageExtended
 from mcp.types import CallToolRequest, CallToolRequestParams, CallToolResult, TextContent
 
-from src.evals.message_serializer import MessageSerializer
+from src.evals.core.serializer import MessageSerializer
 
 
 class TestMessageSerializer:
