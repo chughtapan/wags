@@ -1,0 +1,1 @@
+"""WAGS CLI package."""

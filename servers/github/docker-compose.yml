@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  github-mcp:
+    image: ghcr.io/github/github-mcp-server:latest
+    environment:
+      - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
+    stdin_open: true
+    tty: true
+    command: ["stdio"]

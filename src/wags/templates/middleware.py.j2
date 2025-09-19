@@ -1,0 +1,22 @@
+"""Middleware for {{ name }} server."""
+
+from typing import Any, Annotated
+
+from wags.middleware.base import tool_handler
+from wags.middleware.elicitation import ElicitationMiddleware, RequiresElicitation
+
+
+class {{ class_name }}(ElicitationMiddleware):
+    """Middleware for {{ name }} MCP server."""
+
+    @tool_handler
+    async def example_tool(
+        self,
+        required_param: str,
+        optional_param: str | None = None,
+        elicited_param: Annotated[str, RequiresElicitation(
+            "What value should be used for this parameter?"
+        )] = None
+    ):
+        """Example tool handler with elicitation."""
+        pass

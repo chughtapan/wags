@@ -8,7 +8,6 @@ from fastmcp.server.context import Context
 from fastmcp.server.elicitation import AcceptedElicitation
 from fastmcp.server.middleware.middleware import MiddlewareContext
 from mcp.types import CallToolRequestParams
-from pydantic import BaseModel
 
 from src.wags.middleware.base import tool_handler
 from src.wags.middleware.elicitation import ElicitationMiddleware, RequiresElicitation
@@ -21,7 +20,7 @@ class Priority(Enum):
     HIGH = 3
 
 
-class TestElicitationMiddleware(ElicitationMiddleware):
+class MockElicitationMiddleware(ElicitationMiddleware):
     """Test middleware with tool handlers."""
 
     @tool_handler
@@ -65,7 +64,7 @@ class TestElicitationMiddleware(ElicitationMiddleware):
 @pytest.mark.asyncio
 async def test_middleware_registration():
     """Test that tool handlers are auto-registered."""
-    middleware = TestElicitationMiddleware()
+    middleware = MockElicitationMiddleware()
 
     # Should have all @tool_handler decorated methods registered
     assert "simple_tool" in middleware.tool_handlers
@@ -76,7 +75,7 @@ async def test_middleware_registration():
 @pytest.mark.asyncio
 async def test_get_tool_handler():
     """Test getting tool handler from request."""
-    middleware = TestElicitationMiddleware()
+    middleware = MockElicitationMiddleware()
 
     request = CallToolRequestParams(
         name="simple_tool",
@@ -96,7 +95,7 @@ async def test_get_tool_handler():
 @pytest.mark.asyncio
 async def test_single_elicitation_with_mock_context():
     """Test that multiple fields are elicited in a single call."""
-    middleware = TestElicitationMiddleware()
+    middleware = MockElicitationMiddleware()
 
     # Create mock FastMCP context
     mock_fastmcp_context = Mock(spec=Context)
@@ -137,7 +136,7 @@ async def test_single_elicitation_with_mock_context():
 @pytest.mark.asyncio
 async def test_passthrough_unregistered():
     """Test that unregistered tools pass through."""
-    middleware = TestElicitationMiddleware()
+    middleware = MockElicitationMiddleware()
 
     # Create middleware context for unknown tool
     message = CallToolRequestParams(
@@ -157,7 +156,7 @@ async def test_passthrough_unregistered():
 @pytest.mark.asyncio
 async def test_metadata_extraction():
     """Test extraction of elicitation metadata."""
-    middleware = TestElicitationMiddleware()
+    middleware = MockElicitationMiddleware()
     handler = middleware.tool_handlers["simple_tool"]
 
     import inspect
@@ -174,7 +173,7 @@ async def test_metadata_extraction():
 @pytest.mark.asyncio
 async def test_type_extraction():
     """Test extraction of base type from Annotated."""
-    middleware = TestElicitationMiddleware()
+    middleware = MockElicitationMiddleware()
     handler = middleware.tool_handlers["simple_tool"]
 
     import inspect
@@ -195,7 +194,7 @@ async def test_type_extraction():
 @pytest.mark.asyncio
 async def test_no_elicitation_metadata():
     """Test parameter without elicitation metadata."""
-    middleware = TestElicitationMiddleware()
+    middleware = MockElicitationMiddleware()
     handler = middleware.tool_handlers["simple_tool"]
 
     import inspect
@@ -210,7 +209,7 @@ async def test_no_elicitation_metadata():
 @pytest.mark.asyncio
 async def test_handler_without_elicitation():
     """Test handler without any elicitation annotations."""
-    middleware = TestElicitationMiddleware()
+    middleware = MockElicitationMiddleware()
 
     # Create middleware context
     message = CallToolRequestParams(
@@ -230,7 +229,7 @@ async def test_handler_without_elicitation():
 @pytest.mark.asyncio
 async def test_passthrough_without_context():
     """Test that middleware passes through when no FastMCP context."""
-    middleware = TestElicitationMiddleware()
+    middleware = MockElicitationMiddleware()
 
     # Create middleware context without FastMCP context
     message = CallToolRequestParams(
@@ -256,7 +255,7 @@ async def test_passthrough_without_context():
 @pytest.mark.asyncio
 async def test_string_elicitation():
     """Test open-ended string elicitation."""
-    middleware = TestElicitationMiddleware()
+    middleware = MockElicitationMiddleware()
 
     # Create mock FastMCP context
     mock_fastmcp_context = Mock(spec=Context)

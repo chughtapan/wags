@@ -1,0 +1,17 @@
+"""Main entry point for {{ name }} server."""
+
+from pathlib import Path
+from wags.utils.config import load_config, create_proxy
+from .middleware import {{ class_name }}
+
+# Load config and create proxy server
+config = load_config(Path(__file__).parent / "config.json")
+mcp = create_proxy(config, "{{ name }}-proxy")
+
+# Add middleware(s)
+mcp.add_middleware({{ class_name }}())
+
+# Run the server when executed directly
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(mcp.run_stdio_async())

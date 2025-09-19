@@ -1,0 +1,109 @@
+"""WAGS CLI using cyclopts."""
+
+import asyncio
+import sys
+from pathlib import Path
+
+import cyclopts
+from fastmcp import __version__ as fastmcp_version
+from fastmcp.utilities.logging import get_logger
+from rich.console import Console
+
+from wags import __version__
+
+logger = get_logger("wags.cli")
+console = Console()
+
+app = cyclopts.App(
+    name="wags",
+    help="WAGS - Web Agent Gateway System for MCP servers with FastMCP.",
+    version=__version__,
+)
+
+
+def cli():
+    """Entry point for the CLI."""
+    app()
+
+
+@app.command
+def version():
+    """Show version information."""
+    console.print(f"[bold]WAGS[/bold] version {__version__}")
+    console.print(f"[dim]FastMCP version {fastmcp_version}[/dim]")
+
+
+@app.command
+def run(
+    server_path: Path,
+):
+    """Run an MCP server with middleware.
+
+    Args:
+        server_path: Path to server directory containing main.py
+    """
+    from wags.utils.server import run_server
+
+    try:
+        asyncio.run(run_server(server_path))
+    except KeyboardInterrupt:
+        logger.info("Server stopped")
+    except Exception as e:
+        logger.error(f"Failed to run server: {e}")
+        sys.exit(1)
+
+
+@app.command
+def generate_stub(
+    config: Path,
+    *,
+    server_name: str | None = None,
+    output: Path | None = None,
+    class_name: str | None = None,
+):
+    """Generate middleware stub from an MCP server.
+
+    Args:
+        config: Path to MCP config.json file
+        server_name: Name of the server in config (defaults to first server)
+        output: Output path for generated middleware (defaults to stdout)
+        class_name: Name for the middleware class (defaults to auto-generated)
+    """
+    from wags.utils.middleware_generator import generate_middleware_stub
+
+    try:
+        asyncio.run(generate_middleware_stub(
+            config_path=config,
+            server_name=server_name,
+            output_path=output,
+            class_name=class_name
+        ))
+    except Exception as e:
+        logger.error(f"Failed to generate stub: {e}")
+        sys.exit(1)
+
+
+@app.command
+def init(
+    name: str,
+    *,
+    path: Path | None = None,
+):
+    """Initialize a new server with middleware scaffold.
+
+    Args:
+        name: Name for the new server
+        path: Directory to create server in (defaults to servers/{name})
+    """
+    from wags.utils.server_template import create_server_scaffold
+
+    try:
+        create_server_scaffold(name, path)
+        console.print(f"[green]✓[/green] Created server scaffold at {path or f'servers/{name}'}")
+    except Exception as e:
+        logger.error(f"Failed to initialize server: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    cli()
