@@ -61,3 +61,5 @@ allow-magic-value-types = ["bytes", "float", "int", "str"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "-v --tb=short"
+# Exclude benchmarks by default
+norecursedirs = ["tests/benchmarks"]
