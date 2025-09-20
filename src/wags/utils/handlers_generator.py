@@ -1,8 +1,8 @@
 """
-Generate middleware stubs from MCP servers.
+Generate handler stubs from MCP servers.
 
 This tool connects to an MCP server, introspects its tools,
-and generates a middleware class with type annotations.
+and generates a handlers class with type annotations for use with middleware.
 """
 
 from pathlib import Path
@@ -103,8 +103,7 @@ def generate_method_stub(tool: Tool) -> str:
     # Build docstring
     docstring = tool.description or f"Handler for {tool.name}"
 
-    method = f"""    @tool_handler
-    async def {method_name}(
+    method = f"""    async def {method_name}(
         {params_str}
     ):
         \"\"\"{docstring}\"\"\"
@@ -113,8 +112,8 @@ def generate_method_stub(tool: Tool) -> str:
     return method
 
 
-def generate_middleware_class(class_name: str, tools: list[Tool]) -> str:
-    """Generate the complete middleware class code."""
+def generate_handlers_class(class_name: str, tools: list[Tool]) -> str:
+    """Generate the complete handlers class code."""
 
     # Collect unique imports needed
     needs_literal = any(
@@ -128,18 +127,18 @@ def generate_middleware_class(class_name: str, tools: list[Tool]) -> str:
     imports = ["from typing import Any"]
     if needs_literal:
         imports[0] = "from typing import Any, Literal"
-    imports.extend([
-        "",
-        "from wags.middleware.base import tool_handler",
-        "from wags.middleware.elicitation import ElicitationMiddleware",
-    ])
+    imports.append("")
+    imports.append("from src.wags.middleware.elicitation import RequiresElicitation")
+    imports.append("")
+    imports.append("# Note: This is a handlers class for use with ElicitationMiddleware")
+    imports.append("# Usage: middleware = ElicitationMiddleware(handlers={class_name}())")
 
-    # Generate class definition
+    # Generate class definition - plain class, no inheritance
     class_def = f"""
 
 
-class {class_name}(ElicitationMiddleware):
-    \"\"\"Auto-generated middleware for MCP server.\"\"\"
+class {class_name}:
+    \"\"\"Auto-generated handlers for MCP server.\"\"\"
 """
 
     # Generate method stubs
@@ -158,13 +157,13 @@ class {class_name}(ElicitationMiddleware):
     return code
 
 
-async def generate_middleware_stub(
+async def generate_handlers_stub(
     config_path: Path,
     server_name: str | None = None,
     output_path: Path | None = None,
     class_name: str | None = None
 ):
-    """Generate middleware stub from MCP server (for CLI usage)."""
+    """Generate handlers stub from MCP server (for CLI usage)."""
     config = load_config(config_path)
 
     if "mcpServers" not in config:
@@ -187,9 +186,9 @@ async def generate_middleware_stub(
 
     if class_name is None:
         parts = server_name.replace("-", "_").replace(".", "_").split("_")
-        class_name = "".join(p.capitalize() for p in parts) + "Middleware"
+        class_name = "".join(p.capitalize() for p in parts) + "Handlers"
 
-    code = generate_middleware_class(class_name, tools)
+    code = generate_handlers_class(class_name, tools)
 
     if output_path:
         output_path.write_text(code)

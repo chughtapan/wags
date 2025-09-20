@@ -9,7 +9,7 @@ logger = get_logger("wags.utils.server_template")
 
 
 def create_server_scaffold(name: str, path: Path | None = None):
-    """Create a new server scaffold with middleware template.
+    """Create a new server scaffold with handlers template.
 
     Note: This does NOT create a config.json - users should provide their own.
     """
@@ -18,7 +18,7 @@ def create_server_scaffold(name: str, path: Path | None = None):
 
     path.mkdir(parents=True, exist_ok=True)
 
-    class_name = name.replace("-", "_").title() + "Middleware"
+    class_name = name.replace("-", "_").title() + "Handlers"
     templates_dir = Path(__file__).parent.parent / "templates"
 
     with open(templates_dir / "main.py.j2") as f:
@@ -26,10 +26,10 @@ def create_server_scaffold(name: str, path: Path | None = None):
     main_content = main_template.render(name=name, class_name=class_name)
     (path / "main.py").write_text(main_content)
 
-    with open(templates_dir / "middleware.py.j2") as f:
-        middleware_template = Template(f.read())
-    middleware_content = middleware_template.render(name=name, class_name=class_name)
-    (path / "middleware.py").write_text(middleware_content)
+    with open(templates_dir / "handlers.py.j2") as f:
+        handlers_template = Template(f.read())
+    handlers_content = handlers_template.render(name=name, class_name=class_name)
+    (path / "handlers.py").write_text(handlers_content)
 
     (path / "__init__.py").write_text("")
 

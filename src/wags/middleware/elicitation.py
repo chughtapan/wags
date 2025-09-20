@@ -1,11 +1,15 @@
-"""Elicitation middleware for automatic parameter collection."""
+"""Middleware for parameter elicitation during tool execution.
+
+Enables user intervention when parameters are marked with RequiresElicitation.
+"""
 
 import inspect
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
 from fastmcp.server.elicitation import AcceptedElicitation, CancelledElicitation, DeclinedElicitation
-from fastmcp.server.middleware.middleware import CallNext, MiddlewareContext
+from fastmcp.server.middleware.middleware import MiddlewareContext
 from mcp.types import CallToolRequestParams
 from pydantic import Field, create_model
 
@@ -14,7 +18,11 @@ from .base import BaseMiddleware
 
 @dataclass
 class RequiresElicitation:
-    """Marker for parameters needing elicitation."""
+    """Marks a parameter for user review before tool execution.
+
+    Args:
+        prompt: Message shown to the user describing the parameter
+    """
 
     prompt: str
 
@@ -25,64 +33,78 @@ class RequiresElicitation:
 
 
 class ElicitationMiddleware(BaseMiddleware):
-    """Middleware for automatic parameter elicitation."""
+    """Triggers elicitation dialogs for marked parameters.
 
-    async def on_call_tool(
+    When tool handlers have parameters with RequiresElicitation annotations,
+    this middleware presents those values to the user for review and
+    potential modification. Aborts execution if the user declines.
+    """
+
+    async def handle_on_tool_call(
         self,
         context: MiddlewareContext[CallToolRequestParams],
-        call_next: CallNext[CallToolRequestParams, Any],
-    ) -> Any:
-        """Handle tool calls with elicitation."""
-        handler = self.get_tool_handler(context.message)
+        handler: Callable
+    ) -> MiddlewareContext[CallToolRequestParams]:
+        """Handle elicitation for parameters with RequiresElicitation.
 
-        # Pass through if no handler or no context
-        if not handler or not context.fastmcp_context:
-            return await call_next(context)
+        Args:
+            context: The middleware context containing the tool call request
+            handler: The handler method that will process this tool
 
-        arguments = dict(context.message.arguments or {})
+        Returns:
+            Context with any user-modified values
 
-        # Collect fields needing elicitation
-        elicitation_fields = self._collect_elicitation_fields(handler)
+        Raises:
+            ValueError: If user declines or cancels
+        """
+        if not context.fastmcp_context:
+            return context
 
-        if elicitation_fields:
-            # Build model with all fields
-            elicit_model = self._build_elicitation_model(elicitation_fields, arguments)
-
-            # Perform elicitation
-            result = await context.fastmcp_context.elicit(
-                message="Please provide the required information",
-                response_type=elicit_model
-            )
-
-            # Handle elicitation response
-            if isinstance(result, AcceptedElicitation):
-                for field_name in elicitation_fields:
-                    if hasattr(result.data, field_name):
-                        arguments[field_name] = getattr(result.data, field_name)
-            elif isinstance(result, (DeclinedElicitation, CancelledElicitation)):
-                action = result.__class__.__name__.replace('Elicitation', '').lower()
-                raise ValueError(f"Elicitation was {action}: cannot proceed with tool call")
-
-        # Continue with updated arguments
-        updated_message = CallToolRequestParams(
-            name=context.message.name,
-            arguments=arguments
+        fields = self._collect_elicitation_fields(handler)
+        if not fields:
+            return context
+        model = self._build_elicitation_model(fields, context.message.arguments or {})
+        result = await context.fastmcp_context.elicit(
+            message="Please provide the required information",
+            response_type=model
         )
-        updated_context = context.copy(message=updated_message)
-        return await call_next(updated_context)
+
+        if isinstance(result, AcceptedElicitation):
+            arguments = dict(context.message.arguments or {})
+            for field_name in fields:
+                if hasattr(result.data, field_name):
+                    arguments[field_name] = getattr(result.data, field_name)
+            updated_message = CallToolRequestParams(
+                name=context.message.name,
+                arguments=arguments
+            )
+            return context.copy(message=updated_message)
+        elif isinstance(result, (DeclinedElicitation, CancelledElicitation)):
+            action = result.__class__.__name__.replace('Elicitation', '').lower()
+            raise ValueError(f"Elicitation was {action}: cannot proceed with tool call")
+
+        return context
 
     def _collect_elicitation_fields(
-        self, handler
+        self, handler: Callable
     ) -> dict[str, tuple[Any, RequiresElicitation]]:
-        """Collect all parameters with RequiresElicitation annotations."""
+        """Collect parameters with RequiresElicitation annotations.
+
+        Args:
+            handler: The handler method to inspect
+
+        Returns:
+            Dictionary mapping parameter names to (type, metadata) tuples
+        """
         fields = {}
         sig = inspect.signature(handler)
 
         for param_name, param in sig.parameters.items():
-            # Use base class method to get metadata
+            if param_name == 'self':
+                continue
+
             metadata = self._get_annotation_metadata(param, RequiresElicitation)
             if metadata:
-                # Use base class method to extract type
                 base_type = self._extract_base_type(param.annotation)
                 fields[param_name] = (base_type, metadata)
 
@@ -93,7 +115,15 @@ class ElicitationMiddleware(BaseMiddleware):
         fields: dict[str, tuple[Any, RequiresElicitation]],
         current_args: dict
     ):
-        """Build a Pydantic model with all elicitation fields."""
+        """Build Pydantic model for elicitation dialog.
+
+        Args:
+            fields: Parameter names to (type, metadata) tuples
+            current_args: Current values used as defaults
+
+        Returns:
+            Pydantic model class for elicitation
+        """
         model_fields: dict[str, Any] = {}
 
         for param_name, (base_type, metadata) in fields.items():

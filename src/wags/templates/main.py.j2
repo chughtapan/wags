@@ -2,14 +2,15 @@
 
 from pathlib import Path
 from wags.utils.config import load_config, create_proxy
-from .middleware import {{ class_name }}
+from wags.middleware.elicitation import ElicitationMiddleware
+from .handlers import {{ class_name }}
 
 # Load config and create proxy server
 config = load_config(Path(__file__).parent / "config.json")
 mcp = create_proxy(config, "{{ name }}-proxy")
 
-# Add middleware(s)
-mcp.add_middleware({{ class_name }}())
+# Add elicitation middleware with handlers
+mcp.add_middleware(ElicitationMiddleware(handlers={{ class_name }}()))
 
 # Run the server when executed directly
 if __name__ == "__main__":

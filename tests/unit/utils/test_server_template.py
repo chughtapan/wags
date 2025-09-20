@@ -18,7 +18,7 @@ class TestCreateServerScaffold:
             server_dir = tmp_path / "servers" / "test-server"
             assert server_dir.exists()
             assert (server_dir / "__init__.py").exists()
-            assert (server_dir / "middleware.py").exists()
+            assert (server_dir / "handlers.py").exists()
             assert (server_dir / "main.py").exists()
 
     def test_uses_custom_path(self, tmp_path):
@@ -28,35 +28,35 @@ class TestCreateServerScaffold:
 
         assert custom_path.exists()
         assert (custom_path / "__init__.py").exists()
-        assert (custom_path / "middleware.py").exists()
+        assert (custom_path / "handlers.py").exists()
         assert (custom_path / "main.py").exists()
 
     def test_generates_correct_class_names(self, tmp_path):
         """Test that generated files contain correct class names."""
         create_server_scaffold("test-server", tmp_path)
 
-        middleware_content = (tmp_path / "middleware.py").read_text()
+        handlers_content = (tmp_path / "handlers.py").read_text()
         main_content = (tmp_path / "main.py").read_text()
 
         # Verify class name generation
-        assert "class Test_ServerMiddleware" in middleware_content
-        assert "Test_ServerMiddleware()" in main_content
+        assert "class Test_ServerHandlers" in handlers_content
+        assert "Test_ServerHandlers()" in main_content
         assert 'if __name__ == "__main__":' in main_content
         assert "mcp.run_stdio_async()" in main_content
-        assert "ElicitationMiddleware" in middleware_content
-        assert "@tool_handler" in middleware_content
+        assert "RequiresElicitation" in handlers_content
+        assert "async def" in handlers_content
 
     def test_different_names_generate_correct_classes(self, tmp_path):
         """Test class name generation for various server names."""
         test_cases = [
-            ("simple", "SimpleMiddleware"),
-            ("test-server", "Test_ServerMiddleware"),
-            ("my-api", "My_ApiMiddleware"),
+            ("simple", "SimpleHandlers"),
+            ("test-server", "Test_ServerHandlers"),
+            ("my-api", "My_ApiHandlers"),
         ]
 
         for server_name, expected_class in test_cases:
             server_path = tmp_path / server_name
             create_server_scaffold(server_name, server_path)
 
-            middleware_content = (server_path / "middleware.py").read_text()
-            assert f"class {expected_class}" in middleware_content
+            handlers_content = (server_path / "handlers.py").read_text()
+            assert f"class {expected_class}" in handlers_content

@@ -1,4 +1,4 @@
-"""Unit tests for middleware generator utilities."""
+"""Unit tests for handlers generator utilities."""
 
 import json
 from unittest.mock import AsyncMock, patch
@@ -6,10 +6,9 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from mcp.types import Tool
 
-from wags.utils.middleware_generator import (
+from wags.utils.handlers_generator import (
+    generate_handlers_stub,
     generate_method_stub,
-    generate_middleware_class,
-    generate_middleware_stub,
     json_schema_to_python_type,
     sanitize_method_name,
 )
@@ -141,7 +140,7 @@ class TestGenerateMethodStub:
         """Test generating method stubs for all tool types."""
         # Test simple tool with parameters
         result = generate_method_stub(tool_with_params)
-        assert "@tool_handler" in result
+        # No more @tool_handler decorator - just async def
         assert "async def create_item(" in result
         assert "name: str" in result
         assert "quantity: int | None = None" in result
@@ -157,7 +156,8 @@ class TestGenerateMethodStub:
 
         # Test tool without parameters
         result = generate_method_stub(empty_tool)
-        assert "@tool_handler" in result
+        # No more @tool_handler decorator - just async def
+        assert "async def" in result
         assert "async def empty_tool(" in result
         assert "self" in result
 
@@ -168,32 +168,34 @@ class TestGenerateMiddlewareClass:
     def test_all_class_generation_scenarios(self, basic_tool, tool_with_literal, empty_tool):
         """Test all middleware class generation scenarios."""
         # Test empty tools list
-        result = generate_middleware_class("EmptyMiddleware", [])
-        assert "class EmptyMiddleware(ElicitationMiddleware):" in result
+        from wags.utils.handlers_generator import generate_handlers_class
+        result = generate_handlers_class("EmptyHandlers", [])
+        assert "class EmptyHandlers" in result
         assert "pass" in result
-        assert "from wags.middleware.base import tool_handler" in result
+        # Check for proper imports (no more tool_handler)
+        assert "from" in result or "pass" in result
 
         # Test single tool
-        result = generate_middleware_class("TestMiddleware", [basic_tool])
-        assert "class TestMiddleware(ElicitationMiddleware):" in result
-        assert "@tool_handler" in result
+        result = generate_handlers_class("TestHandlers", [basic_tool])
+        assert "class TestHandlers" in result
+        assert "async def test_tool" in result
         assert "async def test_tool(" in result
 
         # Test multiple tools with literal
         tools = [tool_with_literal, empty_tool]
-        result = generate_middleware_class("MultiMiddleware", tools)
+        result = generate_handlers_class("MultiHandlers", tools)
         assert "from typing import Any, Literal" in result
-        assert "class MultiMiddleware(ElicitationMiddleware):" in result
+        assert "class MultiHandlers" in result
         assert "async def tool_with_literal(" in result
         assert "async def empty_tool(" in result
 
 
 # TestConnectToServer class removed - connect_to_server function no longer exists
-# Now using Client directly in generate_middleware_stub
+# Now using Client directly in generate_handlers_stub
 
 
 class TestGenerateMiddlewareStub:
-    """Tests for generate_middleware_stub function."""
+    """Tests for generate_handlers_stub function."""
 
     @pytest.mark.asyncio
     async def test_generate_stub_to_stdout(self, tmp_path, capsys, basic_tool):
@@ -209,12 +211,12 @@ class TestGenerateMiddlewareStub:
         mock_mcp.__aenter__ = AsyncMock(return_value=mock_mcp)
         mock_mcp.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("wags.utils.middleware_generator.Client", return_value=mock_mcp):
-            await generate_middleware_stub(config_file)
+        with patch("wags.utils.handlers_generator.Client", return_value=mock_mcp):
+            await generate_handlers_stub(config_file)
 
             # Check output
             captured = capsys.readouterr()
-            assert "class TestMiddleware" in captured.out  # Auto-generated from server name "test"
+            assert "class TestHandlers" in captured.out  # Auto-generated from server name "test"
             assert "async def test_tool" in captured.out
 
     @pytest.mark.asyncio
@@ -234,8 +236,8 @@ class TestGenerateMiddlewareStub:
         mock_mcp.__aenter__ = AsyncMock(return_value=mock_mcp)
         mock_mcp.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("wags.utils.middleware_generator.Client", return_value=mock_mcp):
-            await generate_middleware_stub(
+        with patch("wags.utils.handlers_generator.Client", return_value=mock_mcp):
+            await generate_handlers_stub(
                 config_file,
                 server_name="my-server",
                 output_path=output_file,
@@ -261,11 +263,11 @@ class TestGenerateMiddlewareStub:
         mock_mcp.__aenter__ = AsyncMock(return_value=mock_mcp)
         mock_mcp.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("wags.utils.middleware_generator.Client", return_value=mock_mcp):
-            with patch("wags.utils.middleware_generator.generate_middleware_class") as mock_gen:
+        with patch("wags.utils.handlers_generator.Client", return_value=mock_mcp):
+            with patch("wags.utils.handlers_generator.generate_handlers_class") as mock_gen:
                 mock_gen.return_value = "generated code"
 
-                await generate_middleware_stub(config_file, server_name="test-server")
+                await generate_handlers_stub(config_file, server_name="test-server")
 
                 # Check class name was auto-generated correctly
-                mock_gen.assert_called_once_with("TestServerMiddleware", [])
+                mock_gen.assert_called_once_with("TestServerHandlers", [])

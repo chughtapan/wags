@@ -1,0 +1,23 @@
+"""Handlers for {{ name }} server."""
+
+from typing import Annotated
+
+from wags.middleware.elicitation import RequiresElicitation
+
+
+class {{ class_name }}:
+    """Handlers for {{ name }} server.
+
+    Tool handler methods should be async and named after the tool they handle.
+    """
+
+    async def example_tool(
+        self,
+        value: str,
+        details: Annotated[str, RequiresElicitation("Please provide additional details")]
+    ):
+        """Example tool handler with elicitation.
+
+        Replace this with your actual tool handlers.
+        """
+        pass

@@ -54,25 +54,25 @@ def run(
 
 
 @app.command
-def generate_stub(
+def generate_handlers(
     config: Path,
     *,
     server_name: str | None = None,
     output: Path | None = None,
     class_name: str | None = None,
 ):
-    """Generate middleware stub from an MCP server.
+    """Generate handlers stub from an MCP server.
 
     Args:
         config: Path to MCP config.json file
         server_name: Name of the server in config (defaults to first server)
-        output: Output path for generated middleware (defaults to stdout)
-        class_name: Name for the middleware class (defaults to auto-generated)
+        output: Output path for generated handlers (defaults to stdout)
+        class_name: Name for the handlers class (defaults to auto-generated)
     """
-    from wags.utils.middleware_generator import generate_middleware_stub
+    from wags.utils.handlers_generator import generate_handlers_stub
 
     try:
-        asyncio.run(generate_middleware_stub(
+        asyncio.run(generate_handlers_stub(
             config_path=config,
             server_name=server_name,
             output_path=output,
