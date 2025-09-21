@@ -1,57 +1,24 @@
-"""Integration tests for middleware functionality with FastMCP."""
+"""Integration tests for middleware functionality and notification handling."""
 
-from enum import Enum
-from typing import Annotated, Any
+import asyncio
+from typing import Any
 
 import pytest
 from fastmcp import FastMCP
 from fastmcp.client import Client
-from fastmcp.client.elicitation import ElicitResult
 from fastmcp.server.middleware.middleware import CallNext, Middleware, MiddlewareContext
 from mcp.types import CallToolRequestParams
 
+from wags import create_proxy
 from wags.middleware.base import BaseMiddleware
-from wags.middleware.elicitation import ElicitationMiddleware, RequiresElicitation
-
-
-class Priority(Enum):
-    """Test enum for priority levels."""
-    LOW = 1
-    MEDIUM = 2
-    HIGH = 3
 
 
 class TestHandlers:
     """Test handlers for middleware integration tests."""
 
     async def simple_tool(self, name: str, value: int) -> dict:
-        """Simple tool without elicitation."""
+        """Simple tool for testing basic functionality."""
         return {"name": name, "value": value * 2}
-
-    async def elicitation_tool(
-        self,
-        name: str,
-        description: Annotated[str, RequiresElicitation("Enter a description")],
-        priority: Annotated[Priority, RequiresElicitation("Select priority level")]
-    ) -> dict:
-        """Tool with elicitation parameters."""
-        return {
-            "name": name,
-            "description": description,
-            "priority": priority.value if isinstance(priority, Priority) else priority
-        }
-
-    async def multi_elicitation_tool(
-        self,
-        base_value: int,
-        multiplier: Annotated[int, RequiresElicitation("Enter multiplier (1-10)")],
-        notes: Annotated[str, RequiresElicitation("Add any notes")]
-    ) -> dict:
-        """Tool with multiple elicitation fields."""
-        return {
-            "result": base_value * multiplier,
-            "notes": notes
-        }
 
 
 class LoggingMiddleware(Middleware):
@@ -71,6 +38,26 @@ class LoggingMiddleware(Middleware):
             "method": context.method,
             "tool": context.message.name,
             "args": context.message.arguments
+        })
+        return await call_next(context)
+
+
+class NotificationTracker(Middleware):
+    """Test middleware that records notification events."""
+
+    def __init__(self):
+        super().__init__()
+        self.notifications = []
+
+    async def on_notification(
+        self,
+        context: MiddlewareContext[Any],
+        call_next: CallNext[Any, Any]
+    ) -> Any:
+        """Record notification method and source for verification."""
+        self.notifications.append({
+            'method': context.method,
+            'source': context.source
         })
         return await call_next(context)
 
@@ -105,8 +92,8 @@ class ModifyingMiddleware(BaseMiddleware):
 
 
 @pytest.mark.asyncio
-class TestMiddlewareIntegration:
-    """Integration tests for middleware with FastMCP."""
+class TestBasicMiddleware:
+    """Integration tests for basic middleware functionality."""
 
     async def test_base_middleware_handler_routing(self):
         """Test that BaseMiddleware correctly routes to handlers."""
@@ -158,137 +145,6 @@ class TestMiddlewareIntegration:
             # Check that modification happened
             assert result.data["name"] == "test_modified"
             assert "simple_tool" in modifying_mw.modified_tools
-
-    async def test_elicitation_middleware_with_accepted_response(self):
-        """Test ElicitationMiddleware with accepted elicitation using real client flow."""
-        mcp = FastMCP("test-server")
-        handlers = TestHandlers()
-
-        # Add elicitation middleware
-        elicitation_mw = ElicitationMiddleware(handlers=handlers)
-        mcp.add_middleware(elicitation_mw)
-
-        # Track elicitation requests
-        elicitation_requests = []
-
-        # Create elicitation handler that accepts and provides values
-        async def test_elicitation_handler(message, response_type, params, context):
-            """Auto-accept elicitation with test values."""
-            elicitation_requests.append({
-                "message": message,
-                "response_type": response_type.__name__ if response_type else None
-            })
-
-            # Return accepted values based on the response type
-            if response_type:
-                # The response_type will have fields like description and priority
-                return {
-                    "description": "Test description",
-                    "priority": Priority.HIGH
-                }
-            return {}
-
-        # Register tool with all required parameters
-        @mcp.tool
-        async def elicitation_tool(name: str, description: str, priority: Priority) -> dict:
-            return await handlers.elicitation_tool(name, description, priority)
-
-        # Test with client using elicitation handler
-        async with Client(mcp, elicitation_handler=test_elicitation_handler) as client:
-            result = await client.call_tool(
-                "elicitation_tool",
-                {
-                    "name": "test",
-                    "description": "original description",  # Provided but will be edited
-                    "priority": Priority.LOW  # Provided but will be edited
-                }
-            )
-
-            # Verify elicitation happened and values were EDITED
-            assert len(elicitation_requests) > 0
-            assert result.data["name"] == "test"  # Not elicited, stays same
-            assert result.data["description"] == "Test description"  # EDITED via elicitation
-            assert result.data["priority"] == Priority.HIGH.value  # EDITED via elicitation
-
-    async def test_elicitation_middleware_with_declined_response(self):
-        """Test ElicitationMiddleware with declined elicitation using real client flow."""
-        mcp = FastMCP("test-server")
-        handlers = TestHandlers()
-
-        # Add elicitation middleware
-        elicitation_mw = ElicitationMiddleware(handlers=handlers)
-        mcp.add_middleware(elicitation_mw)
-
-        # Create elicitation handler that declines
-        async def declining_elicitation_handler(message, response_type, params, context):
-            """Decline all elicitation requests."""
-            # Return ElicitResult with action="decline"
-            return ElicitResult(action="decline")
-
-        # Register tool with all required parameters
-        @mcp.tool
-        async def elicitation_tool(name: str, description: str, priority: Priority) -> dict:
-            return await handlers.elicitation_tool(name, description, priority)
-
-        # Test with client using declining handler
-        async with Client(mcp, elicitation_handler=declining_elicitation_handler) as client:
-            # Should get an error when elicitation is declined
-            with pytest.raises(Exception) as exc_info:
-                await client.call_tool(
-                    "elicitation_tool",
-                    {
-                        "name": "test",
-                        "description": "original",  # All parameters provided
-                        "priority": Priority.LOW  # But user declines to edit
-                    }
-                )
-
-            # Verify the error is about declined elicitation
-            assert "declined" in str(exc_info.value).lower() or "elicitation" in str(exc_info.value).lower()
-
-    async def test_elicitation_middleware_multiple_fields(self):
-        """Test ElicitationMiddleware collecting multiple fields in one elicitation."""
-        mcp = FastMCP("test-server")
-        handlers = TestHandlers()
-
-        # Add elicitation middleware
-        elicitation_mw = ElicitationMiddleware(handlers=handlers)
-        mcp.add_middleware(elicitation_mw)
-
-        # Track elicitation details
-        elicitation_count = []
-
-        # Create elicitation handler
-        async def multi_field_handler(message, response_type, params, context):
-            """Provide multiple field values."""
-            elicitation_count.append(1)
-
-            # Return all required fields at once
-            return {
-                "multiplier": 5,
-                "notes": "Test notes from elicitation"
-            }
-
-        # Register tool with all required parameters
-        @mcp.tool
-        async def multi_elicitation_tool(base_value: int, multiplier: int, notes: str) -> dict:
-            return await handlers.multi_elicitation_tool(base_value, multiplier, notes)
-
-        # Test with client
-        async with Client(mcp, elicitation_handler=multi_field_handler) as client:
-            result = await client.call_tool(
-                "multi_elicitation_tool",
-                {
-                    "base_value": 10,
-                    "multiplier": 2,  # Provided but will be edited to 5
-                    "notes": "original notes"  # Provided but will be edited
-                }
-            )
-
-            # Should have elicited both fields in ONE call
-            assert len(elicitation_count) == 1
-            assert result.data["result"] == 50  # 10 * 5 (edited multiplier)
-            assert result.data["notes"] == "Test notes from elicitation"  # Edited notes
 
     async def test_proxy_server_with_middleware(self):
         """Test creating a proxy server with middleware."""
@@ -395,34 +251,113 @@ class TestMiddlewareIntegration:
             # Final result has modification
             assert result.data["modified_by"] == "B"
 
-    async def test_middleware_without_elicitation_passthrough(self):
-        """Test that tools without elicitation annotations work normally."""
+    async def test_middleware_error_handling(self):
+        """Test that middleware properly handles and propagates errors."""
         mcp = FastMCP("test-server")
-        handlers = TestHandlers()
 
-        # Add elicitation middleware
-        elicitation_mw = ElicitationMiddleware(handlers=handlers)
-        mcp.add_middleware(elicitation_mw)
+        class ErrorMiddleware(Middleware):
+            async def on_call_tool(
+                self,
+                context: MiddlewareContext[CallToolRequestParams],
+                call_next: CallNext[CallToolRequestParams, Any]
+            ) -> Any:
+                if context.message.name == "error_tool":
+                    raise ValueError("Middleware error")
+                return await call_next(context)
 
-        # Track if elicitation was called
-        elicitation_called = []
+        mcp.add_middleware(ErrorMiddleware())
 
-        async def tracking_handler(message, response_type, params, context):
-            elicitation_called.append(1)
-            return {}
-
-        # Register simple tool (no elicitation annotations)
         @mcp.tool
-        async def simple_tool(name: str, value: int) -> dict:
-            return await handlers.simple_tool(name, value)
+        async def error_tool() -> str:
+            return "should not reach here"
 
-        # Test with client
-        async with Client(mcp, elicitation_handler=tracking_handler) as client:
-            result = await client.call_tool(
-                "simple_tool",
-                {"name": "test", "value": 10}
-            )
+        @mcp.tool
+        async def normal_tool() -> str:
+            return "success"
 
-            # No elicitation should have been triggered
-            assert len(elicitation_called) == 0
-            assert result.data == {"name": "test", "value": 20}
+        async with Client(mcp) as client:
+            # Error tool should raise the middleware error
+            with pytest.raises(Exception) as exc_info:
+                await client.call_tool("error_tool", {})
+            assert "Middleware error" in str(exc_info.value)
+
+            # Normal tool should work fine
+            result = await client.call_tool("normal_tool", {})
+            assert result.data == "success"
+
+
+@pytest.mark.asyncio
+class TestNotificationHandling:
+    """Integration tests for notification handling through middleware."""
+
+    async def test_notification_routing_through_proxy(self):
+        """Test that notifications are properly routed through proxy middleware."""
+        # Set up basic MCP server
+        server = FastMCP("mcp-server")
+
+        @server.tool
+        async def test_tool() -> str:
+            return "test"
+
+        # Create proxy and attach tracking middleware
+        proxy = create_proxy(server, "test-proxy")
+        tracker = NotificationTracker()
+        proxy.add_middleware(tracker)
+
+        current_roots = ["https://github.com/org1/"]
+
+        async def dynamic_roots(context):
+            return current_roots
+
+        async with Client(proxy, roots=dynamic_roots) as client:
+            # Send notification from client
+            await client.send_roots_list_changed()
+
+            # Allow async notification processing
+            await asyncio.sleep(0.1)
+
+            # Verify middleware received the notification
+            assert len(tracker.notifications) == 1
+            assert tracker.notifications[0] == {
+                'method': 'notifications/roots/list_changed',
+                'source': 'client'
+            }
+
+    async def test_notification_middleware_chain(self):
+        """Test that notifications flow through middleware chain correctly."""
+        server = FastMCP("mcp-server")
+
+        # Create multiple notification tracking middleware
+        tracker1 = NotificationTracker()
+        tracker2 = NotificationTracker()
+
+        @server.tool
+        async def dummy_tool() -> str:
+            return "dummy"
+
+        # Add middleware in order
+        server.add_middleware(tracker1)
+        server.add_middleware(tracker2)
+
+        current_roots = ["https://example.com/"]
+
+        async def dynamic_roots(context):
+            return current_roots
+
+        async with Client(server, roots=dynamic_roots) as client:
+            await client.send_roots_list_changed()
+
+            # Allow processing time
+            await asyncio.sleep(0.1)
+
+            # Both middleware should have received the notification
+            assert len(tracker1.notifications) == 1
+            assert len(tracker2.notifications) == 1
+
+            # Both should have same notification data
+            expected = {
+                'method': 'notifications/roots/list_changed',
+                'source': 'client'
+            }
+            assert tracker1.notifications[0] == expected
+            assert tracker2.notifications[0] == expected

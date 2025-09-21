@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from mcp.types import Tool
 
+from wags import load_config
 from wags.utils.server_template import create_server_scaffold
 
 
@@ -185,7 +186,6 @@ class TestCLIIntegration:
             config_path.write_text(json.dumps(config_data))
 
             # Test loading config with env substitution
-            from wags.utils.config import load_config
             loaded = load_config(config_path)
 
             # Verify env var was substituted

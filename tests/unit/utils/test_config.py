@@ -3,96 +3,76 @@
 import json
 import os
 import tempfile
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from wags.utils.config import create_proxy, load_config, substitute_env_vars
+from wags.utils.config import _substitute_env_vars, load_config
 
 
 class TestSubstituteEnvVars:
-    """Tests for substitute_env_vars function."""
+    """Tests for _substitute_env_vars function."""
 
-    def test_substitute_in_mcp_server_env(self):
-        """Test substituting environment variables in mcpServers env section."""
+    def test_substitute_env_vars(self):
+        """Test substituting environment variables in env dict."""
         with patch.dict(os.environ, {"TEST_VAR": "test_value", "API_KEY": "secret"}):
-            config = {
-                "mcpServers": {
-                    "test-server": {
-                        "transport": "stdio",
-                        "command": "test",
-                        "env": {
-                            "VAR1": "${TEST_VAR}",
-                            "KEY": "${API_KEY}"
-                        }
-                    }
-                }
+            env_dict = {
+                "VAR1": "${TEST_VAR}",
+                "KEY": "${API_KEY}"
             }
-            result = substitute_env_vars(config)
-            assert result["mcpServers"]["test-server"]["env"] == {
+            result = _substitute_env_vars(env_dict)
+            assert result == {
                 "VAR1": "test_value",
                 "KEY": "secret"
             }
 
-    def test_no_substitution_outside_env(self):
-        """Test that substitution only happens in env sections."""
-        with patch.dict(os.environ, {"VAR": "value"}):
-            config = {
-                "mcpServers": {
-                    "test": {
-                        "command": "${VAR}",  # Should NOT be substituted
-                        "args": ["${VAR}"],   # Should NOT be substituted
-                        "env": {
-                            "KEY": "${VAR}"   # Should be substituted
-                        }
-                    }
-                },
-                "other": "${VAR}"  # Should NOT be substituted
-            }
-            result = substitute_env_vars(config)
-            assert result["mcpServers"]["test"]["command"] == "${VAR}"
-            assert result["mcpServers"]["test"]["args"] == ["${VAR}"]
-            assert result["mcpServers"]["test"]["env"]["KEY"] == "value"
-            assert result["other"] == "${VAR}"
-
     def test_substitute_missing_env_var(self):
         """Test substituting missing environment variable raises error."""
-        config = {
-            "mcpServers": {
-                "test": {
-                    "env": {"KEY": "${MISSING_VAR}"}
-                }
-            }
-        }
+        env_dict = {"KEY": "${MISSING_VAR}"}
         with pytest.raises(ValueError, match="Environment variable 'MISSING_VAR' is not set"):
-            substitute_env_vars(config)
+            _substitute_env_vars(env_dict)
 
-    def test_no_mcpservers_section(self):
-        """Test substitute_env_vars handles missing mcpServers gracefully."""
-        config = {"key": "${VAR}", "other": "data"}
-        result = substitute_env_vars(config)
-        assert result == config  # No changes when no mcpServers
+    def test_no_substitution_needed(self):
+        """Test env dict with no substitution placeholders."""
+        env_dict = {"STATIC": "value", "NUMBER": 42}
+        result = _substitute_env_vars(env_dict)
+        assert result == env_dict
 
     def test_mixed_env_values(self):
         """Test env dict with both template and regular values."""
         with patch.dict(os.environ, {"TOKEN": "abc123"}):
-            config = {
-                "mcpServers": {
-                    "test": {
-                        "env": {
-                            "TOKEN": "${TOKEN}",
-                            "STATIC": "fixed_value",
-                            "NUMBER": 42
-                        }
-                    }
-                }
+            env_dict = {
+                "TOKEN": "${TOKEN}",
+                "STATIC": "fixed_value",
+                "NUMBER": 42
             }
-            result = substitute_env_vars(config)
-            assert result["mcpServers"]["test"]["env"] == {
+            result = _substitute_env_vars(env_dict)
+            assert result == {
                 "TOKEN": "abc123",
                 "STATIC": "fixed_value",
                 "NUMBER": 42
             }
+
+    def test_empty_env_dict(self):
+        """Test empty env dict returns empty dict."""
+        result = _substitute_env_vars({})
+        assert result == {}
+
+    def test_malformed_placeholder(self):
+        """Test that malformed placeholders are left unchanged."""
+        env_dict = {
+            "BAD1": "${INCOMPLETE",
+            "BAD2": "MISSING_BRACE}",
+            "GOOD": "normal_value"
+        }
+        result = _substitute_env_vars(env_dict)
+        assert result == env_dict  # All values unchanged since none are proper ${VAR} format
+
+    def test_empty_placeholder(self):
+        """Test that empty placeholder raises error."""
+        env_dict = {"BAD": "${}"}
+        with pytest.raises(ValueError, match="Empty environment variable name in placeholder"):
+            _substitute_env_vars(env_dict)
 
 
 class TestLoadConfig:
@@ -199,48 +179,22 @@ class TestLoadConfig:
         finally:
             os.unlink(temp_path)
 
-
-class TestCreateProxy:
-    """Tests for create_proxy function."""
-
-    @patch("wags.utils.config.FastMCP.as_proxy")
-    def test_create_proxy_from_dict(self, mock_as_proxy):
-        """Test creating proxy from config dict."""
-        mock_proxy = MagicMock()
-        mock_as_proxy.return_value = mock_proxy
-
-        config_data = {
-            "mcpServers": {
-                "test": {
-                    "transport": "stdio",
-                    "command": "test"
+    def test_load_invalid_env_section(self):
+        """Test loading config with non-dict env section raises error."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            config_data = {
+                "mcpServers": {
+                    "test": {
+                        "command": "test",
+                        "env": "not_a_dict"  # Invalid - should be dict
+                    }
                 }
             }
-        }
+            json.dump(config_data, f)
+            temp_path = f.name
 
-        result = create_proxy(config_data, "test-proxy")
-
-        # Check proxy was created with correct arguments
-        mock_as_proxy.assert_called_once_with(
-            backend=config_data,
-            name="test-proxy"
-        )
-        assert result == mock_proxy
-
-    @patch("wags.utils.config.FastMCP.as_proxy")
-    def test_create_proxy_default_name(self, mock_as_proxy):
-        """Test creating proxy with default name."""
-        mock_proxy = MagicMock()
-        mock_as_proxy.return_value = mock_proxy
-
-        config_data = {"mcpServers": {"test": {}}}
-
-        result = create_proxy(config_data)
-
-        mock_as_proxy.assert_called_once_with(
-            backend=config_data,
-            name="wags-proxy"
-        )
-        assert result == mock_proxy
-
-
+        try:
+            with pytest.raises(ValueError, match="Server 'env' section must be a dictionary"):
+                load_config(temp_path)
+        finally:
+            os.unlink(temp_path)

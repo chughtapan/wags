@@ -11,7 +11,7 @@ from typing import Any
 from fastmcp import Client
 from mcp.types import Tool
 
-from wags.utils.config import load_config
+from wags import load_config
 
 
 def json_schema_to_python_type(schema: dict[str, Any]) -> str:
