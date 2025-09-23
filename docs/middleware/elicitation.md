@@ -1,10 +1,10 @@
 # Elicitation
 
-Whenever I've tried to use my LLM to create git commits or pull requests or something like that, I hate it's writing style. I frequently find myself spending more time trying to instruct the model properly than I would've required to edit the message myself. The MCP `elicitation` feature enables servers to request additional information from the users for specific tasks, for instance while executing tools. The `ElicitationMiddleware` in `wags` uses this to improve the user experience for such tools where users might want to edit the models generation before executing them directly.
+Whenever I've tried to use my LLM to create git commits or pull requests or something like that, I hate it's writing style. I frequently find myself spending more time trying to instruct the model properly than I would've required to edit the message myself. The MCP `elicitation` feature enables servers to request additional information from the users for specific tasks, for instance while executing tools. The `ElicitationMiddleware` in <em class="wags-brand">wags</em> uses this to improve the user experience for such tools where users might want to edit the models generation before executing them directly.
 
 ## Example
 
-`RequiresElicitation` type annotation on on tool parameters informs `wags` middleware which values should be reviewed by users.
+`RequiresElicitation` type annotation on on tool parameters informs <em class="wags-brand">wags</em> middleware which values should be reviewed by users.
 
 ```python linenums="1" title="handlers.py"
 from typing import Annotated
@@ -25,14 +25,14 @@ class GithubHandlers:
         pass
 ```
 
-and the `ElicitationMiddleware` can be enabled in the `wags` proxy:
+and the `ElicitationMiddleware` can be enabled in the <em class="wags-brand">wags</em> proxy:
 
 ```python title="main.py"
 handlers = GithubHandlers()
 mcp.add_middleware(ElicitationMiddleware(handlers=handlers))
 ```
 
-Now whenever a tool with elicitation annotations is triggered, `wags` will intercept the tool call, allow the user to edit those arguments, and then make the upstream `tool` call. So you can be confident that your agent doesn't cause embarrassment for you
+Now whenever a tool with elicitation annotations is triggered, <em class="wags-brand">wags</em> will intercept the tool call, allow the user to edit those arguments, and then make the upstream `tool` call. So you can be confident that your agent doesn't cause embarrassment for you
 
 ## API Documentation
 

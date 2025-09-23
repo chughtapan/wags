@@ -1,4 +1,4 @@
-site_name: WAGS Documentation
+site_name: wags documentation
 site_description: Web Agent Gateway System - Middleware orchestration for MCP servers
 site_author: WAGS Team
 site_url: https://chughtapan.github.io/wags/
@@ -8,6 +8,7 @@ edit_uri: edit/main/docs/
 
 theme:
   name: material
+  favicon: assets/images/wags-logo.png
   palette:
     - scheme: default
       primary: indigo
