@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get up and running with <em class="wags-brand">wags</em> in just a few minutes. This guide will walk you through installation and creating a proxy server with middleware for existing MCP servers.
+Get up and running with <span class="wags-brand">wags</span> in just a few minutes. This guide will walk you through installation and creating a proxy server with middleware for existing MCP servers.
 
 ## Prerequisites
 
@@ -11,7 +11,7 @@ Get up and running with <em class="wags-brand">wags</em> in just a few minutes. 
 
 ## Installation
 
-> ⚠️ **Warning**: <em class="wags-brand">wags</em> is based on ongoing research and is under active development. Features and APIs may change.
+> ⚠️ **Warning**: <span class="wags-brand">wags</span> is based on ongoing research and is under active development. Features and APIs may change.
 
 ```bash
 # Clone the repository
@@ -38,9 +38,9 @@ WAGS version 0.1.0
 FastMCP version x.x.x
 ```
 
-## Creating a <em class="wags-brand">wags</em> Proxy Server
+## Creating a <span class="wags-brand">wags</span> Proxy Server
 
-<em class="wags-brand">wags</em> provides the `quickstart` command to generate proxy servers that wrap existing MCP servers with middleware.
+<span class="wags-brand">wags</span> provides the `quickstart` command to generate proxy servers that wrap existing MCP servers with middleware.
 
 ### Step 1: Prepare Your MCP Server Configuration
 
@@ -74,7 +74,7 @@ Edit the generated handlers file to add middleware decorators:
 
 ### Step 4: Attach Middleware to your MCP Server
 
-The automatically generated main.py includes (commented) code to attach <em class="wags-brand">wags</em> middleware to your MCP server. You should edit the file to uncomment the middleware you need:
+The automatically generated main.py includes (commented) code to attach <span class="wags-brand">wags</span> middleware to your MCP server. You should edit the file to uncomment the middleware you need:
 
 ```python linenums="1" title="main.py"
 --8<-- "snippets/quickstart/main.py"

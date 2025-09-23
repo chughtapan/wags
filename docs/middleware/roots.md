@@ -1,6 +1,6 @@
 # Roots
 
-The MCP `roots` feature enables clients to limit which resources a server can access. The <em class="wags-brand">wags</em> middleware allows methods to be annotated with what resources must be enabled before a tool call be accessed.
+The MCP `roots` feature enables clients to limit which resources a server can access. The <span class="wags-brand">wags</span> middleware allows methods to be annotated with what resources must be enabled before a tool call be accessed.
 
 ## Example
 
@@ -15,7 +15,7 @@ class GithubHandlers:
         pass
 ```
 
-and the `RootsMiddleware` can be enabled in the <em class="wags-brand">wags</em> proxy:
+and the `RootsMiddleware` can be enabled in the <span class="wags-brand">wags</span> proxy:
 
 ```python
 handlers = GitHubHandlers()
