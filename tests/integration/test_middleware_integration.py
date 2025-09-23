@@ -7,6 +7,7 @@ import pytest
 from fastmcp import FastMCP
 from fastmcp.client import Client
 from fastmcp.server.middleware.middleware import CallNext, Middleware, MiddlewareContext
+from fastmcp.server.proxy import ProxyClient
 from mcp.types import CallToolRequestParams
 
 from wags import create_proxy
@@ -299,8 +300,8 @@ class TestNotificationHandling:
         async def test_tool() -> str:
             return "test"
 
-        # Create proxy and attach tracking middleware
-        proxy = create_proxy(server, "test-proxy")
+        # Create proxy using overloaded create_proxy with FastMCP server
+        proxy = create_proxy(server, server_name="test-proxy")
         tracker = NotificationTracker()
         proxy.add_middleware(tracker)
 
@@ -327,24 +328,27 @@ class TestNotificationHandling:
         """Test that notifications flow through middleware chain correctly."""
         server = FastMCP("mcp-server")
 
-        # Create multiple notification tracking middleware
-        tracker1 = NotificationTracker()
-        tracker2 = NotificationTracker()
-
         @server.tool
         async def dummy_tool() -> str:
             return "dummy"
 
-        # Add middleware in order
-        server.add_middleware(tracker1)
-        server.add_middleware(tracker2)
+        # Create proxy with notification support
+        proxy = create_proxy(server, server_name="test-proxy")
+
+        # Create multiple notification tracking middleware
+        tracker1 = NotificationTracker()
+        tracker2 = NotificationTracker()
+
+        # Add middleware in order to proxy
+        proxy.add_middleware(tracker1)
+        proxy.add_middleware(tracker2)
 
         current_roots = ["https://example.com/"]
 
         async def dynamic_roots(context):
             return current_roots
 
-        async with Client(server, roots=dynamic_roots) as client:
+        async with Client(proxy, roots=dynamic_roots) as client:
             await client.send_roots_list_changed()
 
             # Allow processing time

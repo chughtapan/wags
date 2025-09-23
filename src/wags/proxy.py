@@ -1,6 +1,6 @@
 """MCP proxy server with middleware support."""
 
-from typing import Any
+from typing import Any, overload
 
 import mcp.types
 from fastmcp import FastMCP
@@ -40,20 +40,53 @@ class _WagsProxy(FastMCPProxy):
         ] = handle_roots_list_changed
 
 
+@overload
 def create_proxy(
-    config: dict[str, Any],
+    server_or_config: dict[str, Any],
+    server_name: str = "wags-proxy"
+) -> FastMCP:
+    """Create a proxy from a server configuration dict."""
+    ...
+
+
+@overload
+def create_proxy(
+    server_or_config: FastMCP,
+    server_name: str = "wags-proxy"
+) -> FastMCP:
+    """Create a proxy from an existing FastMCP server instance."""
+    ...
+
+
+def create_proxy(
+    server_or_config: dict[str, Any] | FastMCP,
     server_name: str = "wags-proxy"
 ) -> FastMCP:
     """Create a proxy server with middleware support.
 
+    This function can be called in two ways:
+    
+    1. With a configuration dict (for subprocess-based servers):
+       ```python
+       config = {"command": "python", "args": ["server.py"]}
+       proxy = create_proxy(config)
+       ```
+    
+    2. With a FastMCP server instance (for in-memory servers):
+       ```python
+       server = FastMCP("my-server")
+       proxy = create_proxy(server)
+       ```
+
     Args:
-        config: Server configuration (command, args, env)
+        server_or_config: Either a server configuration dict (command, args, env) or
+                          a FastMCP server instance to wrap
         server_name: Name for the proxy server
 
     Returns:
-        FastMCP proxy instance
+        FastMCP proxy instance with middleware support
     """
-    base_client: ProxyClient = ProxyClient(config, name=f"{server_name}-client")
+    base_client: ProxyClient = ProxyClient(server_or_config, name=f"{server_name}-client")
     return _WagsProxy(
         client_factory=lambda: base_client.new(),
         name=server_name
