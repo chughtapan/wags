@@ -1,0 +1,8 @@
+mcpServers:
+  github-proxy:
+    transport: stdio
+    command: python
+    args:
+      - servers/github/main.py
+    env:
+      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_PERSONAL_ACCESS_TOKEN}
