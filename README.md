@@ -1,116 +1,176 @@
-# Evaluation Framework for Fast-Agent
+# wags
 
-A pytest-based evaluation framework for testing LLM function calling capabilities using the Berkeley Function Call Leaderboard (BFCL) with fast-agent and MCP servers.
+Model Context Protocol (MCP) offers a standardized way for AI models to interact with external tools and data sources. Yet, as organizations rush to adopt MCP and implement their servers, a critical challenge emerges: we still don't fully understand what makes a good MCP server. While there is significant ongoing research on context engineering and several new MCP features have been proposed to improve user and agent experience, deploying these features in production remains challenging.
+
+The `wags` toolkit is based on state-of-the-art research into how multi-turn agents usually fail, and makes it straightforward to implement advanced countermeasures. The best part is that you don't need to rewrite your existing MCP servers. Instead, you configure `wags` middleware using simple annotations for your server, and it intercepts MCP messages for your goals. You can add `elicitations` for human-in-the-loop confirmations, enforce fine-grained access controls (using `roots`) to make sure your agent doesn't accidentally reveals your private information online, and prevent your agent from repeating the pesky bugs that your agent makes frequently.
+
+## Prerequisites
+
+- Python 3.13.5 or higher
+- [`uv` package manager](https://docs.astral.sh/uv/getting-started/installation/) (recommended) or `pip`
+- Basic understanding of [MCP (Model Context Protocol)](https://modelcontextprotocol.io/introduction)
+- An existing MCP server to work with
 
 ## Installation
 
+> ⚠️ **Warning**: WAGS is based on ongoing research and is under active development. Features and APIs may change.
+
 ```bash
+# Clone the repository
+git clone https://github.com/chughtapan/wags.git
+cd wags
+
 # Create and activate virtual environment
 uv venv
 source .venv/bin/activate
 
-# Install this package with dev dependencies
+# Install the package in development mode
 uv pip install -e ".[dev]"
-
-# Install BFCL (without heavy dependencies) - MUST be done after main install
-cd submodules/bfcl/berkeley-function-call-leaderboard
-uv pip install --no-deps -e .
-cd ../../..
 ```
 
-## Usage
-
-### Running Tests with Pytest
+### Verify Installation
 
 ```bash
-# Run all multi-turn tests
-.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py
-
-# Run specific test
-.venv/bin/pytest 'tests/benchmarks/bfcl/test_bfcl.py::test_bfcl[multi_turn_base_55]'
-
-# Run category of tests
-.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py -k "multi_turn_base"
-
-# Run with different model
-.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --model gpt-4o
-
-# Save outputs to specific directory
-.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --output-dir outputs/experiment1
-
-# Validate existing logs only (no new runs)
-.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --validate-only
-
-# Validate logs from specific directory
-.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --validate-only --log-dir outputs/experiment1/raw
+wags version
 ```
 
-## Architecture
-
+You should see:
 ```
-src/evals/
-├── core/                       # Generic evaluation framework
-│   ├── runner.py              # Generic async test execution
-│   ├── serializer.py          # Preserves tool calls FastAgent drops
-│   └── logger.py              # Typed event logging (replaces string matching)
-└── benchmarks/                 # Benchmark implementations
-    └── bfcl/                  # BFCL-specific implementation
-        ├── loader.py          # Data loading (currently multi_turn only)
-        ├── evaluator.py       # BFCL validation logic
-        ├── mcp_server.py      # MCP wrapper for BFCL APIs
-        ├── elicitation.py     # Ground truth elicitation handler
-        ├── config.yaml        # MCP server configuration
-        └── instruction.txt    # System prompt
-
-tests/
-├── conftest.py                # Pytest fixtures and configuration
-├── benchmarks/
-│   └── bfcl/
-│       └── test_bfcl.py      # Async test implementation
-└── unit/
-    └── core/
-        └── test_serializer.py # Unit tests for serialization
-
-submodules/
-└── bfcl/                      # BFCL git submodule
+WAGS version 0.1.0
+FastMCP version x.x.x
 ```
 
-## How It Works
+## Quick Start
 
-1. **Test Discovery**: pytest dynamically discovers tests from BFCL data files
-2. **Async Execution**: Tests run as native async functions using pytest-asyncio
-3. **MCP Server Setup**: Wraps BFCL API classes as MCP servers for fast-agent
-4. **Execution**: Runs tests, serializes complete message history to `complete.json`
-5. **Extraction**: Extracts tool calls directly from `complete.json` (no JSONL parsing)
-6. **Evaluation**: Uses BFCL's validators to check correctness
-7. **Pass/Fail**: Only `validation["valid"]` determines test outcome (ignores irrelevance checks)
+`wags` provides the `quickstart` command to generate proxy servers that wrap existing MCP servers with middleware.
 
-## Key Features
+### Step 1: Prepare Your MCP Server Configuration
 
-- **Pytest-native**: No CLI, pure pytest with async support
-- **Two modes**: Run new tests OR validate from `complete.json` with `--validate-only`
-- **Tool call preservation**: MessageSerializer preserves tool calls that FastAgent drops
-- **Single extraction path**: Both run and validate modes use same JSON extraction
-- **Structured logging**: Typed events replace fragile string matching in logs
-- **Minimal storage**: Only saves `complete.json` (extracts tool calls on-demand)
-- **Clean architecture**: Generic runner, benchmark-specific logic isolated in bfcl/
-- **Pattern matching**: Use pytest's `-k` flag for test selection
-- **Sequential by default**: No concurrency issues, no rate limiting problems
-- **Extensible**: Easy to add new benchmarks (copy bfcl/ folder pattern)
+Create a configuration file that describes your MCP server. Save it as `config.json`:
 
-## Output Structure
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+### Step 2: Generate the Proxy Server
+
+Use the `quickstart` command to generate middleware handlers and main file:
+
+```bash
+# Generate both handlers and main files
+wags quickstart config.json
+
+# Or with custom file names
+wags quickstart config.json \
+  --handlers-file github_handlers.py \
+  --main-file github_proxy.py
+```
+
+### Step 3: Add Middleware Decorators
+
+Edit the generated handlers file to add middleware decorators for access control and parameter review.
+
+### Step 4: Run Your Proxy Server
+
+```bash
+python main.py 
+```
+
+Your proxy server is now running!
+
+## CLI Commands
+
+- `wags init <name>` - Initialize a new server with middleware scaffold
+- `wags quickstart <config>` - Generate WAGS proxy server with middleware handlers
+- `wags run <server_path>` - Run an MCP server with middleware
+- `wags version` - Show version information
+
+## Project Structure
 
 ```
-outputs/
-├── configs/                 # Generated YAML configs
-├── raw/                     # JSONL logs from fast-agent
-│   ├── *_fastagent.jsonl   # Raw conversation logs
-│   ├── *_detailed.json     # Structured message history
-│   └── *_complete.json     # Standard format
-└── evaluations/            # Evaluation results
-    └── *.json              # Validation results per test
+src/
+├── wags/                       # WAGS middleware framework
+│   ├── cli/                   # CLI commands using cyclopts
+│   │   └── main.py           # wags CLI entry point
+│   ├── middleware/            # Middleware implementations
+│   │   ├── base.py           # Base middleware abstract class
+│   │   ├── elicitation.py    # Parameter elicitation middleware
+│   │   └── roots.py          # Access control middleware
+│   ├── utils/                 # Utility modules
+│   │   ├── config.py         # Configuration management
+│   │   ├── quickstart.py     # Quickstart command implementation
+│   │   ├── server.py         # Server discovery and running
+│   │   └── server_template.py    # Scaffold generation
+│   └── proxy.py              # Proxy server for middleware chain
+│
+└── evals/                      # Evaluation framework
+    ├── core/                   # Generic evaluation framework
+    └── benchmarks/            # Benchmark implementations
+```
+
+## Middleware Features
+
+### RootsMiddleware - Access Control
+Controls which files and directories tools can access using template-based path validation. Fail-closed by default (denies access unless explicitly allowed).
+
+### ElicitationMiddleware - Parameter Review  
+Intercepts tool calls to collect missing parameters or allow users to review and edit parameters before execution. Supports both sync and async elicitation handlers.
+
+For detailed middleware documentation, see the [full documentation](https://wags.dev).
+
+## Documentation
+
+### View Documentation Online
+Visit [https://wags.dev](https://wags.dev) for the full documentation.
+
+### Build Documentation Locally
+```bash
+# Build documentation
+mkdocs build
+
+# Serve documentation locally
+mkdocs serve
+```
+
+## Development
+
+### Testing
+```bash
+# Run all unit tests (excludes benchmarks by default)
+.venv/bin/pytest tests/
+
+# Run unit tests with coverage
+.venv/bin/pytest tests/unit/ -v
+
+# Run integration tests
+.venv/bin/pytest tests/integration/ -v
+```
+
+### Code Quality
+```bash
+# Run linter
+.venv/bin/ruff check src/ tests/
+
+# Fix linting issues
+.venv/bin/ruff check src/ tests/ --fix
+
+# Format code with black
+.venv/bin/black src/ tests/
+
+# Run type checking
+.venv/bin/mypy src/ --ignore-missing-imports
 ```
 
 ## License
 
-MIT
+Apache 2.0

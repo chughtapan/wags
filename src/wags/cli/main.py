@@ -54,32 +54,44 @@ def run(
 
 
 @app.command
-def generate_handlers(
+def quickstart(
     config: Path,
     *,
     server_name: str | None = None,
-    output: Path | None = None,
+    handlers_file: str | None = None,
+    main_file: str | None = None,
     class_name: str | None = None,
+    only_handlers: bool = False,
+    only_main: bool = False,
+    force: bool = False,
 ):
-    """Generate handlers stub from an MCP server.
+    """Generate WAGS proxy server with middleware handlers.
 
     Args:
         config: Path to MCP config.json file
         server_name: Name of the server in config (defaults to first server)
-        output: Output path for generated handlers (defaults to stdout)
+        handlers_file: Output path for handlers file (defaults to handlers.py)
+        main_file: Output path for main file (defaults to main.py)
         class_name: Name for the handlers class (defaults to auto-generated)
+        only_handlers: Only generate handlers file
+        only_main: Only generate main file
+        force: Overwrite existing files without asking
     """
-    from wags.utils.handlers_generator import generate_handlers_stub
+    from wags.utils.quickstart import run_quickstart
 
     try:
-        asyncio.run(generate_handlers_stub(
+        asyncio.run(run_quickstart(
             config_path=config,
             server_name=server_name,
-            output_path=output,
-            class_name=class_name
+            handlers_file=handlers_file,
+            main_file=main_file,
+            class_name=class_name,
+            only_handlers=only_handlers,
+            only_main=only_main,
+            force=force
         ))
     except Exception as e:
-        logger.error(f"Failed to generate stub: {e}")
+        logger.error(f"Failed to run quickstart: {e}")
         sys.exit(1)
 
 

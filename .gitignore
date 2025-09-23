@@ -33,6 +33,11 @@ env/
 *.swo
 .DS_Store
 
+# Emacs temporary files
+\#*\#
+.\#*
+*~
+
 # Testing
 .pytest_cache/
 .coverage

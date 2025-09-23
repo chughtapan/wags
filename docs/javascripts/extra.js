@@ -1,0 +1,1 @@
+// Custom JavaScript for WAGS documentation
