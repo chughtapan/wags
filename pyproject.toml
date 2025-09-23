@@ -9,13 +9,14 @@ description = "WAGS - Middleware orchestration for MCP servers with FastMCP"
 requires-python = ">=3.13.5"
 
 dependencies = [
-    "mcp>=1.0.0",
-    "fast-agent-mcp>=0.3.5",
-    "mpmath>=1.3.0",
-    "fastmcp>=2.12.3",
+    "mcp @ git+https://github.com/chughtapan/python-sdk.git@wags-dev",
+    "fast-agent-mcp @ git+https://github.com/chughtapan/fast-agent.git@wags-dev", # TODO: also move into evals section
+    "fastmcp @ git+https://github.com/chughtapan/fastmcp.git@wags-dev",
     "cyclopts>=2.0.0",
     "rich>=13.0.0",
     "jinja2>=3.0.0",
+    "mpmath>=1.3.0", # TODO: Remove (only used for BFCL evals)
+
 ]
 
 [project.scripts]
