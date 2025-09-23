@@ -12,7 +12,7 @@ The <b style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; lett
 
 - Python 3.13.5 or higher
 - [`uv` package manager](https://docs.astral.sh/uv/getting-started/installation/) (recommended) or `pip`
-- Basic understanding of [MCP (Model Context Protocol)](https://modelcontextprotocol.io/introduction)
+- Basic understanding of [MCP (Model Context Protocol)](https://modelcontextprotocol.io/docs/getting-started/intro)
 - An existing MCP server to work with
 
 ## Installation
@@ -122,12 +122,12 @@ src/
 
 ## Middleware
 
-For detailed middleware documentation, see the [full documentation](https://wags.dev).
+For detailed middleware documentation, see the [full documentation](https://chughtapan.github.io/wags/).
 
 ## Documentation
 
 ### View Documentation Online
-Visit [https://wags.dev](https://wags.dev) for the full documentation.
+Visit [https://chughtapan.github.io/wags/](https://chughtapan.github.io/wags/) for the full documentation.
 
 ### Build Documentation Locally
 ```bash
