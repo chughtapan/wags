@@ -57,3 +57,6 @@ fastagent.jsonl
 test_script_*.py
 .claude/
 CLAUDE.md
+
+# mkdocs output
+site/
