@@ -6,7 +6,7 @@ Get up and running with <span class="wags-brand">wags</span> in just a few minut
 
 - Python 3.13.5 or higher
 - [`uv` package manager](https://docs.astral.sh/uv/getting-started/installation/) (recommended) or `pip`
-- Basic understanding of [MCP (Model Context Protocol)](https://modelcontextprotocol.io/introduction)
+- Basic understanding of [MCP (Model Context Protocol)](https://modelcontextprotocol.io/docs/getting-started/intro)
 - An existing MCP server to work with
 
 ## Installation
@@ -91,5 +91,5 @@ Your proxy server is now running!
 ## Learn More
 
 - **[Middleware Overview](middleware/overview.md)** - Understand how middleware works
-- **[RootsMiddleware](middleware/roots.md)** - Access control with URI templates
-- **[ElicitationMiddleware](middleware/elicitation.md)** - Parameter review and collection
+- **[Roots](middleware/roots.md)** - Access control with URI templates
+- **[Elicitation](middleware/elicitation.md)** - Parameter review and collection

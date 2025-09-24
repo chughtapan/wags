@@ -4,7 +4,7 @@ from pathlib import Path
 
 from wags import create_proxy, load_config
 from wags.middleware import ElicitationMiddleware, RootsMiddleware
-from .handlers import GithubHandlers
+from handlers import GithubHandlers
 
 # Load config and create proxy server
 config = load_config(Path(__file__).parent / "config.json")

@@ -28,8 +28,9 @@ class TestConfig:
 
 async def run_test_async(config: TestConfig) -> dict[str, Any]:
     """Run test - single async function with configuration object."""
+    from tests.utils.fastagent_helpers import MessageSerializer
+    
     from .logger import StructuredEventLogger
-    from .serializer import MessageSerializer
 
     test_id = config.test_case["id"]
 

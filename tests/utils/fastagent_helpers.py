@@ -1,8 +1,7 @@
-"""
-Message serializer that properly preserves all FastAgent message data.
+"""Utilities for working with FastAgent message histories and tool interactions.
 
-This module provides serialization that actually preserves tool calls,
-unlike FastAgent's built-in serialization which drops them.
+This module consolidates all FastAgent-related utilities for testing and evaluation,
+providing properly typed functions for message extraction, turn management, and serialization.
 """
 
 import json
@@ -10,16 +9,108 @@ from datetime import datetime
 from typing import Any
 
 from fast_agent.types import PromptMessageExtended
+from mcp.types import CallToolRequest, CallToolResult
 
+# ============= Core Extraction Functions =============
+
+def get_tool_calls(messages: list[PromptMessageExtended]) -> list[tuple[str, CallToolRequest]]:
+    """Extract all tool calls from message history.
+
+    Args:
+        messages: List of PromptMessageExtended objects from agent.message_history
+
+    Returns:
+        List of (tool_id, CallToolRequest) tuples in order of occurrence
+    """
+    tool_calls = []
+    for msg in messages:
+        if msg.tool_calls:
+            for tool_id, request in msg.tool_calls.items():
+                tool_calls.append((tool_id, request))
+    return tool_calls
+
+
+def get_tool_results(messages: list[PromptMessageExtended]) -> dict[str, CallToolResult]:
+    """Extract all tool results from message history.
+
+    Args:
+        messages: List of PromptMessageExtended objects from agent.message_history
+
+    Returns:
+        Dict mapping tool_id to its CallToolResult
+    """
+    tool_results = {}
+    for msg in messages:
+        if msg.tool_results:
+            tool_results.update(msg.tool_results)
+    return tool_results
+
+
+def get_result_text(result: CallToolResult) -> str:
+    """Extract text content from a tool result.
+
+    Args:
+        result: CallToolResult containing response content blocks
+
+    Returns:
+        Concatenated text from all text content blocks in the result
+    """
+    texts = [content.text for content in result.content if hasattr(content, "text")]
+    return " ".join(texts)
+
+
+# ============= Turn Management =============
+
+def split_into_turns(messages: list[PromptMessageExtended]) -> list[list[PromptMessageExtended]]:
+    """Split message history into conversational turns.
+    
+    A turn starts with a user message (not a tool result) and includes
+    all messages until the next user message or end of conversation.
+    
+    Args:
+        messages: List of PromptMessageExtended objects
+        
+    Returns:
+        List of turns, where each turn is a list of messages
+    """
+    turns = []
+    current_turn: list[PromptMessageExtended] = []
+    
+    for msg in messages:
+        # User message that's not a tool result starts a new turn
+        if msg.role == "user" and not msg.tool_results:
+            if current_turn:
+                turns.append(current_turn)
+            current_turn = [msg]
+        else:
+            current_turn.append(msg)
+    
+    # Don't forget the last turn
+    if current_turn:
+        turns.append(current_turn)
+    
+    return turns
+
+
+# ============= MessageSerializer (from BFCL) =============
 
 class MessageSerializer:
-    """
-    Practical serializer that preserves everything we need from FastAgent messages.
+    """Serializer that preserves all FastAgent message data including tool calls.
+    
+    This class provides methods to serialize FastAgent messages to JSON while
+    preserving tool calls and results that FastAgent's built-in serialization drops.
     """
 
     @staticmethod
-    def _strip_server_prefix(tool_name: str) -> str:
-        """Strip server prefix from tool name (e.g., 'ticketapi-create_ticket' -> 'create_ticket')."""
+    def strip_server_prefix(tool_name: str) -> str:
+        """Strip server prefix from tool name.
+        
+        Args:
+            tool_name: Tool name potentially with server prefix
+            
+        Returns:
+            Tool name without prefix (e.g., 'github-list_issues' -> 'list_issues')
+        """
         if "-" in tool_name:
             return tool_name.split("-", 1)[1]
         return tool_name
@@ -48,7 +139,7 @@ class MessageSerializer:
 
         serialized = {}
         for tool_id, call in tool_calls.items():
-            tool_name = MessageSerializer._strip_server_prefix(call.params.name)
+            tool_name = MessageSerializer.strip_server_prefix(call.params.name)
             serialized[tool_id] = {
                 "name": tool_name,
                 "arguments": call.params.arguments
@@ -74,8 +165,16 @@ class MessageSerializer:
         return serialized
 
     @staticmethod
-    def _serialize_message(msg: PromptMessageExtended, idx: int) -> dict[str, Any]:
-        """Serialize a single message."""
+    def serialize_message(msg: PromptMessageExtended, idx: int) -> dict[str, Any]:
+        """Serialize a single message to dictionary.
+        
+        Args:
+            msg: PromptMessageExtended to serialize
+            idx: Message index in conversation
+            
+        Returns:
+            Dictionary representation of the message
+        """
         msg_dict = {
             "index": idx,
             "role": msg.role,
@@ -96,8 +195,7 @@ class MessageSerializer:
 
     @staticmethod
     def serialize_complete(messages: list[PromptMessageExtended]) -> str:
-        """
-        Serialize messages preserving all message data including tool calls and results.
+        """Serialize messages preserving all message data including tool calls and results.
 
         Args:
             messages: List of PromptMessageExtended objects from FastAgent
@@ -106,7 +204,7 @@ class MessageSerializer:
             JSON string with complete message preservation
         """
         serialized_messages = [
-            MessageSerializer._serialize_message(msg, idx)
+            MessageSerializer.serialize_message(msg, idx)
             for idx, msg in enumerate(messages)
         ]
 
@@ -119,8 +217,7 @@ class MessageSerializer:
 
     @staticmethod
     def extract_tool_calls_by_turn(complete_data: dict) -> list[list[dict[str, Any]]]:
-        """
-        Extract tool calls grouped by conversation turn from complete JSON data.
+        """Extract tool calls grouped by conversation turn from complete JSON data.
 
         Args:
             complete_data: Dictionary from complete.json file
@@ -129,7 +226,7 @@ class MessageSerializer:
             List of turns, where each turn is a list of tool call dicts
         """
         turns = []
-        current_turn = []
+        current_turn: list[dict[str, Any]] = []
 
         for msg in complete_data["messages"]:
             if msg["role"] == "user" and current_turn:
@@ -152,8 +249,7 @@ class MessageSerializer:
 
     @staticmethod
     def format_to_executable(tool_calls: list[list[dict[str, Any]]]) -> list[list[str]]:
-        """
-        Convert tool calls to BFCL executable format.
+        """Convert tool calls to BFCL executable format.
 
         This matches the format expected by BFCL evaluator.
 
