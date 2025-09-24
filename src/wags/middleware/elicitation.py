@@ -10,10 +10,11 @@ from typing import Any
 
 from fastmcp.server.elicitation import AcceptedElicitation, CancelledElicitation, DeclinedElicitation
 from fastmcp.server.middleware.middleware import MiddlewareContext
+from mcp.server.session import ServerSession
 from mcp.types import CallToolRequestParams
 from pydantic import Field, create_model
 
-from .base import BaseMiddleware
+from .base import WagsMiddlewareBase
 
 
 @dataclass
@@ -32,13 +33,22 @@ class RequiresElicitation:
             raise ValueError("Elicitation prompt is required")
 
 
-class ElicitationMiddleware(BaseMiddleware):
+class ElicitationMiddleware(WagsMiddlewareBase):
     """Triggers elicitation dialogs for marked parameters.
 
     When tool handlers have parameters with RequiresElicitation annotations,
     this middleware presents those values to the user for review and
     potential modification. Aborts execution if the user declines.
     """
+
+    def _supports_elicitation(self, session: ServerSession) -> bool:
+        """Check if client supports elicitation."""
+        if not hasattr(session, 'client_params') or not session.client_params:
+            return False
+        capabilities = session.client_params.capabilities
+        if not capabilities:
+            return False
+        return capabilities.elicitation is not None
 
     async def handle_on_tool_call(
         self,
@@ -57,12 +67,18 @@ class ElicitationMiddleware(BaseMiddleware):
         Raises:
             ValueError: If user declines or cancels
         """
-        if not context.fastmcp_context:
+        # Check once if we have a valid context
+        if not context.fastmcp_context or not hasattr(context.fastmcp_context, 'session'):
+            return context
+        
+        # Skip elicitation if client doesn't support it
+        if not self._supports_elicitation(context.fastmcp_context.session):
             return context
 
         fields = self._collect_elicitation_fields(handler)
         if not fields:
             return context
+        
         model = self._build_elicitation_model(fields, context.message.arguments or {})
         result = await context.fastmcp_context.elicit(
             message="Please provide the required information",

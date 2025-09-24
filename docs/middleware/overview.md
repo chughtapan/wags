@@ -9,7 +9,7 @@ Middleware in <span class="wags-brand">wags</span> are built using the amazing `
 
 The <span class="wags-brand">wags</span> middleware toolkit further provides *fine-grained interception* hooks and helpers for *easy configuration* of middleware capabilities. Majority of the features can be configured only by adding decorators and type annotations instead of having to write complex code.
 
-```python title="WAGS BaseMiddleware"
+```python title="WAGS WagsMiddlewareBase"
 --8<-- "snippets/middleware/base_middleware.py"
 ```
 
