@@ -1,0 +1,25 @@
+mcp:
+  servers:
+    github:
+      transport: stdio
+      command: wags
+      args:
+        - run
+        - /Users/tapanc/dev/wags/servers/github
+      env:
+        GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_PERSONAL_ACCESS_TOKEN}
+      roots:
+        - uri: https://github.com/anthropics/courses
+          name: "Anthropics Courses"
+        - uri: https://github.com/modelcontextprotocol/
+          name: "MCP Organization"
+    # Additional servers can be configured here
+    # example_server:
+    #   transport: stdio
+    #   command: wags
+    #   args:
+    #     - run
+    #     - /path/to/server
+    #   roots:
+    #     - uri: /allowed/path
+    #       name: "Allowed Path"

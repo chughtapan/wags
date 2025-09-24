@@ -9,7 +9,7 @@ from src.evals.benchmarks.bfcl import evaluator, loader
 from src.evals.benchmarks.bfcl.elicitation import create_elicitation_handler
 from src.evals.core.logger import StructuredEventLogger
 from src.evals.core.runner import TestConfig, run_test_async
-from src.evals.core.serializer import MessageSerializer
+from tests.utils.fastagent_helpers import MessageSerializer
 
 
 def pytest_generate_tests(metafunc):
