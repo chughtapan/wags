@@ -169,8 +169,8 @@ async def test_concrete_prefix_matching(middleware, handlers):
 
 
 @pytest.mark.asyncio
-async def test_fail_closed_no_roots(middleware, handlers):
-    """Test that no roots = deny all."""
+async def test_empty_roots_denies_all(middleware, handlers):
+    """Test that empty roots list denies all access."""
     context = create_context_with_roots(
         {"owner": "any", "repo": "repo"},
         roots=[]
@@ -275,13 +275,29 @@ async def test_prefix_allows_sub_resources(middleware, handlers):
     assert result == context  # Prefix matches the expanded template
 
 
+
 @pytest.mark.asyncio
-async def test_no_context_fails_closed(middleware, handlers):
-    """Test that no FastMCP context means no roots = fail closed."""
-    # Create context without FastMCP context
-    context = create_context_with_roots(
-        {"owner": "any", "repo": "repo"},
-        roots=None  # No roots context
+async def test_no_roots_capability_skips_validation(middleware, handlers):
+    """Test that clients without roots capability skip validation entirely."""
+    # Create context without roots capability
+    message = CallToolRequestParams(
+        name="test_method",
+        arguments={"owner": "any", "repo": "repo"}
     )
-    with pytest.raises(PermissionError, match="No roots configured"):
-        await middleware.handle_on_tool_call(context, handlers.create_issue)
+    
+    # Mock a context with no roots capability
+    mock_fastmcp_context = MagicMock()
+    mock_session = MagicMock()
+    mock_client_params = MagicMock()
+    mock_capabilities = MagicMock()
+    mock_capabilities.roots = None  # No roots capability
+    
+    mock_client_params.capabilities = mock_capabilities
+    mock_session.client_params = mock_client_params
+    mock_fastmcp_context.session = mock_session
+    
+    context = MiddlewareContext(message=message, fastmcp_context=mock_fastmcp_context)
+    
+    # Should pass through without validation
+    result = await middleware.handle_on_tool_call(context, handlers.create_issue)
+    assert result == context  # Passes through without any permission check

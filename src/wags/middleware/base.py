@@ -13,7 +13,7 @@ from fastmcp.server.middleware.middleware import CallNext, Middleware, Middlewar
 from mcp.types import CallToolRequestParams
 
 
-class BaseMiddleware(Middleware):
+class WagsMiddlewareBase(Middleware):
     """Base class for tool-aware middleware.
 
     This class provides the basic infrastructure for middleware that needs

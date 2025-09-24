@@ -10,9 +10,10 @@ from collections.abc import Callable
 from typing import Any
 
 from fastmcp.server.middleware.middleware import CallNext, MiddlewareContext
+from mcp.server.session import ServerSession
 from mcp.types import CallToolRequestParams, Notification
 
-from .base import BaseMiddleware
+from .base import WagsMiddlewareBase
 
 
 def requires_root(template: str):
@@ -52,11 +53,11 @@ def requires_root(template: str):
     return decorator
 
 
-class RootsMiddleware(BaseMiddleware):
+class RootsMiddleware(WagsMiddlewareBase):
     """Validates tool calls against client-configured roots.
 
-    Fail-closed: blocks decorated methods unless the resource URI starts with
-    an allowed root prefix.
+    Blocks decorated methods unless the resource URI starts with
+    an allowed root prefix. Skips validation if client lacks roots capability.
 
     Examples:
     - "https://github.com/myorg/" allows all repos in myorg
@@ -68,6 +69,15 @@ class RootsMiddleware(BaseMiddleware):
         super().__init__(handlers)
         self._roots: list[str] = []
         self._roots_loaded = False
+
+    def _supports_roots(self, session: ServerSession) -> bool:
+        """Check if client supports roots."""
+        if not hasattr(session, 'client_params') or not session.client_params:
+            return False
+        capabilities = session.client_params.capabilities
+        if not capabilities:
+            return False
+        return capabilities.roots is not None
 
     async def _load_roots(self, context: MiddlewareContext) -> None:
         """Load roots from client context."""
@@ -107,6 +117,14 @@ class RootsMiddleware(BaseMiddleware):
             ValueError: If required parameters missing
             PermissionError: If access denied
         """
+        # Check once if we have a valid context
+        if not context.fastmcp_context or not hasattr(context.fastmcp_context, 'session'):
+            return context
+        
+        # Skip roots checking if client doesn't support it
+        if not self._supports_roots(context.fastmcp_context.session):
+            return context
+        
         template = getattr(handler, '__root_template__', None)
         if not template:
             return context
@@ -124,7 +142,7 @@ class RootsMiddleware(BaseMiddleware):
 
         if not self._roots:
             raise PermissionError(
-                "Access denied: No roots configured (fail-closed)"
+                "Access denied: No roots configured"
             )
 
         if self._resource_matches_roots(resource):
