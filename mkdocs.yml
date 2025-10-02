@@ -42,6 +42,7 @@ nav:
     - Overview: middleware/overview.md
     - Roots: middleware/roots.md
     - Elicitation: middleware/elicitation.md
+    - Todo: middleware/todo.md
 
 plugins:
   - search

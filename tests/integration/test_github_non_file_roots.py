@@ -1,13 +1,7 @@
 """End-to-end integration test for non-file roots with GitHub server and fast-agent."""
 
-import asyncio
-import json
-import os
-from pathlib import Path
-from typing import Any
 
 import pytest
-from fast_agent import FastAgent
 from fastmcp import FastMCP
 from fastmcp.client import Client
 
@@ -66,7 +60,9 @@ class MockGitHubServer:
             "repo": repo
         }
 
-    async def create_pull_request(self, owner: str, repo: str, title: str, head: str, base: str, body: str = None) -> dict:
+    async def create_pull_request(  # noqa: PLR0913
+        self, owner: str, repo: str, title: str, head: str, base: str, body: str = None
+    ) -> dict:
         """Create a pull request."""
         self.call_log.append({"method": "create_pull_request", "owner": owner, "repo": repo, "title": title})
         return {
@@ -79,7 +75,9 @@ class MockGitHubServer:
             "url": f"https://github.com/{owner}/{repo}/pull/456"
         }
 
-    async def update_issue(self, owner: str, repo: str, issue_number: int, title: str = None, body: str = None, state: str = None) -> dict:
+    async def update_issue(  # noqa: PLR0913
+        self, owner: str, repo: str, issue_number: int, title: str = None, body: str = None, state: str = None
+    ) -> dict:
         """Update an issue."""
         self.call_log.append({"method": "update_issue", "owner": owner, "repo": repo, "issue_number": issue_number})
         return {
@@ -131,12 +129,16 @@ class GitHubHandlers:
         pass
 
     @requires_root("https://github.com/{owner}/{repo}")
-    async def create_pull_request(self, owner: str, repo: str, title: str, head: str, base: str, body: str = None):
+    async def create_pull_request(  # noqa: PLR0913
+        self, owner: str, repo: str, title: str, head: str, base: str, body: str = None
+    ):
         """Create a pull request - requires root validation."""
         pass
 
     @requires_root("https://github.com/{owner}/{repo}")
-    async def update_issue(self, owner: str, repo: str, issue_number: int, title: str = None, body: str = None, state: str = None):
+    async def update_issue(  # noqa: PLR0913
+        self, owner: str, repo: str, issue_number: int, title: str = None, body: str = None, state: str = None
+    ):
         """Update an issue - requires root validation."""
         pass
 
@@ -411,8 +413,8 @@ class TestGitHubNonFileRoots:
                     }
                 )
 
-    async def test_github_with_fast_agent(self):
-        """Test GitHub server with fast-agent configuration."""
+    async def test_github_with_client(self):
+        """Test GitHub server with direct client connection."""
         # Create mock GitHub server
         mock_server = MockGitHubServer()
 
@@ -421,51 +423,21 @@ class TestGitHubNonFileRoots:
         proxy = create_proxy(mock_server.server, server_name="github-proxy")
         proxy.add_middleware(RootsMiddleware(handlers=handlers))
 
-        # Create temporary config for fast-agent
-        test_dir = Path("/tmp/github_test")
-        test_dir.mkdir(exist_ok=True)
-
-        # Create config file
-        config_file = test_dir / "config.json"
-        config_data = {
-            "mcpServers": {
-                "github-proxy": {
-                    "transport": "direct",
-                    "server": proxy
+        # Create client with roots configuration
+        async with Client(proxy, roots=["https://github.com/test-org/"]) as client:
+            # Test allowed operation (test-org is in roots)
+            result = await client.call_tool(
+                "create_issue",
+                {
+                    "owner": "test-org",
+                    "repo": "test-repo",
+                    "title": "Bug Report",
+                    "body": "Found a bug"
                 }
-            }
-        }
-        config_file.write_text(json.dumps(config_data))
-
-        # Create instruction file
-        instruction_file = test_dir / "instruction.txt"
-        instruction_file.write_text(
-            "You are a helpful assistant that can work with GitHub repositories. "
-            "Always be concise in your responses."
-        )
-
-        # Configure fast-agent
-        fast = FastAgent("GitHubTest", config_path=str(config_file))
-
-        # Define agent with roots
-        @fast.agent(
-            name="github_agent",
-            model="gpt-4o-mini",
-            servers=["github-proxy"],
-            instruction=instruction_file,
-            roots=["https://github.com/test-org/"]
-        )
-        async def github_agent():
-            pass
-
-        # Run test conversation
-        async with fast.run() as agent_app:
-            # Test allowed operation
-            await agent_app.send(
-                "Create an issue in test-org/test-repo with title 'Bug Report' and body 'Found a bug'"
             )
 
-            # Check that the tool was called successfully
+            # Should succeed - verify in call log
+            assert not result.is_error
             assert len(mock_server.call_log) > 0
             last_call = mock_server.call_log[-1]
             assert last_call["method"] == "create_issue"
@@ -475,25 +447,22 @@ class TestGitHubNonFileRoots:
             # Clear log
             mock_server.call_log.clear()
 
-            # Test denied operation
-            await agent_app.send(
-                "Create an issue in other-org/repo with title 'Should Fail'"
-            )
+            # Test denied operation (other-org is NOT in roots)
+            with pytest.raises(Exception) as exc_info:
+                await client.call_tool(
+                    "create_issue",
+                    {
+                        "owner": "other-org",
+                        "repo": "repo",
+                        "title": "Should Fail"
+                    }
+                )
 
-            # Should have tried but failed due to roots
-            # The agent should have gotten an error and responded accordingly
-            # We can check the conversation history to verify this
-            messages = agent_app._agent(None).message_history
+            # Should be denied by RootsMiddleware
+            assert "not in allowed roots" in str(exc_info.value)
 
-            # Look for error message in the conversation
-            error_found = False
-            for msg in messages:
-                if hasattr(msg, 'content') and msg.content:
-                    if "Access denied" in str(msg.content) or "not in allowed roots" in str(msg.content):
-                        error_found = True
-                        break
-
-            assert error_found, "Expected access denied error in conversation"
+            # Verify the mock server was NOT called (blocked by middleware)
+            assert len(mock_server.call_log) == 0
 
     async def test_github_no_roots_fail_closed(self):
         """Test that GitHub operations fail when no roots are configured."""
