@@ -1,0 +1,150 @@
+# Static configuration with all available BFCL API servers
+# This single config is used for all tests - the script selects which servers to use
+
+default_model: ${DEFAULT_MODEL:gpt-4o}
+
+openai:
+  api_key: ${OPENAI_API_KEY}
+  temperature: ${TEMPERATURE:0.001}
+
+mcp:
+  servers:
+    # GorillaFileSystem - File operations API
+    gorillafilesystem:
+      command: uv
+      args:
+        - run
+        - python
+        - ${SERVER_SCRIPT_PATH}
+        - GorillaFileSystem
+        - ${TEST_DATA_PATH}
+        - ${TEST_ID}
+
+    # MathAPI - Mathematical operations
+    mathapi:
+      command: uv
+      args:
+        - run
+        - python
+        - ${SERVER_SCRIPT_PATH}
+        - MathAPI
+        - ${TEST_DATA_PATH}
+        - ${TEST_ID}
+
+    # MessageAPI - Messaging operations
+    messageapi:
+      command: uv
+      args:
+        - run
+        - python
+        - ${SERVER_SCRIPT_PATH}
+        - MessageAPI
+        - ${TEST_DATA_PATH}
+        - ${TEST_ID}
+
+    # TwitterAPI - Twitter operations
+    twitterapi:
+      command: uv
+      args:
+        - run
+        - python
+        - ${SERVER_SCRIPT_PATH}
+        - TwitterAPI
+        - ${TEST_DATA_PATH}
+        - ${TEST_ID}
+
+    # TicketAPI - Ticket management
+    ticketapi:
+      command: uv
+      args:
+        - run
+        - python
+        - ${SERVER_SCRIPT_PATH}
+        - TicketAPI
+        - ${TEST_DATA_PATH}
+        - ${TEST_ID}
+
+    # TradingBot - Trading operations
+    tradingbot:
+      command: uv
+      args:
+        - run
+        - python
+        - ${SERVER_SCRIPT_PATH}
+        - TradingBot
+        - ${TEST_DATA_PATH}
+        - ${TEST_ID}
+
+    # TravelAPI - Travel operations
+    travelapi:
+      command: uv
+      args:
+        - run
+        - python
+        - ${SERVER_SCRIPT_PATH}
+        - TravelAPI
+        - ${TEST_DATA_PATH}
+        - ${TEST_ID}
+
+    # VehicleControlAPI - Vehicle control operations
+    vehiclecontrolapi:
+      command: uv
+      args:
+        - run
+        - python
+        - ${SERVER_SCRIPT_PATH}
+        - VehicleControlAPI
+        - ${TEST_DATA_PATH}
+        - ${TEST_ID}
+
+    # WebSearchAPI - Web search operations
+    websearchapi:
+      command: uv
+      args:
+        - run
+        - python
+        - ${SERVER_SCRIPT_PATH}
+        - WebSearchAPI
+        - ${TEST_DATA_PATH}
+        - ${TEST_ID}
+
+    # MemoryAPI_kv - Key-value memory operations
+    memoryapi_kv:
+      command: uv
+      args:
+        - run
+        - python
+        - ${SERVER_SCRIPT_PATH}
+        - MemoryAPI_kv
+        - ${TEST_DATA_PATH}
+        - ${TEST_ID}
+
+    # MemoryAPI_vector - Vector memory operations
+    memoryapi_vector:
+      command: uv
+      args:
+        - run
+        - python
+        - ${SERVER_SCRIPT_PATH}
+        - MemoryAPI_vector
+        - ${TEST_DATA_PATH}
+        - ${TEST_ID}
+
+    # MemoryAPI_rec_sum - Recursive summarization memory operations
+    memoryapi_rec_sum:
+      command: uv
+      args:
+        - run
+        - python
+        - ${SERVER_SCRIPT_PATH}
+        - MemoryAPI_rec_sum
+        - ${TEST_DATA_PATH}
+        - ${TEST_ID}
+
+logger:
+  level: error
+  type: console
+  show_chat: false
+  show_tools: false
+  truncate_tools: false
+  progress_display: false

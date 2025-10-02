@@ -52,7 +52,6 @@ htmlcov/
 fastagent.secrets.yaml
 outputs/
 output*/
-fastagent.config.yaml
 fastagent.jsonl
 test_script_*.py
 .claude/

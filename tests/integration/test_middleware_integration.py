@@ -7,7 +7,6 @@ import pytest
 from fastmcp import FastMCP
 from fastmcp.client import Client
 from fastmcp.server.middleware.middleware import CallNext, Middleware, MiddlewareContext
-from fastmcp.server.proxy import ProxyClient
 from mcp.types import CallToolRequestParams
 
 from wags import create_proxy

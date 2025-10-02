@@ -43,6 +43,7 @@ nav:
     - Roots: middleware/roots.md
     - Elicitation: middleware/elicitation.md
     - Todo: middleware/todo.md
+  - Benchmarks: benchmarks.md
 
 plugins:
   - search
