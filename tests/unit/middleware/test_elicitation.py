@@ -189,3 +189,34 @@ def test_requires_elicitation_type():
     # Test validation - empty prompt should raise error
     with pytest.raises(ValueError, match="Elicitation prompt is required"):
         RequiresElicitation(prompt="")
+
+
+@pytest.mark.asyncio
+async def test_no_elicitation_capability_skips_elicitation():
+    """Test that clients without elicitation capability skip elicitation."""
+    handlers = MockHandlers()
+    middleware = ElicitationMiddleware(handlers=handlers)
+    
+    # Create context without elicitation capability
+    message = CallToolRequestParams(
+        name="string_elicitation_tool",
+        arguments={"value": "test"}  # notes not provided, would normally trigger elicitation
+    )
+    
+    # Mock a context with no elicitation capability
+    mock_fastmcp_context = Mock()
+    mock_session = Mock()
+    mock_client_params = Mock()
+    mock_capabilities = Mock()
+    mock_capabilities.elicitation = None  # No elicitation capability
+    
+    mock_client_params.capabilities = mock_capabilities
+    mock_session.client_params = mock_client_params
+    mock_fastmcp_context.session = mock_session
+    
+    context = MiddlewareContext(message=message, fastmcp_context=mock_fastmcp_context)
+    
+    # Should pass through without elicitation
+    handler = handlers.string_elicitation_tool
+    result = await middleware.handle_on_tool_call(context, handler)
+    assert result == context  # Passes through unchanged without elicitation
