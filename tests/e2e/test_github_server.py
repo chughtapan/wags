@@ -13,13 +13,13 @@ class TestGitHubRootsMiddleware:
     """Test GitHub server with RootsMiddleware access control."""
 
     @pytest.mark.asyncio
-    async def test_allowed_repository_access(self, fast_agent):
+    async def test_allowed_repository_access(self, fast_agent, model):
         """Test that access to configured roots (anthropics/courses) is allowed."""
         fast = fast_agent
 
         @fast.agent(
             name="test",
-            model="gpt-4o-mini",
+            model=model,
             servers=["github"],
             instruction="You are a concise GitHub assistant. Always use the available GitHub tools.",
         )
@@ -60,13 +60,13 @@ class TestGitHubRootsMiddleware:
         await test_function()
 
     @pytest.mark.asyncio
-    async def test_denied_repository_access(self, fast_agent):
+    async def test_denied_repository_access(self, fast_agent, model):
         """Test that access to non-configured roots (github/docs) is denied."""
         fast = fast_agent
 
         @fast.agent(
             name="test",
-            model="gpt-4o-mini",
+            model=model,
             servers=["github"],
             instruction="You are a concise GitHub assistant. Always use the available GitHub tools.",
         )
@@ -111,13 +111,13 @@ class TestGitHubRootsMiddleware:
         await test_function()
 
     @pytest.mark.asyncio
-    async def test_organization_wildcard_access(self, fast_agent):
+    async def test_organization_wildcard_access(self, fast_agent, model):
         """Test that wildcard organization access (modelcontextprotocol/*) works."""
         fast = fast_agent
 
         @fast.agent(
             name="test",
-            model="gpt-4o-mini",
+            model=model,
             servers=["github"],
             instruction="You are a concise GitHub assistant. Always use the available GitHub tools.",
         )

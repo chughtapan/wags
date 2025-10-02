@@ -107,7 +107,8 @@ src/
 │   ├── middleware/            # Middleware implementations
 │   │   ├── base.py           # Base middleware abstract class
 │   │   ├── elicitation.py    # Parameter elicitation middleware
-│   │   └── roots.py          # Access control middleware
+│   │   ├── roots.py          # Access control middleware
+│   │   └── todo.py           # Task tracking server
 │   ├── utils/                 # Utility modules
 │   │   ├── config.py         # Configuration management
 │   │   ├── quickstart.py     # Quickstart command implementation
@@ -120,7 +121,21 @@ src/
     └── benchmarks/            # Benchmark implementations
 ```
 
-## Middleware
+## Features
+
+### Task Tracking
+
+Enable automatic task tracking for LLM agents with built-in TodoWrite and TodoRead tools:
+
+```python
+from wags.proxy import create_proxy
+
+proxy = create_proxy(server, enable_todos=True)
+```
+
+This provides LLMs with tools to break down complex tasks and track progress. See the [Todo Integration Guide](https://chughtapan.github.io/wags/middleware/todo/) for details.
+
+### Middleware
 
 For detailed middleware documentation, see the [full documentation](https://chughtapan.github.io/wags/).
 

@@ -1,0 +1,8 @@
+mcp:
+  servers:
+    mock-files-todo:
+      transport: stdio
+      command: fastmcp
+      args:
+        - run
+        - server.py
