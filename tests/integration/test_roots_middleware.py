@@ -153,8 +153,9 @@ class TestRootsMiddlewareIntegration:
             )
             assert "org2/repo" in result.data["created"]
 
-    async def test_no_roots_fails_closed(self):
-        """Test that no roots configured means all protected calls fail."""
+
+    async def test_empty_roots_fails_closed(self):
+        """Test that empty roots list (with capability) fails closed."""
         mcp = FastMCP("test-server")
         handlers = TestHandlers()
         mcp.add_middleware(RootsMiddleware(handlers=handlers))
@@ -163,8 +164,8 @@ class TestRootsMiddlewareIntegration:
         async def create_issue(owner: str, repo: str, title: str) -> dict:
             return await handlers.create_issue(owner, repo, title)
 
-        # Client without roots
-        async with Client(mcp) as client:
+        # Client WITH roots capability but empty list
+        async with Client(mcp, roots=[]) as client:
             # Should deny all protected calls
             with pytest.raises(Exception) as exc_info:
                 await client.call_tool(

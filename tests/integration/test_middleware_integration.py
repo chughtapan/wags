@@ -10,7 +10,7 @@ from fastmcp.server.middleware.middleware import CallNext, Middleware, Middlewar
 from mcp.types import CallToolRequestParams
 
 from wags import create_proxy
-from wags.middleware.base import BaseMiddleware
+from wags.middleware.base import WagsMiddlewareBase
 
 
 class TestHandlers:
@@ -62,12 +62,13 @@ class NotificationTracker(Middleware):
         return await call_next(context)
 
 
-class ModifyingMiddleware(BaseMiddleware):
+class ModifyingMiddleware(WagsMiddlewareBase):
     """Test middleware that modifies arguments."""
 
     def __init__(self):
         super().__init__(handlers=TestHandlers())
         self.modified_tools = []
+
 
     async def handle_on_tool_call(
         self,
@@ -96,11 +97,12 @@ class TestBasicMiddleware:
     """Integration tests for basic middleware functionality."""
 
     async def test_base_middleware_handler_routing(self):
-        """Test that BaseMiddleware correctly routes to handlers."""
+        """Test that WagsMiddlewareBase correctly routes to handlers."""
         # Create server with middleware
         mcp = FastMCP("test-server")
         handlers = TestHandlers()
-        middleware = BaseMiddleware(handlers=handlers)
+        
+        middleware = WagsMiddlewareBase(handlers=handlers)
         mcp.add_middleware(middleware)
 
         # Register the actual tool
@@ -364,3 +366,4 @@ class TestNotificationHandling:
             }
             assert tracker1.notifications[0] == expected
             assert tracker2.notifications[0] == expected
+
