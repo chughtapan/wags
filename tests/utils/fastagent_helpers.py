@@ -229,7 +229,8 @@ class MessageSerializer:
         current_turn: list[dict[str, Any]] = []
 
         for msg in complete_data["messages"]:
-            if msg["role"] == "user" and current_turn:
+            # Only split on user messages with actual content (not tool results)
+            if msg["role"] == "user" and current_turn and not msg.get("tool_results"):
                 turns.append(current_turn)
                 current_turn = []
             elif msg["role"] == "assistant" and msg["tool_calls"]:

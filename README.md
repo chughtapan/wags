@@ -182,6 +182,43 @@ mkdocs serve
 .venv/bin/mypy src/ --ignore-missing-imports
 ```
 
+## Running Benchmarks
+
+WAGS includes evaluation support for the Berkeley Function Call Leaderboard (BFCL). To run benchmarks:
+
+### Setup
+
+If you cloned the repository without submodules, initialize them:
+
+```bash
+# One-time setup: Initialize the data submodule
+git submodule update --init --recursive
+```
+
+If you already have the repository set up, just ensure submodules are current:
+
+```bash
+# Update to latest data
+git submodule update --remote
+```
+
+### Run Tests
+
+```bash
+# Run all BFCL tests
+.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py
+
+# Run specific test
+.venv/bin/pytest 'tests/benchmarks/bfcl/test_bfcl.py::test_bfcl[multi_turn_base_121]'
+
+# Run with specific model
+.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --model gpt-4o
+```
+
+For detailed information about:
+- **Benchmark architecture and test categories**: See [docs/benchmarks.md](docs/benchmarks.md)
+- **Test organization and patterns**: See [tests/README.md](tests/README.md)
+
 ## License
 
 Apache 2.0
