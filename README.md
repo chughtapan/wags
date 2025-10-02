@@ -116,9 +116,6 @@ src/
 │   │   └── server_template.py    # Scaffold generation
 │   └── proxy.py              # Proxy server for middleware chain
 │
-└── evals/                      # Evaluation framework
-    ├── core/                   # Generic evaluation framework
-    └── benchmarks/            # Benchmark implementations
 ```
 
 ## Features
