@@ -40,9 +40,9 @@ nav:
   - Quick Start: quickstart.md
   - Middleware:
     - Overview: middleware/overview.md
+    - TodoList: middleware/todo.md
     - Roots: middleware/roots.md
     - Elicitation: middleware/elicitation.md
-    - Todo: middleware/todo.md
   - Benchmarks: benchmarks.md
 
 plugins:

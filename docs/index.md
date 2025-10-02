@@ -18,7 +18,4 @@ The <span class="wags-brand">wags</span> toolkit is based on state-of-the-art re
 
     Learn about available middleware and how to use them
 
-- **[Todo Integration](middleware/todo.md)**
-
-    Enable automatic task tracking for LLM agents
 </div>

@@ -17,5 +17,6 @@ The <span class="wags-brand">wags</span> middleware toolkit further provides *fi
 
 Understand what features different middlewares provide and how to configure them:
 
+- [TodoList](todo.md) to ensure agents perform complex tasks correctly.
 - [Roots](roots.md) to enable client-configured fine-grained access control for MCP servers.
 - [Elicitation](elicitation.md) add human-in-the-loop features to improve UX.

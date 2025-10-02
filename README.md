@@ -101,21 +101,20 @@ Your proxy server is now running!
 
 ```
 src/
-├── wags/                       # WAGS middleware framework
-│   ├── cli/                   # CLI commands using cyclopts
-│   │   └── main.py           # wags CLI entry point
-│   ├── middleware/            # Middleware implementations
-│   │   ├── base.py           # Base middleware abstract class
-│   │   ├── elicitation.py    # Parameter elicitation middleware
-│   │   ├── roots.py          # Access control middleware
-│   │   └── todo.py           # Task tracking server
-│   ├── utils/                 # Utility modules
-│   │   ├── config.py         # Configuration management
-│   │   ├── quickstart.py     # Quickstart command implementation
-│   │   ├── server.py         # Server discovery and running
-│   │   └── server_template.py    # Scaffold generation
-│   └── proxy.py              # Proxy server for middleware chain
-│
+└── wags/                     # WAGS middleware framework
+    ├── cli/                  # CLI commands using cyclopts
+    │   └── main.py           # wags CLI entry point
+    ├── middleware/           # Middleware implementations
+    │   ├── base.py           # Base middleware abstract class
+    │   ├── elicitation.py    # Parameter elicitation middleware
+    │   ├── roots.py          # Access control middleware
+    │   └── todo.py           # Task tracking server
+    ├── utils/                # Utility modules
+    │   ├── config.py         # Configuration management
+    │   ├── quickstart.py     # Quickstart command implementation
+    │   ├── server.py         # Server discovery and running
+    │   └── server_template.py    # Scaffold generation
+    └── proxy.py              # Proxy server for middleware chain
 ```
 
 ## Features
