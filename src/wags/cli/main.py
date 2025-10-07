@@ -53,11 +53,59 @@ def run(
         sys.exit(1)
 
 
+def _check_overwrite(file_path: Path, force: bool) -> bool:
+    """Check if file can be overwritten."""
+    if not file_path.exists():
+        return True
+    if force:
+        console.print(f"[yellow]Overwriting existing file:[/yellow] {file_path}")
+        return True
+    from rich.prompt import Confirm
+
+    return Confirm.ask(f"File {file_path} already exists. Overwrite?", default=False)
+
+
+def _generate_handlers_file(handlers_path: Path, class_name: str, tools: list, force: bool) -> None:
+    """Generate and write handlers file."""
+    from wags.utils.handlers_generator import generate_handlers_class
+
+    if _check_overwrite(handlers_path, force):
+        console.print("[cyan]Generating handlers file...[/cyan]")
+        handlers_code = generate_handlers_class(class_name, tools)
+        handlers_path.write_text(handlers_code)
+        console.print(f"[green]Created:[/green] {handlers_path}")
+    else:
+        console.print("[yellow]Skipped handlers file[/yellow]")
+
+
+def _generate_main_file(
+    main_path: Path, handlers_file: str, class_name: str, config_name: str, force: bool
+) -> None:
+    """Generate and write main file."""
+    from jinja2 import Template
+
+    if _check_overwrite(main_path, force):
+        console.print("[cyan]Generating main file...[/cyan]")
+        templates_dir = Path(__file__).parent.parent / "templates"
+        with open(templates_dir / "main.py.j2") as f:
+            template = Template(f.read())
+        handlers_module = Path(handlers_file).stem
+        main_code = template.render(
+            handlers_module=handlers_module,
+            class_name=class_name,
+            config_filename=config_name,
+            server_name="wags-proxy",
+        )
+        main_path.write_text(main_code)
+        console.print(f"[green]Created:[/green] {main_path}")
+    else:
+        console.print("[yellow]Skipped main file[/yellow]")
+
+
 @app.command
 def quickstart(
     config: Path,
     *,
-    server_name: str | None = None,
     handlers_file: str | None = None,
     main_file: str | None = None,
     class_name: str | None = None,
@@ -69,7 +117,6 @@ def quickstart(
 
     Args:
         config: Path to MCP config.json file
-        server_name: Name of the server in config (defaults to first server)
         handlers_file: Output path for handlers file (defaults to handlers.py)
         main_file: Output path for main file (defaults to main.py)
         class_name: Name for the handlers class (defaults to auto-generated)
@@ -77,45 +124,47 @@ def quickstart(
         only_main: Only generate main file
         force: Overwrite existing files without asking
     """
-    from wags.utils.quickstart import run_quickstart
+    from wags.utils.config import load_config
+    from wags.utils.handlers_generator import introspect_server
 
     try:
-        asyncio.run(
-            run_quickstart(
-                config_path=config,
-                server_name=server_name,
-                handlers_file=handlers_file,
-                main_file=main_file,
-                class_name=class_name,
-                only_handlers=only_handlers,
-                only_main=only_main,
-                force=force,
+        config_dir = config.parent
+        handlers_file = handlers_file or "handlers.py"
+        main_file = main_file or "main.py"
+        handlers_path = config_dir / handlers_file
+        main_path = config_dir / main_file
+
+        if only_main and only_handlers:
+            console.print("[red]Error: Cannot specify both --only-handlers and --only-main[/red]")
+            sys.exit(1)
+
+        if only_main and not handlers_path.exists():
+            console.print(
+                f"[red]Error: Handlers file {handlers_path} does not exist. "
+                "Generate it first or specify --handlers-file[/red]"
             )
-        )
+            sys.exit(1)
+
+        load_config(config)
+
+        tools = []
+        if not only_main:
+            console.print("[cyan]Connecting to MCP server to discover tools...[/cyan]")
+            tools = asyncio.run(introspect_server(config))
+            console.print(f"[green]Found {len(tools)} tools[/green]")
+
+        class_name = class_name or "Handlers"
+
+        if not only_main:
+            _generate_handlers_file(handlers_path, class_name, tools, force)
+
+        if not only_handlers:
+            _generate_main_file(main_path, handlers_file, class_name, config.name, force)
+
+        console.print("\n[bold green]✅ Quickstart complete![/bold green]")
+
     except Exception as e:
         logger.error(f"Failed to run quickstart: {e}")
-        sys.exit(1)
-
-
-@app.command
-def init(
-    name: str,
-    *,
-    path: Path | None = None,
-) -> None:
-    """Initialize a new server with middleware scaffold.
-
-    Args:
-        name: Name for the new server
-        path: Directory to create server in (defaults to servers/{name})
-    """
-    from wags.utils.server_template import create_server_scaffold
-
-    try:
-        create_server_scaffold(name, path)
-        console.print(f"[green]✓[/green] Created server scaffold at {path or f'servers/{name}'}")
-    except Exception as e:
-        logger.error(f"Failed to initialize server: {e}")
         sys.exit(1)
 
 

@@ -54,6 +54,12 @@ select = [
 ]
 ignore = ["PERF203", "PLC0415", "PLR0402"]
 
+[tool.ruff.lint.per-file-ignores]
+# Handler methods have many required parameters matching API signatures
+"servers/*/handlers.py" = ["PLR0913"]
+# CLI commands naturally have many parameters (one per flag/option)
+"src/wags/cli/main.py" = ["PLR0913"]
+
 [tool.ruff.lint.pylint]
 allow-magic-value-types = ["bytes", "float", "int", "str"]
 
