@@ -180,7 +180,7 @@ from {handlers_module} import {class_name}
 
 # Load configuration
 config = load_config(Path(__file__).parent / "{config_path.name}")
-mcp = create_proxy(config, server_name="{server_name or "wags-proxy"}")
+mcp = create_proxy(config, server_name="{server_name or 'wags-proxy'}")
 
 # Initialize handler stubs
 handlers = {class_name}()
