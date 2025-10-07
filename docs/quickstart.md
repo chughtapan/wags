@@ -42,6 +42,9 @@ FastMCP version x.x.x
 
 <span class="wags-brand">wags</span> provides the `quickstart` command to generate proxy servers that wrap existing MCP servers with middleware.
 
+!!! tip "Complete Example Available"
+    The complete implementation for the [GitHub MCP Server](https://github.com/github/github-mcp-server) is in `servers/github/`.
+
 ### Step 1: Prepare Your MCP Server Configuration
 
 Create a configuration file that describes your MCP server. Save it as `config.json`:
