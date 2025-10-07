@@ -2,18 +2,22 @@
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 
 def _get_data_dir() -> Path:
     """Get BFCL data directory from local submodule."""
-    return (
-        Path(__file__).parent
-        / "data"
-        / "berkeley-function-call-leaderboard"
-        / "bfcl_eval"
-        / "data"
-    )
+    return Path(__file__).parent / "data" / "berkeley-function-call-leaderboard" / "bfcl_eval" / "data"
+
+
+def _parse_jsonl_entry(line: str) -> dict[str, Any]:
+    """Parse a JSONL line into a dictionary."""
+    return cast(dict[str, Any], json.loads(line))
+
+
+def _parse_json_nested_list(value: Any) -> list[list[str]]:
+    """Parse a JSON value as nested list of strings."""
+    return cast(list[list[str]], value)
 
 
 def load_test_entry(test_id: str) -> dict[str, Any]:
@@ -43,7 +47,7 @@ def load_test_entry(test_id: str) -> dict[str, Any]:
         for file_path in data_dir.glob("BFCL_v4_*.json"):
             with open(file_path) as f:
                 for line in f:
-                    entry = json.loads(line)
+                    entry = _parse_jsonl_entry(line)
                     if entry["id"] == test_id:
                         return entry
         raise ValueError(f"Test {test_id} not found in any BFCL data file")
@@ -51,7 +55,7 @@ def load_test_entry(test_id: str) -> dict[str, Any]:
     with open(data_file) as f:
         for line in f:
             if line.strip():
-                entry = json.loads(line)
+                entry = _parse_jsonl_entry(line)
                 if entry["id"] == test_id:
                     return entry
 
@@ -85,17 +89,17 @@ def load_ground_truth(test_id: str) -> list[list[str]]:
         for file_path in answer_dir.glob("BFCL_v4_*.json"):
             with open(file_path) as f:
                 for line in f:
-                    entry = json.loads(line)
+                    entry = _parse_jsonl_entry(line)
                     if entry["id"] == test_id:
-                        return entry["ground_truth"]
+                        return _parse_json_nested_list(entry["ground_truth"])
         raise ValueError(f"Ground truth for {test_id} not found")
 
     with open(gt_file) as f:
         for line in f:
             if line.strip():
-                entry = json.loads(line)
+                entry = _parse_jsonl_entry(line)
                 if entry["id"] == test_id:
-                    return entry["ground_truth"]
+                    return _parse_json_nested_list(entry["ground_truth"])
 
     raise ValueError(f"Ground truth for {test_id} not found in {gt_file}")
 

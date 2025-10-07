@@ -1,5 +1,7 @@
 """Unit tests for server template utilities."""
 
+from pathlib import Path
+
 import pytest
 
 from wags.utils.server_template import create_server_scaffold
@@ -8,7 +10,7 @@ from wags.utils.server_template import create_server_scaffold
 class TestCreateServerScaffold:
     """Tests for create_server_scaffold function."""
 
-    def test_creates_expected_file_structure(self, tmp_path):
+    def test_creates_expected_file_structure(self, tmp_path: Path) -> None:
         """Test scaffold creates all expected files."""
         with pytest.MonkeyPatch.context() as m:
             m.chdir(tmp_path)
@@ -21,7 +23,7 @@ class TestCreateServerScaffold:
             assert (server_dir / "handlers.py").exists()
             assert (server_dir / "main.py").exists()
 
-    def test_uses_custom_path(self, tmp_path):
+    def test_uses_custom_path(self, tmp_path: Path) -> None:
         """Test scaffold works with custom path."""
         custom_path = tmp_path / "custom" / "location"
         create_server_scaffold("my-server", custom_path)
@@ -31,7 +33,7 @@ class TestCreateServerScaffold:
         assert (custom_path / "handlers.py").exists()
         assert (custom_path / "main.py").exists()
 
-    def test_generates_correct_class_names(self, tmp_path):
+    def test_generates_correct_class_names(self, tmp_path: Path) -> None:
         """Test that generated files contain correct class names."""
         create_server_scaffold("test-server", tmp_path)
 
@@ -46,7 +48,7 @@ class TestCreateServerScaffold:
         assert "RequiresElicitation" in handlers_content
         assert "async def" in handlers_content
 
-    def test_different_names_generate_correct_classes(self, tmp_path):
+    def test_different_names_generate_correct_classes(self, tmp_path: Path) -> None:
         """Test class name generation for various server names."""
         test_cases = [
             ("simple", "SimpleHandlers"),

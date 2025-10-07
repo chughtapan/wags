@@ -18,7 +18,7 @@ logger = get_logger("wags.proxy")
 class _WagsProxy(FastMCPProxy):
     """FastMCP proxy with notification support. Private - use create_proxy()."""
 
-    def __init__(self, *args, target_server: FastMCP | None = None, **kwargs):
+    def __init__(self, *args: Any, target_server: FastMCP | None = None, **kwargs: Any) -> None:
         # Inherit instructions from target server if available
         if target_server and target_server.instructions and "instructions" not in kwargs:
             kwargs["instructions"] = target_server.instructions
@@ -26,7 +26,7 @@ class _WagsProxy(FastMCPProxy):
         super().__init__(*args, **kwargs)
         self._register_notification_handlers()
 
-    def _register_notification_handlers(self):
+    def _register_notification_handlers(self) -> None:
         async def handle_roots_list_changed(
             notify: mcp.types.RootsListChangedNotification,
         ) -> None:
@@ -43,10 +43,7 @@ class _WagsProxy(FastMCPProxy):
 
             await self._apply_middleware(context, base_handler)
 
-        self._mcp_server.notification_handlers[
-            mcp.types.RootsListChangedNotification
-        ] = handle_roots_list_changed
-
+        self._mcp_server.notification_handlers[mcp.types.RootsListChangedNotification] = handle_roots_list_changed
 
     async def _apply_middleware(
         self,
@@ -57,34 +54,26 @@ class _WagsProxy(FastMCPProxy):
         chain = call_next
         for mw in reversed(self.middleware):
             chain = partial(mw, call_next=chain)
-        
+
         return await chain(context)
 
 
 @overload
 def create_proxy(
-    server_or_config: dict[str, Any],
-    server_name: str = "wags-proxy",
-    enable_todos: bool = False
+    server_or_config: dict[str, Any], server_name: str = "wags-proxy", enable_todos: bool = False
 ) -> FastMCP:
     """Create a proxy from a server configuration dict."""
     ...
 
 
 @overload
-def create_proxy(
-    server_or_config: FastMCP,
-    server_name: str = "wags-proxy",
-    enable_todos: bool = False
-) -> FastMCP:
+def create_proxy(server_or_config: FastMCP, server_name: str = "wags-proxy", enable_todos: bool = False) -> FastMCP:
     """Create a proxy from an existing FastMCP server instance."""
     ...
 
 
 def create_proxy(
-    server_or_config: dict[str, Any] | FastMCP,
-    server_name: str = "wags-proxy",
-    enable_todos: bool = False
+    server_or_config: dict[str, Any] | FastMCP, server_name: str = "wags-proxy", enable_todos: bool = False
 ) -> FastMCP:
     """Create a proxy server with middleware support.
 
@@ -114,13 +103,9 @@ def create_proxy(
     Raises:
         NotImplementedError: If enable_todos=True and target server has instructions
     """
-    base_client: ProxyClient = ProxyClient(server_or_config, name=f"{server_name}-client")
+    base_client: ProxyClient[Any] = ProxyClient(server_or_config, name=f"{server_name}-client")
     target = server_or_config if isinstance(server_or_config, FastMCP) else None
-    proxy = _WagsProxy(
-        client_factory=lambda: base_client.new(),
-        name=server_name,
-        target_server=target
-    )
+    proxy = _WagsProxy(client_factory=lambda: base_client.new(), name=server_name, target_server=target)
 
     if enable_todos:
         _enable_todos(proxy)
@@ -133,8 +118,7 @@ def _enable_todos(proxy: FastMCP) -> None:
     # Check for instruction conflict
     if proxy.instructions:
         raise NotImplementedError(
-            "Instruction merging not yet supported. "
-            "Target server must not have instructions when enable_todos=True."
+            "Instruction merging not yet supported. Target server must not have instructions when enable_todos=True."
         )
 
     # Mount todo server and set instructions

@@ -3,6 +3,7 @@
 import json
 
 import pytest
+from fast_agent import FastAgent
 
 from tests.utils.fastagent_helpers import MessageSerializer
 
@@ -16,7 +17,7 @@ class TestTodoServer:
 
     @pytest.mark.asyncio
     @pytest.mark.verified_models(["gpt-4o", "gpt-4.1"])
-    async def test_todo_workflow_with_file_operations(self, fast_agent, model):
+    async def test_todo_workflow_with_file_operations(self, fast_agent: FastAgent, model: str) -> None:
         """Verify TodoServer tracks tasks during file operations.
 
         Verified models: gpt-4o, gpt-4.1
@@ -31,7 +32,7 @@ class TestTodoServer:
             servers=["mock-files-todo"],
             instruction="You are a helpful agent.\n\n{{serverInstructions}}",
         )
-        async def test_function():
+        async def test_function() -> None:
             async with fast.run() as agent:
                 await agent.send(
                     "Move 'final_report.pdf' to 'temp' directory. "

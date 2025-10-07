@@ -40,8 +40,8 @@ class StructuredEventLogger:
             event: Event dictionary to write
         """
         event["timestamp"] = datetime.now().isoformat()
-        with open(self.log_path, 'a') as f:
-            f.write(json.dumps(event) + '\n')
+        with open(self.log_path, "a") as f:
+            f.write(json.dumps(event) + "\n")
 
     def log_turn(self, turn_id: int, phase: str, user_message: str | None = None) -> None:
         """
@@ -52,17 +52,12 @@ class StructuredEventLogger:
             phase: Either "start" or "end"
             user_message: The user's message (only for start phase)
         """
-        event = {
-            "type": "turn",
-            "turn_id": turn_id,
-            "phase": phase
-        }
+        event = {"type": "turn", "turn_id": turn_id, "phase": phase}
         if user_message and phase == "start":
             event["user_message"] = user_message
         self._write_event(event)
 
-    def log_tool_call(self, turn_id: int, tool_name: str,
-                      arguments: dict[str, Any], tool_id: str) -> None:
+    def log_tool_call(self, turn_id: int, tool_name: str, arguments: dict[str, Any], tool_id: str) -> None:
         """
         Log a tool call with full details.
 
@@ -77,12 +72,11 @@ class StructuredEventLogger:
             "turn_id": turn_id,
             "tool_name": tool_name,
             "arguments": arguments,
-            "tool_id": tool_id
+            "tool_id": tool_id,
         }
         self._write_event(event)
 
-    def log_tool_result(self, turn_id: int, tool_id: str,
-                        result: Any, is_error: bool = False) -> None:
+    def log_tool_result(self, turn_id: int, tool_id: str, result: Any, is_error: bool = False) -> None:
         """
         Log a tool result.
 
@@ -97,7 +91,7 @@ class StructuredEventLogger:
             "turn_id": turn_id,
             "tool_id": tool_id,
             "result": str(result) if not isinstance(result, (dict, list)) else result,
-            "is_error": is_error
+            "is_error": is_error,
         }
         self._write_event(event)
 
@@ -109,15 +103,10 @@ class StructuredEventLogger:
             turn_id: The turn number
             text: The assistant's text response
         """
-        event = {
-            "type": "assistant_text",
-            "turn_id": turn_id,
-            "text": text
-        }
+        event = {"type": "assistant_text", "turn_id": turn_id, "text": text}
         self._write_event(event)
 
-    def log_elicitation(self, function_name: str, decision: str,
-                        params: dict[str, Any] | None = None) -> None:
+    def log_elicitation(self, function_name: str, decision: str, params: dict[str, Any] | None = None) -> None:
         """
         Log elicitation decision with structure.
 
@@ -126,11 +115,7 @@ class StructuredEventLogger:
             decision: Either "accepted" or "declined"
             params: Parameters if accepted, None if declined
         """
-        event = {
-            "type": "elicitation",
-            "function": function_name,
-            "decision": decision
-        }
+        event: dict[str, Any] = {"type": "elicitation", "function": function_name, "decision": decision}
         if params and decision == "accepted":
             event["params"] = params
         self._write_event(event)
@@ -142,20 +127,24 @@ class StructuredEventLogger:
         Args:
             messages: List of messages to summarize
         """
-        summary = {
-            "type": "summary",
-            "total_messages": len(messages),
-            "role_counts": {},
-            "tool_call_count": 0,
-            "tool_result_count": 0
-        }
+        role_counts: dict[str, int] = {}
+        tool_call_count = 0
+        tool_result_count = 0
 
         for msg in messages:
             role = str(msg.role)
-            summary["role_counts"][role] = summary["role_counts"].get(role, 0) + 1
-            if hasattr(msg, 'tool_calls') and msg.tool_calls:
-                summary["tool_call_count"] += len(msg.tool_calls)
-            if hasattr(msg, 'tool_results') and msg.tool_results:
-                summary["tool_result_count"] += len(msg.tool_results)
+            role_counts[role] = role_counts.get(role, 0) + 1
+            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                tool_call_count += len(msg.tool_calls)
+            if hasattr(msg, "tool_results") and msg.tool_results:
+                tool_result_count += len(msg.tool_results)
+
+        summary: dict[str, Any] = {
+            "type": "summary",
+            "total_messages": len(messages),
+            "role_counts": role_counts,
+            "tool_call_count": tool_call_count,
+            "tool_result_count": tool_result_count,
+        }
 
         self._write_event(summary)

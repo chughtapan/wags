@@ -10,7 +10,7 @@ from fastmcp.utilities.logging import get_logger
 logger = get_logger("wags.utils.server")
 
 
-async def run_server(server_path: Path):
+async def run_server(server_path: Path) -> None:
     """Run a server directly as a Python script.
 
     Args:
@@ -29,11 +29,7 @@ async def run_server(server_path: Path):
     logger.info(f"Running server from {server_path}")
 
     # Run the server script directly with proper environment
-    result = subprocess.run(
-        [sys.executable, str(main_path)],
-        check=False, cwd=str(server_path),
-        env=os.environ.copy()
-    )
+    result = subprocess.run([sys.executable, str(main_path)], check=False, cwd=str(server_path), env=os.environ.copy())
 
     if result.returncode != 0:
         raise RuntimeError(f"Server exited with code {result.returncode}")

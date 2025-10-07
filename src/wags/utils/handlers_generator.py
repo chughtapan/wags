@@ -161,8 +161,8 @@ async def generate_handlers_stub(
     config_path: Path,
     server_name: str | None = None,
     output_path: Path | None = None,
-    class_name: str | None = None
-):
+    class_name: str | None = None,
+) -> None:
     """Generate handlers stub from MCP server (for CLI usage)."""
     config = load_config(config_path)
 

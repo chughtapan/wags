@@ -1,5 +1,6 @@
 """Tests for elicitation middleware."""
 
+from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -8,32 +9,34 @@ from fastmcp.server.elicitation import AcceptedElicitation
 from fastmcp.server.middleware.middleware import MiddlewareContext
 from mcp.types import CallToolRequestParams
 
-from src.wags.middleware.elicitation import ElicitationMiddleware, RequiresElicitation
+from wags.middleware.elicitation import ElicitationMiddleware, RequiresElicitation
 
 from .conftest import MockHandlers, Priority
 
 
 @pytest.mark.asyncio
-async def test_middleware_registration():
+async def test_middleware_registration() -> None:
     """Test that tool handlers are discoverable."""
     handlers = MockHandlers()
     middleware = ElicitationMiddleware(handlers=handlers)
 
     # Should be able to get tool handlers
     from mcp.types import CallToolRequestParams
+
     assert middleware.get_tool_handler(CallToolRequestParams(name="simple_tool", arguments={})) is not None
     assert middleware.get_tool_handler(CallToolRequestParams(name="string_elicitation_tool", arguments={})) is not None
     assert middleware.get_tool_handler(CallToolRequestParams(name="no_elicitation_tool", arguments={})) is not None
 
 
 @pytest.mark.asyncio
-async def test_get_tool_handler():
+async def test_get_tool_handler() -> None:
     """Test getting tool handler from request."""
     handlers = MockHandlers()
     middleware = ElicitationMiddleware(handlers=handlers)
 
     # Test existing handler
     from mcp.types import CallToolRequestParams
+
     request = CallToolRequestParams(name="simple_tool", arguments={})
     handler = middleware.get_tool_handler(request)
     assert handler is not None
@@ -46,7 +49,7 @@ async def test_get_tool_handler():
 
 
 @pytest.mark.asyncio
-async def test_single_elicitation_with_mock_context():
+async def test_single_elicitation_with_mock_context() -> None:
     """Test that multiple fields are elicited in a single call."""
     handlers = MockHandlers()
     middleware = ElicitationMiddleware(handlers=handlers)
@@ -66,13 +69,13 @@ async def test_single_elicitation_with_mock_context():
         name="simple_tool",
         arguments={"name": "test"},  # description and priority not provided
     )
-    context = MiddlewareContext(message=message, fastmcp_context=mock_fastmcp_context, method="tools/call")
+    ctx = MiddlewareContext(message=message, fastmcp_context=mock_fastmcp_context, method="tools/call")
 
     # Create mock call_next that returns the arguments
-    async def call_next(ctx):
-        return ctx.message.arguments
+    async def mock_next(context: MiddlewareContext[CallToolRequestParams]) -> Any:
+        return context.message.arguments
 
-    result = await middleware.on_call_tool(context, call_next)
+    result = await middleware.on_call_tool(ctx, mock_next)
 
     # Should have elicited both description and priority in ONE call
     assert result["description"] == "short"
@@ -84,45 +87,45 @@ async def test_single_elicitation_with_mock_context():
 
 
 @pytest.mark.asyncio
-async def test_passthrough_unregistered():
+async def test_passthrough_unregistered() -> None:
     """Test that unregistered tools pass through."""
     handlers = MockHandlers()
     middleware = ElicitationMiddleware(handlers=handlers)
 
     # Create middleware context for unknown tool
     message = CallToolRequestParams(name="unknown_tool", arguments={"arg1": "value1", "arg2": "value2"})
-    context = MiddlewareContext(message=message, method="tools/call")
+    ctx = MiddlewareContext(message=message, method="tools/call")
 
     # Mock call_next to return the arguments
-    async def call_next(ctx):
-        return ctx.message.arguments
+    async def call_next(context: MiddlewareContext[CallToolRequestParams]) -> Any:
+        return context.message.arguments
 
-    result = await middleware.on_call_tool(context, call_next)
+    result = await middleware.on_call_tool(ctx, call_next)
 
     assert result == message.arguments  # Should pass through unchanged
 
 
 @pytest.mark.asyncio
-async def test_handler_without_elicitation():
+async def test_handler_without_elicitation() -> None:
     """Test handler without any elicitation annotations."""
     handlers = MockHandlers()
     middleware = ElicitationMiddleware(handlers=handlers)
 
     # Create middleware context
     message = CallToolRequestParams(name="no_elicitation_tool", arguments={"value": "test_value"})
-    context = MiddlewareContext(message=message, method="tools/call")
+    ctx = MiddlewareContext(message=message, method="tools/call")
 
     # Mock call_next
-    async def call_next(ctx):
-        return ctx.message.arguments
+    async def call_next(context: MiddlewareContext[CallToolRequestParams]) -> Any:
+        return context.message.arguments
 
-    result = await middleware.on_call_tool(context, call_next)
+    result = await middleware.on_call_tool(ctx, call_next)
 
     assert result["value"] == "test_value"
 
 
 @pytest.mark.asyncio
-async def test_passthrough_without_context():
+async def test_passthrough_without_context() -> None:
     """Test that middleware passes through when no FastMCP context."""
     handlers = MockHandlers()
     middleware = ElicitationMiddleware(handlers=handlers)
@@ -132,13 +135,13 @@ async def test_passthrough_without_context():
         name="simple_tool",
         arguments={"name": "test", "description": "original", "priority": Priority.LOW},
     )
-    context = MiddlewareContext(message=message, fastmcp_context=None, method="tools/call")
+    ctx = MiddlewareContext(message=message, fastmcp_context=None, method="tools/call")
 
     # Mock call_next
-    async def call_next(ctx):
-        return ctx.message.arguments
+    async def call_next(context: MiddlewareContext[CallToolRequestParams]) -> Any:
+        return context.message.arguments
 
-    result = await middleware.on_call_tool(context, call_next)
+    result = await middleware.on_call_tool(ctx, call_next)
 
     # Should pass through unchanged when no context
     assert result["name"] == "test"
@@ -147,7 +150,7 @@ async def test_passthrough_without_context():
 
 
 @pytest.mark.asyncio
-async def test_string_elicitation():
+async def test_string_elicitation() -> None:
     """Test open-ended string elicitation."""
     handlers = MockHandlers()
     middleware = ElicitationMiddleware(handlers=handlers)
@@ -165,12 +168,12 @@ async def test_string_elicitation():
         name="string_elicitation_tool",
         arguments={"value": "test"},  # notes not provided
     )
-    context = MiddlewareContext(message=message, fastmcp_context=mock_fastmcp_context, method="tools/call")
+    ctx = MiddlewareContext(message=message, fastmcp_context=mock_fastmcp_context, method="tools/call")
 
-    async def call_next(ctx):
-        return ctx.message.arguments
+    async def call_next(context: MiddlewareContext[CallToolRequestParams]) -> Any:
+        return context.message.arguments
 
-    result = await middleware.on_call_tool(context, call_next)
+    result = await middleware.on_call_tool(ctx, call_next)
 
     assert result["value"] == "test"
     assert result["notes"] == "These are my notes"
@@ -180,7 +183,7 @@ async def test_string_elicitation():
 # Test for multiple passes removed - no longer using pass system
 
 
-def test_requires_elicitation_type():
+def test_requires_elicitation_type() -> None:
     """Test RequiresElicitation annotation type."""
     # Test valid creation
     re = RequiresElicitation(prompt="Choose format")
@@ -192,30 +195,30 @@ def test_requires_elicitation_type():
 
 
 @pytest.mark.asyncio
-async def test_no_elicitation_capability_skips_elicitation():
+async def test_no_elicitation_capability_skips_elicitation() -> None:
     """Test that clients without elicitation capability skip elicitation."""
     handlers = MockHandlers()
     middleware = ElicitationMiddleware(handlers=handlers)
-    
+
     # Create context without elicitation capability
     message = CallToolRequestParams(
         name="string_elicitation_tool",
-        arguments={"value": "test"}  # notes not provided, would normally trigger elicitation
+        arguments={"value": "test"},  # notes not provided, would normally trigger elicitation
     )
-    
+
     # Mock a context with no elicitation capability
     mock_fastmcp_context = Mock()
     mock_session = Mock()
     mock_client_params = Mock()
     mock_capabilities = Mock()
     mock_capabilities.elicitation = None  # No elicitation capability
-    
+
     mock_client_params.capabilities = mock_capabilities
     mock_session.client_params = mock_client_params
     mock_fastmcp_context.session = mock_session
-    
+
     context = MiddlewareContext(message=message, fastmcp_context=mock_fastmcp_context)
-    
+
     # Should pass through without elicitation
     handler = handlers.string_elicitation_tool
     result = await middleware.handle_on_tool_call(context, handler)

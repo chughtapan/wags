@@ -1,51 +1,50 @@
 """Pytest configuration and fixtures for evaluation tests."""
 
+import asyncio
+from collections.abc import Generator
 from pathlib import Path
+from typing import cast
 
 import pytest
 
 
 @pytest.fixture(scope="session")
-def event_loop_policy():
+def event_loop_policy() -> asyncio.AbstractEventLoopPolicy:
     """Configure asyncio for limited concurrency."""
-    import asyncio
-
     return asyncio.DefaultEventLoopPolicy()
 
 
 @pytest.fixture
-def model(request):
+def model(request: pytest.FixtureRequest) -> str:
     """Model from CLI or default."""
-    return request.config.getoption("--model")
+    return cast(str, request.config.getoption("--model"))
 
 
 @pytest.fixture
-def temperature(request):
+def temperature(request: pytest.FixtureRequest) -> float:
     """Temperature from CLI or default."""
-    return request.config.getoption("--temperature")
+    return cast(float, request.config.getoption("--temperature"))
 
 
 @pytest.fixture
-def output_dir(request):
+def output_dir(request: pytest.FixtureRequest) -> Path:
     """Output directory for test results."""
     path = Path(request.config.getoption("--output-dir"))
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser: pytest.Parser) -> None:
     """Add custom CLI options."""
     parser.addoption("--model", default="gpt-4o-mini", help="Model to use")
     parser.addoption("--temperature", default=0.001, type=float, help="Temperature for LLM (default: 0.001)")
     parser.addoption("--output-dir", default="outputs", help="Output directory for results")
     parser.addoption("--validate-only", action="store_true", help="Only validate existing logs")
-    parser.addoption(
-        "--log-dir", default="outputs/raw", help="Directory with logs (for validate mode)"
-    )
+    parser.addoption("--log-dir", default="outputs/raw", help="Directory with logs (for validate mode)")
     parser.addoption("--max-workers", default=4, type=int, help="Max concurrent tests (default: 4)")
 
 
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config) -> None:
     """Register custom markers.
 
     Custom markers:
@@ -54,13 +53,12 @@ def pytest_configure(config):
                       are converted to xfail (expected failure) instead of hard failures.
     """
     config.addinivalue_line(
-        "markers",
-        "verified_models(models): mark test to only require passing with specified models"
+        "markers", "verified_models(models): mark test to only require passing with specified models"
     )
 
 
 @pytest.hookimpl(hookwrapper=True)
-def pytest_runtest_makereport(item, call):
+def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]) -> Generator[None]:
     """Handle verified_models marker by converting failures to xfail for unverified models.
 
     This hook intercepts test results after execution. When a test marked with

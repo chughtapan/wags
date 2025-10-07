@@ -1,13 +1,14 @@
 """Pytest configuration for todo e2e tests."""
 
 import os
+from collections.abc import Generator
 
 import pytest
 from fast_agent import FastAgent
 
 
 @pytest.fixture
-def fast_agent(request):
+def fast_agent(request: pytest.FixtureRequest) -> Generator[FastAgent]:
     """Create a FastAgent instance with todo test configuration.
 
     This fixture:

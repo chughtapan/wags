@@ -8,7 +8,7 @@ from wags.middleware.todo import TodoItem, TodoServer
 class TestTodoServer:
     """Test TodoServer initialization and configuration."""
 
-    def test_server_creation(self):
+    def test_server_creation(self) -> None:
         """Test that TodoServer can be created."""
         server = TodoServer()
         assert server.name == "todo-server"
@@ -16,14 +16,14 @@ class TestTodoServer:
         assert "TodoWrite" in server.instructions
         assert "Task Management" in server.instructions
 
-    def test_server_has_instructions(self):
+    def test_server_has_instructions(self) -> None:
         """Test that instructions are set."""
         server = TodoServer()
         assert server.instructions
         assert len(server.instructions) > 100  # Should be substantial
 
     @pytest.mark.asyncio
-    async def test_todo_write_basic(self):
+    async def test_todo_write_basic(self) -> None:
         """Test basic TodoWrite functionality."""
         server = TodoServer()
 
@@ -50,7 +50,7 @@ class TestTodoServer:
         assert "2 todos" in result["message"]
 
     @pytest.mark.asyncio
-    async def test_todo_read(self):
+    async def test_todo_read(self) -> None:
         """Test TodoRead functionality."""
         server = TodoServer()
 
@@ -61,9 +61,7 @@ class TestTodoServer:
 
         # Write some todos
         todos = [
-            TodoItem(
-                content="Task 1", status="pending"
-            ),
+            TodoItem(content="Task 1", status="pending"),
             TodoItem(
                 content="Task 2",
                 status="in_progress",
@@ -80,7 +78,7 @@ class TestTodoServer:
         assert result["todos"][1]["status"] == "in_progress"
 
     @pytest.mark.asyncio
-    async def test_todo_state_updates(self):
+    async def test_todo_state_updates(self) -> None:
         """Test that todo state updates correctly."""
         server = TodoServer()
 
@@ -89,37 +87,25 @@ class TestTodoServer:
         todo_read = tools["TodoRead"]
 
         # Initial state
-        todos_v1 = [
-            TodoItem(
-                content="Task", status="pending"
-            )
-        ]
+        todos_v1 = [TodoItem(content="Task", status="pending")]
         await todo_write.fn(todos=todos_v1)
 
         # Update to in_progress
-        todos_v2 = [
-            TodoItem(
-                content="Task", status="in_progress"
-            )
-        ]
+        todos_v2 = [TodoItem(content="Task", status="in_progress")]
         await todo_write.fn(todos=todos_v2)
 
         result = await todo_read.fn()
         assert result["todos"][0]["status"] == "in_progress"
 
         # Update to completed
-        todos_v3 = [
-            TodoItem(
-                content="Task", status="completed"
-            )
-        ]
+        todos_v3 = [TodoItem(content="Task", status="completed")]
         await todo_write.fn(todos=todos_v3)
 
         result = await todo_read.fn()
         assert result["todos"][0]["status"] == "completed"
 
     @pytest.mark.asyncio
-    async def test_multiple_instances_isolated(self):
+    async def test_multiple_instances_isolated(self) -> None:
         """Test that multiple server instances have isolated state."""
         server1 = TodoServer()
         server2 = TodoServer()
@@ -153,7 +139,7 @@ class TestTodoServer:
         assert result2["todos"][0]["content"] == "Server 2 task"
 
     @pytest.mark.asyncio
-    async def test_in_progress_message(self):
+    async def test_in_progress_message(self) -> None:
         """Test that message includes in_progress task."""
         server = TodoServer()
 
@@ -161,15 +147,9 @@ class TestTodoServer:
         todo_write = tools["TodoWrite"]
 
         todos = [
-            TodoItem(
-                content="First", status="completed"
-            ),
-            TodoItem(
-                content="Second", status="in_progress"
-            ),
-            TodoItem(
-                content="Third", status="pending"
-            ),
+            TodoItem(content="First", status="completed"),
+            TodoItem(content="Second", status="in_progress"),
+            TodoItem(content="Third", status="pending"),
         ]
 
         result = await todo_write.fn(todos=todos)
@@ -177,7 +157,7 @@ class TestTodoServer:
         assert "In progress: Second" in result["message"]
 
     @pytest.mark.asyncio
-    async def test_no_in_progress_message(self):
+    async def test_no_in_progress_message(self) -> None:
         """Test message when no task is in_progress."""
         server = TodoServer()
 
@@ -185,12 +165,8 @@ class TestTodoServer:
         todo_write = tools["TodoWrite"]
 
         todos = [
-            TodoItem(
-                content="First", status="pending"
-            ),
-            TodoItem(
-                content="Second", status="pending"
-            ),
+            TodoItem(content="First", status="pending"),
+            TodoItem(content="Second", status="pending"),
         ]
 
         result = await todo_write.fn(todos=todos)
