@@ -12,7 +12,7 @@ The <span class="wags-brand">wags</span> toolkit is based on state-of-the-art re
 
 - **[Getting Started](quickstart.md)**
 
-    Install <span class="wags-brand">wags</span> and create your first <span class="wags-brand">wags</span> enhanced server in minutes
+    Install <span class="wags-brand">wags</span> and create your first <span class="wags-brand">wags</span> enhanced server in minutes. See [`servers/github/`](https://github.com/chughtapan/wags/tree/main/servers/github) for a complete example.
 
 - **[Middleware](middleware/overview.md)**
 
