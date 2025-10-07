@@ -163,12 +163,7 @@ class {class_name}:
     return code
 
 
-def generate_main_file(
-    config_path: Path,
-    handlers_module: str,
-    class_name: str,
-    server_name: str | None = None
-) -> str:
+def generate_main_file(config_path: Path, handlers_module: str, class_name: str, server_name: str | None = None) -> str:
     """Generate the main.py file for the proxy server."""
 
     # Determine import statement for handlers
@@ -207,7 +202,7 @@ if __name__ == "__main__":
     return template
 
 
-def resolve_server_name(config: dict, server_name: str | None = None) -> str:
+def resolve_server_name(config: dict[str, Any], server_name: str | None = None) -> str:
     """Resolve the server name from config."""
     if "mcpServers" not in config:
         raise ValueError("Config file must have 'mcpServers' section")
@@ -219,17 +214,18 @@ def resolve_server_name(config: dict, server_name: str | None = None) -> str:
     if server_name is None:
         if len(servers) > 1:
             raise ValueError(f"Multiple servers found, please specify one: {', '.join(servers.keys())}")
-        return next(iter(servers))
+        result: str = next(iter(servers))
+        return result
     elif server_name not in servers:
         raise ValueError(f"Server '{server_name}' not found. Available: {', '.join(servers.keys())}")
-    
+
     return server_name
 
 
 async def introspect_server(config_path: Path) -> list[Tool]:
     """Connect to MCP server and get its tools."""
     config = load_config(config_path)
-    
+
     client = Client(config)
     async with client:
         tools = await client.list_tools()
@@ -257,7 +253,7 @@ async def run_quickstart(
     only_handlers: bool = False,
     only_main: bool = False,
     force: bool = False,
-):
+) -> None:
     """Run the quickstart command to generate WAGS proxy files.
 
     Args:
@@ -292,14 +288,13 @@ async def run_quickstart(
     if only_main:
         if not handlers_path.exists():
             raise FileNotFoundError(
-                f"Handlers file {handlers_path} does not exist. "
-                "Generate it first or specify --handlers-file"
+                f"Handlers file {handlers_path} does not exist. Generate it first or specify --handlers-file"
             )
 
     # Load config and resolve server name
     config = load_config(config_path)
     server_name = resolve_server_name(config, server_name)
-    
+
     # Introspect server if we need to generate handlers
     tools: list[Tool] = []
     if generate_handlers:
@@ -329,12 +324,7 @@ async def run_quickstart(
     if generate_main:
         if check_file_exists(main_path, force):
             console.print("[cyan]Generating main file...[/cyan]")
-            main_code = generate_main_file(
-                config_path,
-                handlers_file,
-                class_name,
-                server_name or 'wags-proxy'
-            )
+            main_code = generate_main_file(config_path, handlers_file, class_name, server_name or "wags-proxy")
             main_path.write_text(main_code)
             console.print(f"[green]Created:[/green] {main_path}")
         else:

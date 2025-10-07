@@ -8,7 +8,7 @@ from jinja2 import Template
 logger = get_logger("wags.utils.server_template")
 
 
-def create_server_scaffold(name: str, path: Path | None = None):
+def create_server_scaffold(name: str, path: Path | None = None) -> None:
     """Create a new server scaffold with handlers template.
 
     Note: This does NOT create a config.json - users should provide their own.

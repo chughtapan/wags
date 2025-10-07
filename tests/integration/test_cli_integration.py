@@ -1,6 +1,7 @@
 """Integration tests for WAGS CLI workflow."""
 
 import json
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -13,7 +14,7 @@ from wags.utils.server_template import create_server_scaffold
 class TestCLIIntegration:
     """End-to-end tests for WAGS CLI workflow."""
 
-    def test_full_server_creation_workflow(self, tmp_path):
+    def test_full_server_creation_workflow(self, tmp_path: Path) -> None:
         """Test creating a new server from scratch."""
         # Change to temp directory
         with pytest.MonkeyPatch.context() as m:
@@ -32,15 +33,7 @@ class TestCLIIntegration:
             assert (server_path / "__init__.py").exists()
 
             # Step 2: Create config manually (no longer auto-created)
-            config = {
-                "mcpServers": {
-                    server_name: {
-                        "transport": "stdio",
-                        "command": "echo",
-                        "args": ["test"]
-                    }
-                }
-            }
+            config = {"mcpServers": {server_name: {"transport": "stdio", "command": "echo", "args": ["test"]}}}
             config_path = server_path / "config.json"
             config_path.write_text(json.dumps(config, indent=2))
 
@@ -57,19 +50,11 @@ class TestCLIIntegration:
             assert "ElicitationMiddleware(handlers=" in main_content
 
     @pytest.mark.asyncio
-    async def test_stub_generation_workflow(self, tmp_path):
+    async def test_stub_generation_workflow(self, tmp_path: Path) -> None:
         """Test generating handlers stubs from an MCP server."""
         # Create a mock config
         config_path = tmp_path / "test_config.json"
-        config_data = {
-            "mcpServers": {
-                "test-server": {
-                    "transport": "stdio",
-                    "command": "echo",
-                    "args": ["test"]
-                }
-            }
-        }
+        config_data = {"mcpServers": {"test-server": {"transport": "stdio", "command": "echo", "args": ["test"]}}}
         config_path.write_text(json.dumps(config_data))
 
         # Mock the Client to return test tools
@@ -79,24 +64,15 @@ class TestCLIIntegration:
                 description="Create a new item",
                 inputSchema={
                     "type": "object",
-                    "properties": {
-                        "name": {"type": "string"},
-                        "quantity": {"type": "integer"}
-                    },
-                    "required": ["name"]
-                }
+                    "properties": {"name": {"type": "string"}, "quantity": {"type": "integer"}},
+                    "required": ["name"],
+                },
             ),
             Tool(
                 name="delete_item",
                 description="Delete an item",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "string"}
-                    },
-                    "required": ["id"]
-                }
-            )
+                inputSchema={"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]},
+            ),
         ]
 
         with patch("wags.utils.handlers_generator.Client") as mock_client:
@@ -109,11 +85,9 @@ class TestCLIIntegration:
             # Generate stub
             output_path = tmp_path / "generated_handlers.py"
             from wags.utils.handlers_generator import generate_handlers_stub
+
             await generate_handlers_stub(
-                config_path,
-                server_name="test-server",
-                output_path=output_path,
-                class_name="TestGeneratedHandlers"
+                config_path, server_name="test-server", output_path=output_path, class_name="TestGeneratedHandlers"
             )
 
             # Verify generated code
@@ -137,7 +111,7 @@ class TestCLIIntegration:
             # No more @tool_handler decorator
             assert "@tool_handler" not in generated_content
 
-    def test_multiple_server_workflow(self, tmp_path):
+    def test_multiple_server_workflow(self, tmp_path: Path) -> None:
         """Test managing multiple servers."""
         with pytest.MonkeyPatch.context() as m:
             m.chdir(tmp_path)
@@ -158,7 +132,7 @@ class TestCLIIntegration:
                 assert f"class {class_name}" in handlers_content
 
     @pytest.mark.asyncio
-    async def test_config_with_env_vars(self, tmp_path):
+    async def test_config_with_env_vars(self, tmp_path: Path) -> None:
         """Test that environment variables are properly substituted."""
         import os
 
@@ -172,13 +146,7 @@ class TestCLIIntegration:
 
             config_data = {
                 "mcpServers": {
-                    "env-test": {
-                        "transport": "stdio",
-                        "command": "test",
-                        "env": {
-                            "API_KEY": "${TEST_API_KEY}"
-                        }
-                    }
+                    "env-test": {"transport": "stdio", "command": "test", "env": {"API_KEY": "${TEST_API_KEY}"}}
                 }
             }
 

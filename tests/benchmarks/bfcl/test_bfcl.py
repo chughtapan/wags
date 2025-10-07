@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -13,14 +14,14 @@ from tests.utils.fastagent_helpers import MessageSerializer
 from tests.utils.logger import StructuredEventLogger
 
 
-def _parse_question(question) -> str:
+def _parse_question(question: Any) -> str:
     """Parse question from various formats into a string."""
     if isinstance(question, list) and question:
-        return question[0] if isinstance(question[0], str) else question[0].get("content", "")
+        return question[0] if isinstance(question[0], str) else cast(str, question[0].get("content", ""))
     elif isinstance(question, str):
         return question
     elif isinstance(question, dict) and "content" in question:
-        return question["content"]
+        return cast(str, question["content"])
     return ""
 
 
@@ -43,13 +44,15 @@ async def _run_bfcl_test(test_id: str, model: str, temperature: float, output_di
 
     # Set environment variables BEFORE creating FastAgent
     test_dir = Path(__file__).parent
-    os.environ.update({
-        "DEFAULT_MODEL": model,
-        "TEMPERATURE": str(temperature),
-        "TEST_DATA_PATH": str(test_data_path.absolute()),
-        "TEST_ID": test_id,
-        "SERVER_SCRIPT_PATH": str(test_dir / "mcp_server.py"),
-    })
+    os.environ.update(
+        {
+            "DEFAULT_MODEL": model,
+            "TEMPERATURE": str(temperature),
+            "TEST_DATA_PATH": str(test_data_path.absolute()),
+            "TEST_ID": test_id,
+            "SERVER_SCRIPT_PATH": str(test_dir / "mcp_server.py"),
+        }
+    )
 
     # Create FastAgent after environment variables are set
     config_path = test_dir / "fastagent.config.yaml"
@@ -64,7 +67,7 @@ async def _run_bfcl_test(test_id: str, model: str, temperature: float, output_di
         instruction=instruction_path,
         elicitation_handler=elicitation_handler,
     )
-    async def run_test():
+    async def run_test() -> Path:
         async with agent.run() as agent_app:
             questions = test_case.get("question", [])
 
@@ -90,7 +93,7 @@ async def _run_bfcl_test(test_id: str, model: str, temperature: float, output_di
     return await run_test()
 
 
-def _validate_from_complete_json(test_id: str, complete_path: Path) -> dict:
+def _validate_from_complete_json(test_id: str, complete_path: Path) -> dict[str, Any]:
     """Validate test from complete.json file."""
     if not complete_path.exists():
         pytest.skip(f"Complete JSON file not found: {complete_path}")
@@ -103,7 +106,7 @@ def _validate_from_complete_json(test_id: str, complete_path: Path) -> dict:
     return evaluator._run_evaluation(test_id, tool_calls, executable_format)
 
 
-def pytest_generate_tests(metafunc):
+def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     """Dynamically generate test cases."""
     if "test_id" in metafunc.fixturenames:
         validate_only = metafunc.config.getoption("--validate-only")
@@ -128,7 +131,9 @@ def pytest_generate_tests(metafunc):
 
 
 @pytest.mark.asyncio
-async def test_bfcl(test_id, model, temperature, output_dir, request):
+async def test_bfcl(
+    test_id: str, model: str, temperature: float, output_dir: Path, request: pytest.FixtureRequest
+) -> None:
     """Run or validate a BFCL test based on mode."""
     if request.config.getoption("--validate-only"):
         log_dir = Path(request.config.getoption("--log-dir"))

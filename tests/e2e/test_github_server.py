@@ -5,6 +5,7 @@ RootsMiddleware for access control and potential future middleware.
 """
 
 import pytest
+from fast_agent import FastAgent
 
 from tests.utils.fastagent_helpers import get_result_text, get_tool_calls, get_tool_results
 
@@ -13,7 +14,7 @@ class TestGitHubRootsMiddleware:
     """Test GitHub server with RootsMiddleware access control."""
 
     @pytest.mark.asyncio
-    async def test_allowed_repository_access(self, fast_agent, model):
+    async def test_allowed_repository_access(self, fast_agent: FastAgent, model: str) -> None:
         """Test that access to configured roots (anthropics/courses) is allowed."""
         fast = fast_agent
 
@@ -23,12 +24,10 @@ class TestGitHubRootsMiddleware:
             servers=["github"],
             instruction="You are a concise GitHub assistant. Always use the available GitHub tools.",
         )
-        async def test_function():
+        async def test_function() -> None:
             async with fast.run() as agent:
                 # Request access to anthropics/courses (in allowed roots)
-                await agent.send(
-                    "List open issues in the GitHub repository owned by 'anthropics' named 'courses'"
-                )
+                await agent.send("List open issues in the GitHub repository owned by 'anthropics' named 'courses'")
 
                 # Extract tool calls and results from message history
                 messages = agent._agent(None).message_history
@@ -49,8 +48,8 @@ class TestGitHubRootsMiddleware:
 
                 # Verify correct repository parameters
                 tool_id, request = github_call
-                assert request.params.arguments.get("owner") == "anthropics"
-                assert request.params.arguments.get("repo") == "courses"
+                assert request.params.arguments and request.params.arguments.get("owner") == "anthropics"
+                assert request.params.arguments and request.params.arguments.get("repo") == "courses"
 
                 # Verify successful response (not blocked by middleware)
                 assert tool_id in tool_results
@@ -60,7 +59,7 @@ class TestGitHubRootsMiddleware:
         await test_function()
 
     @pytest.mark.asyncio
-    async def test_denied_repository_access(self, fast_agent, model):
+    async def test_denied_repository_access(self, fast_agent: FastAgent, model: str) -> None:
         """Test that access to non-configured roots (github/docs) is denied."""
         fast = fast_agent
 
@@ -70,12 +69,10 @@ class TestGitHubRootsMiddleware:
             servers=["github"],
             instruction="You are a concise GitHub assistant. Always use the available GitHub tools.",
         )
-        async def test_function():
+        async def test_function() -> None:
             async with fast.run() as agent:
                 # Request access to github/docs (NOT in allowed roots)
-                await agent.send(
-                    "List open issues in the GitHub repository owned by 'github' named 'docs'"
-                )
+                await agent.send("List open issues in the GitHub repository owned by 'github' named 'docs'")
 
                 # Extract tool calls and results from message history
                 messages = agent._agent(None).message_history
@@ -96,8 +93,8 @@ class TestGitHubRootsMiddleware:
 
                 # Verify correct repository parameters
                 tool_id, request = github_call
-                assert request.params.arguments.get("owner") == "github"
-                assert request.params.arguments.get("repo") == "docs"
+                assert request.params.arguments and request.params.arguments.get("owner") == "github"
+                assert request.params.arguments and request.params.arguments.get("repo") == "docs"
 
                 # Verify middleware denied access (error response)
                 assert tool_id in tool_results
@@ -111,7 +108,7 @@ class TestGitHubRootsMiddleware:
         await test_function()
 
     @pytest.mark.asyncio
-    async def test_organization_wildcard_access(self, fast_agent, model):
+    async def test_organization_wildcard_access(self, fast_agent: FastAgent, model: str) -> None:
         """Test that wildcard organization access (modelcontextprotocol/*) works."""
         fast = fast_agent
 
@@ -121,12 +118,10 @@ class TestGitHubRootsMiddleware:
             servers=["github"],
             instruction="You are a concise GitHub assistant. Always use the available GitHub tools.",
         )
-        async def test_function():
+        async def test_function() -> None:
             async with fast.run() as agent:
                 # Request access to any repo in modelcontextprotocol org
-                await agent.send(
-                    "Get information about the repository owned by 'modelcontextprotocol' named 'servers'"
-                )
+                await agent.send("Get information about the repository owned by 'modelcontextprotocol' named 'servers'")
 
                 # Extract tool calls and results
                 messages = agent._agent(None).message_history
@@ -142,7 +137,7 @@ class TestGitHubRootsMiddleware:
                     if "github-" in request.params.name:
                         args = request.params.arguments
                         # Check if this call was for the modelcontextprotocol org
-                        if args.get("owner") == "modelcontextprotocol":
+                        if args and args.get("owner") == "modelcontextprotocol":
                             # Check if the call succeeded
                             if tool_id in tool_results:
                                 result = tool_results[tool_id]

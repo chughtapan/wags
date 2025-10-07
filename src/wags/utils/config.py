@@ -56,7 +56,7 @@ def load_config(config_path: Path | str) -> dict[str, Any]:
         raise FileNotFoundError(f"Config file not found: {config_path}")
 
     with open(config_path) as f:
-        config = json.load(f)
+        config: dict[str, Any] = json.load(f)
 
     # Ensure single server configuration
     if "mcpServers" not in config:
@@ -74,5 +74,3 @@ def load_config(config_path: Path | str) -> dict[str, Any]:
         server_config["env"] = _substitute_env_vars(server_config["env"])
 
     return config
-
-

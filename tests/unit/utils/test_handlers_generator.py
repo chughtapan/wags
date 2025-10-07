@@ -1,6 +1,7 @@
 """Unit tests for handlers generator utilities."""
 
 import json
+from typing import Any, cast
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -14,92 +15,79 @@ from wags.utils.handlers_generator import (
 )
 
 
-# Fixtures - moved from conftest.py since only used here
 @pytest.fixture
-def basic_tool():
+def basic_tool() -> Tool:
     """Create a basic Tool with minimal valid schema."""
     return Tool(
         name="test_tool",
         description="Test tool description",
-        inputSchema={"type": "object", "properties": {}}
+        inputSchema={"type": "object", "properties": {}},
     )
 
 
 @pytest.fixture
-def tool_with_params():
+def tool_with_params() -> Tool:
     """Create a Tool with parameters."""
     return Tool(
         name="create_item",
         description="Create a new item",
         inputSchema={
             "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-                "quantity": {"type": "integer"}
-            },
-            "required": ["name"]
-        }
+            "properties": {"name": {"type": "string"}, "quantity": {"type": "integer"}},
+            "required": ["name"],
+        },
     )
 
 
 @pytest.fixture
-def tool_with_enum():
+def tool_with_enum() -> Tool:
     """Create a Tool with enum parameter."""
     return Tool(
         name="status_tool",
         description="Tool with status enum",
         inputSchema={
             "type": "object",
-            "properties": {
-                "status": {"type": "string", "enum": ["active", "inactive"]}
-            },
-            "required": ["status"]
-        }
+            "properties": {"status": {"type": "string", "enum": ["active", "inactive"]}},
+            "required": ["status"],
+        },
     )
 
 
 @pytest.fixture
-def tool_with_boolean():
+def tool_with_boolean() -> Tool:
     """Create a Tool with boolean parameter."""
     return Tool(
         name="flag_tool",
         inputSchema={
             "type": "object",
-            "properties": {
-                "enabled": {"type": "boolean"}
-            },
-            "required": []
-        }
+            "properties": {"enabled": {"type": "boolean"}},
+            "required": [],
+        },
     )
 
 
 @pytest.fixture
-def empty_tool():
+def empty_tool() -> Tool:
     """Create a Tool without parameters."""
-    return Tool(
-        name="empty_tool",
-        inputSchema={"type": "object", "properties": {}}
-    )
+    return Tool(name="empty_tool", inputSchema={"type": "object", "properties": {}})
 
 
 @pytest.fixture
-def tool_with_literal():
+def tool_with_literal() -> Tool:
     """Create a Tool with Literal type enum."""
     return Tool(
         name="tool_with_literal",
         inputSchema={
             "type": "object",
-            "properties": {
-                "choice": {"type": "string", "enum": ["a", "b", "c"]}
-            }
-        }
+            "properties": {"choice": {"type": "string", "enum": ["a", "b", "c"]}},
+        },
     )
 
 
 class TestJsonSchemaToPythonType:
     """Tests for json_schema_to_python_type function."""
 
-    def test_all_type_conversions(self):
+    def test_all_type_conversions(self) -> None:
         """Test all JSON schema to Python type conversions."""
         assert json_schema_to_python_type({"type": "string"}) == "str"
         assert json_schema_to_python_type({"type": "integer"}) == "int"
@@ -114,13 +102,13 @@ class TestJsonSchemaToPythonType:
         enum_schema = {"type": "string", "enum": ["option1", "option2", "option3"]}
         assert json_schema_to_python_type(enum_schema) == 'Literal["option1", "option2", "option3"]'
         assert json_schema_to_python_type({"type": "unknown"}) == "Any"
-        assert json_schema_to_python_type("not a dict") == "Any"
+        assert json_schema_to_python_type(cast(dict[str, Any], "not a dict")) == "Any"
 
 
 class TestSanitizeMethodName:
     """Tests for sanitize_method_name function."""
 
-    def test_all_name_sanitizations(self):
+    def test_all_name_sanitizations(self) -> None:
         """Test all method name sanitizations."""
         assert sanitize_method_name("create_issue") == "create_issue"
         assert sanitize_method_name("create-issue") == "create_issue"
@@ -136,7 +124,9 @@ class TestSanitizeMethodName:
 class TestGenerateMethodStub:
     """Tests for generate_method_stub function."""
 
-    def test_all_tool_types(self, tool_with_params, tool_with_enum, tool_with_boolean, empty_tool):
+    def test_all_tool_types(
+        self, tool_with_params: Tool, tool_with_enum: Tool, tool_with_boolean: Tool, empty_tool: Tool
+    ) -> None:
         """Test generating method stubs for all tool types."""
         # Test simple tool with parameters
         result = generate_method_stub(tool_with_params)
@@ -165,10 +155,11 @@ class TestGenerateMethodStub:
 class TestGenerateMiddlewareClass:
     """Tests for generate_middleware_class function."""
 
-    def test_all_class_generation_scenarios(self, basic_tool, tool_with_literal, empty_tool):
+    def test_all_class_generation_scenarios(self, basic_tool: Tool, tool_with_literal: Tool, empty_tool: Tool) -> None:
         """Test all middleware class generation scenarios."""
         # Test empty tools list
         from wags.utils.handlers_generator import generate_handlers_class
+
         result = generate_handlers_class("EmptyHandlers", [])
         assert "class EmptyHandlers" in result
         assert "pass" in result
@@ -190,19 +181,15 @@ class TestGenerateMiddlewareClass:
         assert "async def empty_tool(" in result
 
 
-# TestConnectToServer class removed - connect_to_server function no longer exists
-# Now using Client directly in generate_handlers_stub
-
-
 class TestGenerateMiddlewareStub:
     """Tests for generate_handlers_stub function."""
 
     @pytest.mark.asyncio
-    async def test_generate_stub_to_stdout(self, tmp_path, capsys, basic_tool):
+    async def test_generate_stub_to_stdout(self, tmp_path: Any, capsys: Any, basic_tool: Tool) -> None:
         """Test generating stub to stdout."""
         # Create config
         config_file = tmp_path / "config.json"
-        config_data = {"mcpServers": {"test": {}}}
+        config_data: dict[str, Any] = {"mcpServers": {"test": {}}}
         config_file.write_text(json.dumps(config_data))
 
         # Mock Client
@@ -220,11 +207,11 @@ class TestGenerateMiddlewareStub:
             assert "async def test_tool" in captured.out
 
     @pytest.mark.asyncio
-    async def test_generate_stub_to_file(self, tmp_path, empty_tool):
+    async def test_generate_stub_to_file(self, tmp_path: Any, empty_tool: Tool) -> None:
         """Test generating stub to file."""
         config_file = tmp_path / "config.json"
         output_file = tmp_path / "output.py"
-        config_data = {"mcpServers": {"my-server": {}}}
+        config_data: dict[str, Any] = {"mcpServers": {"my-server": {}}}
         config_file.write_text(json.dumps(config_data))
 
         # Rename the tool for this test
@@ -241,7 +228,7 @@ class TestGenerateMiddlewareStub:
                 config_file,
                 server_name="my-server",
                 output_path=output_file,
-                class_name="CustomMiddleware"
+                class_name="CustomMiddleware",
             )
 
             # Check file was created
@@ -251,10 +238,10 @@ class TestGenerateMiddlewareStub:
             assert "async def my_tool" in content
 
     @pytest.mark.asyncio
-    async def test_generate_stub_auto_class_name(self, tmp_path):
+    async def test_generate_stub_auto_class_name(self, tmp_path: Any) -> None:
         """Test auto-generating class name from server name."""
         config_file = tmp_path / "config.json"
-        config_data = {"mcpServers": {"test-server": {}}}
+        config_data: dict[str, Any] = {"mcpServers": {"test-server": {}}}
         config_file.write_text(json.dumps(config_data))
 
         # Mock Client

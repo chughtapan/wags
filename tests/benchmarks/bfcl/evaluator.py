@@ -1,6 +1,6 @@
 """Evaluation logic for test results."""
 
-from typing import Any
+from typing import Any, cast
 
 from bfcl_eval.eval_checker.multi_turn_eval.multi_turn_checker import (
     multi_turn_checker,
@@ -11,14 +11,16 @@ from bfcl_eval.utils import make_json_serializable
 from .loader import load_ground_truth, load_test_entry
 
 
-def _run_evaluation(test_id: str, raw_calls: list, executable_responses: list) -> dict[str, Any]:
+def _run_evaluation(
+    test_id: str, raw_calls: list[list[dict[str, Any]]], executable_responses: list[list[str]]
+) -> dict[str, Any]:
     """
     Common evaluation logic for both JSON and JSONL sources.
 
     Args:
         test_id: Test case identifier
-        raw_calls: List of tool calls by turn
-        executable_responses: Executable format for BFCL
+        raw_calls: List of turns with tool call dicts
+        executable_responses: List of turns with executable strings
 
     Returns:
         Dictionary with evaluation results
@@ -59,14 +61,16 @@ def _run_evaluation(test_id: str, raw_calls: list, executable_responses: list) -
     )
 
     # Use BFCL's make_json_serializable to handle custom objects
-    return make_json_serializable(
-        {
-            "test_id": test_id,
-            "validation": validation_result,
-            "irrelevance_check": irrelevance_result,
-            "model_responses": executable_responses,
-            "ground_truth": ground_truth,
-            "raw_tool_calls": raw_calls,
-        }
+    return cast(
+        dict[str, Any],
+        make_json_serializable(
+            {
+                "test_id": test_id,
+                "validation": validation_result,
+                "irrelevance_check": irrelevance_result,
+                "model_responses": executable_responses,
+                "ground_truth": ground_truth,
+                "raw_tool_calls": raw_calls,
+            }
+        ),
     )
-

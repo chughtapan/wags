@@ -11,7 +11,7 @@ from pathlib import Path
 from fast_agent import FastAgent
 
 
-async def test_github_roots():
+async def test_github_roots() -> None:
     """Test GitHub non-file roots feature."""
 
     # Check for GitHub token
@@ -26,9 +26,9 @@ async def test_github_roots():
     # Create FastAgent
     fast = FastAgent("GitHubRootsTest", config_path=str(config_path))
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("GitHub Non-File Roots Test")
-    print("="*60)
+    print("=" * 60)
     print("\nThis test demonstrates how RootsMiddleware controls")
     print("access to GitHub repositories using URL-based roots.\n")
     print("Configured roots:")
@@ -40,9 +40,9 @@ async def test_github_roots():
         name="test_agent",
         model="gpt-4o-mini",
         servers=["github"],
-        instruction="You are a concise GitHub assistant. Always use the available GitHub tools to fulfill requests."
+        instruction="You are a concise GitHub assistant. Always use the available GitHub tools to fulfill requests.",
     )
-    async def test_agent():
+    async def test_agent() -> None:
         pass
 
     async with fast.run() as agent_app:
@@ -70,20 +70,20 @@ async def test_github_roots():
         # Analyze results
         messages = agent_app._agent(None).message_history
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("Results:")
-        print("="*60)
+        print("=" * 60)
 
         # Check for access control
         access_denied = False
         tool_calls = 0
         for msg in messages:
             # Check for tool calls
-            if hasattr(msg, 'tool_calls') and msg.tool_calls:
+            if hasattr(msg, "tool_calls") and msg.tool_calls:
                 tool_calls += len(msg.tool_calls)
 
             # Check for access denials
-            if hasattr(msg, 'content') and msg.content:
+            if hasattr(msg, "content") and msg.content:
                 content = str(msg.content)
                 if "Access denied" in content or "not in allowed roots" in content:
                     access_denied = True

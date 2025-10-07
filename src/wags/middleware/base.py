@@ -22,7 +22,7 @@ class WagsMiddlewareBase(Middleware):
     Subclasses may override handle_on_tool_call to implement their specific logic.
     """
 
-    def __init__(self, handlers):
+    def __init__(self, handlers: Any) -> None:
         """Initialize with handlers object.
 
         Args:
@@ -31,7 +31,7 @@ class WagsMiddlewareBase(Middleware):
         super().__init__()
         self.handlers = handlers
 
-    def get_tool_handler(self, request: CallToolRequestParams) -> Callable | None:
+    def get_tool_handler(self, request: CallToolRequestParams) -> Callable[..., Any] | None:
         """Get handler for this request if it exists.
 
         Args:
@@ -42,9 +42,10 @@ class WagsMiddlewareBase(Middleware):
         """
         name = request.name
         if hasattr(self.handlers, name):
-            handler = getattr(self.handlers, name)
+            handler: Any = getattr(self.handlers, name)
             if callable(handler) and inspect.iscoroutinefunction(handler):
-                return handler
+                result: Callable[..., Any] = handler
+                return result
         return None
 
     async def on_call_tool(
@@ -61,7 +62,7 @@ class WagsMiddlewareBase(Middleware):
     async def handle_on_tool_call(
         self,
         context: MiddlewareContext[CallToolRequestParams],
-        handler: Callable
+        handler: Callable[..., Any],
     ) -> MiddlewareContext[CallToolRequestParams]:
         """Process a tool call with custom logic.
 
@@ -78,7 +79,7 @@ class WagsMiddlewareBase(Middleware):
         """
         return context
 
-    def _extract_base_type(self, annotation):
+    def _extract_base_type(self, annotation: Any) -> Any:
         """Extract the actual type from Annotated[type, ...].
 
         Helper method for subclasses to use.
@@ -94,7 +95,7 @@ class WagsMiddlewareBase(Middleware):
             return args[0] if args else annotation
         return annotation
 
-    def _get_annotation_metadata(self, param, metadata_type):
+    def _get_annotation_metadata(self, param: inspect.Parameter, metadata_type: type[Any]) -> Any:
         """Extract specific metadata type from parameter annotation.
 
         Helper method for subclasses to use.

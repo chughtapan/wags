@@ -166,16 +166,22 @@ mkdocs serve
 ### Code Quality
 ```bash
 # Run linter
-.venv/bin/ruff check src/ tests/
+.venv/bin/ruff check src/ tests/ servers/
 
 # Fix linting issues
-.venv/bin/ruff check src/ tests/ --fix
+.venv/bin/ruff check src/ tests/ servers/ --fix
 
-# Format code with black
-.venv/bin/black src/ tests/
+# Format code
+.venv/bin/ruff format src/ tests/ servers/
 
 # Run type checking
-.venv/bin/mypy src/ --ignore-missing-imports
+.venv/bin/mypy src/ servers/ tests/
+
+# Install pre-commit hooks
+pre-commit install
+
+# Run pre-commit hooks manually
+pre-commit run --all-files
 ```
 
 ## Running Benchmarks

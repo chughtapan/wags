@@ -21,13 +21,13 @@ app = cyclopts.App(
 )
 
 
-def cli():
+def cli() -> None:
     """Entry point for the CLI."""
     app()
 
 
 @app.command
-def version():
+def version() -> None:
     """Show version information."""
     console.print(f"[bold]WAGS[/bold] version {__version__}")
     console.print(f"[dim]FastMCP version {fastmcp_version}[/dim]")
@@ -36,7 +36,7 @@ def version():
 @app.command
 def run(
     server_path: Path,
-):
+) -> None:
     """Run an MCP server with middleware.
 
     Args:
@@ -64,7 +64,7 @@ def quickstart(
     only_handlers: bool = False,
     only_main: bool = False,
     force: bool = False,
-):
+) -> None:
     """Generate WAGS proxy server with middleware handlers.
 
     Args:
@@ -80,16 +80,18 @@ def quickstart(
     from wags.utils.quickstart import run_quickstart
 
     try:
-        asyncio.run(run_quickstart(
-            config_path=config,
-            server_name=server_name,
-            handlers_file=handlers_file,
-            main_file=main_file,
-            class_name=class_name,
-            only_handlers=only_handlers,
-            only_main=only_main,
-            force=force
-        ))
+        asyncio.run(
+            run_quickstart(
+                config_path=config,
+                server_name=server_name,
+                handlers_file=handlers_file,
+                main_file=main_file,
+                class_name=class_name,
+                only_handlers=only_handlers,
+                only_main=only_main,
+                force=force,
+            )
+        )
     except Exception as e:
         logger.error(f"Failed to run quickstart: {e}")
         sys.exit(1)
@@ -100,7 +102,7 @@ def init(
     name: str,
     *,
     path: Path | None = None,
-):
+) -> None:
     """Initialize a new server with middleware scaffold.
 
     Args:

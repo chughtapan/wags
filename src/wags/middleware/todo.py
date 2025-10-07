@@ -113,15 +113,13 @@ class TodoItem(BaseModel):
         min_length=1,
         description="The Imperative form describing what needs to be done (e.g., 'Run tests', 'Build the project')",
     )
-    status: Literal["pending", "in_progress", "completed"] = Field(
-        ..., description="Current status of the task"
-    )
+    status: Literal["pending", "in_progress", "completed"] = Field(..., description="Current status of the task")
 
 
 class TodoServer(FastMCP):
     """Todo management server with built-in instructions.
 
-    Provides TodoWrite and TodoRead tools for task tracking.
+    Provides TodoWrite tool for task tracking.
     State is in-memory per instance.
 
     Usage:
@@ -131,7 +129,7 @@ class TodoServer(FastMCP):
         proxy = create_proxy(server, enable_todos=True)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize todo server with instructions and tools."""
         super().__init__("todo-server", instructions=TODO_INSTRUCTIONS)
 
@@ -141,8 +139,8 @@ class TodoServer(FastMCP):
         # Register tools
         self._register_tools()
 
-    def _register_tools(self):
-        """Register TodoWrite and TodoRead tools."""
+    def _register_tools(self) -> None:
+        """Register TodoWrite tool."""
 
         @self.tool(
             description=(
@@ -151,7 +149,7 @@ class TodoServer(FastMCP):
                 "It also helps the user understand the progress of the task and overall progress of their requests."
             )
         )
-        async def TodoWrite(todos: list[TodoItem]) -> dict:
+        async def TodoWrite(todos: list[TodoItem]) -> dict[str, bool | str]:
             """Write/update the todo list."""
             # Update todos
             self._todo_list = todos
@@ -163,8 +161,3 @@ class TodoServer(FastMCP):
                 message += f". In progress: {in_progress_tasks[0].content}"
 
             return {"success": True, "message": message}
-
-        @self.tool(description="Read the current todo list for this session")
-        async def TodoRead() -> dict:
-            """Read the current todo list."""
-            return {"todos": [todo.model_dump() for todo in self._todo_list]}

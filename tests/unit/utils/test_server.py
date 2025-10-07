@@ -1,5 +1,6 @@
 """Unit tests for server utilities."""
 
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -8,7 +9,7 @@ from wags.utils.server import run_server
 
 
 @pytest.mark.asyncio
-async def test_run_server_success(tmp_path):
+async def test_run_server_success(tmp_path: Path) -> None:
     """Test successful server execution."""
     server_dir = tmp_path / "server"
     server_dir.mkdir()
@@ -21,7 +22,7 @@ async def test_run_server_success(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_run_server_missing_main(tmp_path):
+async def test_run_server_missing_main(tmp_path: Path) -> None:
     """Test error when main.py missing."""
     server_dir = tmp_path / "server"
     server_dir.mkdir()
@@ -31,7 +32,7 @@ async def test_run_server_missing_main(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_run_server_not_directory(tmp_path):
+async def test_run_server_not_directory(tmp_path: Path) -> None:
     """Test error when path not a directory."""
     file_path = tmp_path / "file.txt"
     file_path.write_text("x")
@@ -41,7 +42,7 @@ async def test_run_server_not_directory(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_run_server_failure(tmp_path):
+async def test_run_server_failure(tmp_path: Path) -> None:
     """Test error on non-zero exit code."""
     server_dir = tmp_path / "server"
     server_dir.mkdir()

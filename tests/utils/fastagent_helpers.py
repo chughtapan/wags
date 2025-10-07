@@ -13,6 +13,7 @@ from mcp.types import CallToolRequest, CallToolResult
 
 # ============= Core Extraction Functions =============
 
+
 def get_tool_calls(messages: list[PromptMessageExtended]) -> list[tuple[str, CallToolRequest]]:
     """Extract all tool calls from message history.
 
@@ -61,21 +62,22 @@ def get_result_text(result: CallToolResult) -> str:
 
 # ============= Turn Management =============
 
+
 def split_into_turns(messages: list[PromptMessageExtended]) -> list[list[PromptMessageExtended]]:
     """Split message history into conversational turns.
-    
+
     A turn starts with a user message (not a tool result) and includes
     all messages until the next user message or end of conversation.
-    
+
     Args:
         messages: List of PromptMessageExtended objects
-        
+
     Returns:
         List of turns, where each turn is a list of messages
     """
     turns = []
     current_turn: list[PromptMessageExtended] = []
-    
+
     for msg in messages:
         # User message that's not a tool result starts a new turn
         if msg.role == "user" and not msg.tool_results:
@@ -84,19 +86,20 @@ def split_into_turns(messages: list[PromptMessageExtended]) -> list[list[PromptM
             current_turn = [msg]
         else:
             current_turn.append(msg)
-    
+
     # Don't forget the last turn
     if current_turn:
         turns.append(current_turn)
-    
+
     return turns
 
 
 # ============= MessageSerializer (from BFCL) =============
 
+
 class MessageSerializer:
     """Serializer that preserves all FastAgent message data including tool calls.
-    
+
     This class provides methods to serialize FastAgent messages to JSON while
     preserving tool calls and results that FastAgent's built-in serialization drops.
     """
@@ -104,10 +107,10 @@ class MessageSerializer:
     @staticmethod
     def strip_server_prefix(tool_name: str) -> str:
         """Strip server prefix from tool name.
-        
+
         Args:
             tool_name: Tool name potentially with server prefix
-            
+
         Returns:
             Tool name without prefix (e.g., 'github-list_issues' -> 'list_issues')
         """
@@ -118,13 +121,14 @@ class MessageSerializer:
     @staticmethod
     def _serialize_content_item(content: Any) -> dict[str, Any]:
         """Serialize a single content item (text, tool use, etc.)."""
-        if hasattr(content, 'model_dump'):
-            return content.model_dump()
-        elif hasattr(content, '__dict__'):
-            content_dict = {"type": getattr(content, 'type', 'text')}
-            if hasattr(content, 'text'):
+        if hasattr(content, "model_dump"):
+            result: dict[str, Any] = content.model_dump()
+            return result
+        elif hasattr(content, "__dict__"):
+            content_dict: dict[str, Any] = {"type": getattr(content, "type", "text")}
+            if hasattr(content, "text"):
                 content_dict["text"] = content.text
-            for attr in ['name', 'input', 'tool_use_id']:
+            for attr in ["name", "input", "tool_use_id"]:
                 if hasattr(content, attr):
                     content_dict[attr] = getattr(content, attr)
             return content_dict
@@ -132,64 +136,53 @@ class MessageSerializer:
             return {"type": "text", "text": str(content)}
 
     @staticmethod
-    def _serialize_tool_calls(tool_calls: dict) -> dict[str, Any] | None:
+    def _serialize_tool_calls(tool_calls: dict[str, CallToolRequest] | None) -> dict[str, Any] | None:
         """Serialize tool calls from a message."""
         if not tool_calls:
             return None
 
-        serialized = {}
+        serialized: dict[str, Any] = {}
         for tool_id, call in tool_calls.items():
             tool_name = MessageSerializer.strip_server_prefix(call.params.name)
-            serialized[tool_id] = {
-                "name": tool_name,
-                "arguments": call.params.arguments
-            }
+            serialized[tool_id] = {"name": tool_name, "arguments": call.params.arguments}
         return serialized
 
     @staticmethod
-    def _serialize_tool_results(tool_results: dict) -> dict[str, Any] | None:
+    def _serialize_tool_results(tool_results: dict[str, CallToolResult] | None) -> dict[str, Any] | None:
         """Serialize tool results from a message."""
         if not tool_results:
             return None
 
         serialized = {}
         for tool_id, result in tool_results.items():
-            result_content = [
-                MessageSerializer._serialize_content_item(c)
-                for c in result.content
-            ]
-            serialized[tool_id] = {
-                "content": result_content,
-                "is_error": result.isError
-            }
+            result_content = [MessageSerializer._serialize_content_item(c) for c in result.content]
+            serialized[tool_id] = {"content": result_content, "is_error": result.isError}
         return serialized
 
     @staticmethod
     def serialize_message(msg: PromptMessageExtended, idx: int) -> dict[str, Any]:
         """Serialize a single message to dictionary.
-        
+
         Args:
             msg: PromptMessageExtended to serialize
             idx: Message index in conversation
-            
+
         Returns:
             Dictionary representation of the message
         """
-        msg_dict = {
-            "index": idx,
-            "role": msg.role,
-            "content": [
-                MessageSerializer._serialize_content_item(content)
-                for content in msg.content
-            ],
-            "tool_calls": MessageSerializer._serialize_tool_calls(msg.tool_calls),
-            "tool_results": MessageSerializer._serialize_tool_results(msg.tool_results),
-            "metadata": {}
-        }
-
+        metadata: dict[str, str] = {}
         # Preserve stop reason if present
         if msg.stop_reason:
-            msg_dict["metadata"]["stop_reason"] = str(msg.stop_reason)
+            metadata["stop_reason"] = str(msg.stop_reason)
+
+        msg_dict: dict[str, Any] = {
+            "index": idx,
+            "role": msg.role,
+            "content": [MessageSerializer._serialize_content_item(content) for content in msg.content],
+            "tool_calls": MessageSerializer._serialize_tool_calls(msg.tool_calls),
+            "tool_results": MessageSerializer._serialize_tool_results(msg.tool_results),
+            "metadata": metadata,
+        }
 
         return msg_dict
 
@@ -203,20 +196,20 @@ class MessageSerializer:
         Returns:
             JSON string with complete message preservation
         """
-        serialized_messages = [
-            MessageSerializer.serialize_message(msg, idx)
-            for idx, msg in enumerate(messages)
-        ]
+        serialized_messages = [MessageSerializer.serialize_message(msg, idx) for idx, msg in enumerate(messages)]
 
-        return json.dumps({
-            "format": "complete_v1",
-            "created_at": datetime.now().isoformat(),
-            "message_count": len(serialized_messages),
-            "messages": serialized_messages
-        }, indent=2)
+        return json.dumps(
+            {
+                "format": "complete_v1",
+                "created_at": datetime.now().isoformat(),
+                "message_count": len(serialized_messages),
+                "messages": serialized_messages,
+            },
+            indent=2,
+        )
 
     @staticmethod
-    def extract_tool_calls_by_turn(complete_data: dict) -> list[list[dict[str, Any]]]:
+    def extract_tool_calls_by_turn(complete_data: dict[str, Any]) -> list[list[dict[str, Any]]]:
         """Extract tool calls grouped by conversation turn from complete JSON data.
 
         Args:
@@ -235,11 +228,7 @@ class MessageSerializer:
                 current_turn = []
             elif msg["role"] == "assistant" and msg["tool_calls"]:
                 for tool_id, call in msg["tool_calls"].items():
-                    tool_info = {
-                        "function": call["name"],
-                        "arguments": call["arguments"],
-                        "tool_id": tool_id
-                    }
+                    tool_info = {"function": call["name"], "arguments": call["arguments"], "tool_id": tool_id}
                     current_turn.append(tool_info)
 
         # Don't forget the last turn

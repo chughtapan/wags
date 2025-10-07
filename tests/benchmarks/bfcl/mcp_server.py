@@ -10,6 +10,7 @@ import importlib
 import inspect
 import json
 import sys
+from typing import Any
 
 from bfcl_eval.constants.executable_backend_config import (
     CLASS_FILE_PATH_MAPPING,
@@ -18,7 +19,7 @@ from bfcl_eval.constants.executable_backend_config import (
 from mcp.server.fastmcp import FastMCP
 
 
-def load_api_class(target_class_name: str):
+def load_api_class(target_class_name: str) -> Any:
     """Load the specified API class dynamically and return instance."""
     if target_class_name not in CLASS_FILE_PATH_MAPPING:
         raise ValueError(f"Unknown class: {target_class_name}")
@@ -29,7 +30,7 @@ def load_api_class(target_class_name: str):
     return instance
 
 
-def load_scenario_from_test(test_file: str, test_id: str, target_class_name: str) -> dict:
+def load_scenario_from_test(test_file: str, test_id: str, target_class_name: str) -> dict[str, Any]:
     """Load scenario configuration from test file."""
     scenario = {}
     if test_file and test_id:
@@ -39,10 +40,7 @@ def load_scenario_from_test(test_file: str, test_id: str, target_class_name: str
                     if line.strip():
                         entry = json.loads(line)
                         if entry.get("id") == test_id:
-                            if (
-                                "initial_config" in entry
-                                and target_class_name in entry["initial_config"]
-                            ):
+                            if "initial_config" in entry and target_class_name in entry["initial_config"]:
                                 scenario = entry["initial_config"][target_class_name]
                             break
         except Exception as e:
@@ -50,7 +48,7 @@ def load_scenario_from_test(test_file: str, test_id: str, target_class_name: str
     return scenario
 
 
-async def main():
+async def main() -> None:
     parser = argparse.ArgumentParser(description="MCP Server for BFCL API classes")
     parser.add_argument("class_name", help="API class name to load")
     parser.add_argument("test_file", nargs="?", help="Test file path (optional)")

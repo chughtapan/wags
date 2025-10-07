@@ -5,29 +5,30 @@ Provides ground truth-based elicitation for complex fields.
 """
 
 import ast
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
+from mcp.client.session import ClientSession, ElicitationFnT
 from mcp.shared.context import RequestContext
-from mcp.types import ElicitRequestParams, ElicitResult
+from mcp.types import ElicitRequestParams, ElicitResult, ErrorData
 
 if TYPE_CHECKING:
-    from mcp.client.session import ClientSession
+    from tests.utils.logger import StructuredEventLogger
 
 
 class GroundTruthElicitationHandler:
     """Handler for elicitation based on ground truth data."""
 
-    def __init__(self, ground_truth_data: list[list[str]], structured_logger=None):
+    def __init__(self, ground_truth_data: list[list[str]], structured_logger: "StructuredEventLogger") -> None:
         """
         Initialize the elicitation handler.
 
         Args:
             ground_truth_data: List of turns with function calls
-            structured_logger: Optional structured logger for event tracking
+            structured_logger: Structured logger for event tracking
         """
         self.ground_truth_data = ground_truth_data
         self.structured_logger = structured_logger
-        self.function_counters = {}
+        self.function_counters: dict[str, int] = {}
 
     def parse_function_call(self, call_str: str) -> dict[str, Any] | None:
         """
@@ -153,9 +154,9 @@ class GroundTruthElicitationHandler:
 
     async def handle(
         self,
-        context: RequestContext["ClientSession", Any],
+        context: RequestContext[ClientSession, Any],
         params: ElicitRequestParams,
-    ) -> ElicitResult:
+    ) -> ElicitResult | ErrorData:
         """
         Handle elicitation request by matching against ground truth.
 
@@ -173,28 +174,26 @@ class GroundTruthElicitationHandler:
 
         if ground_truth_params:
             func_name = self.extract_function_name(message)
-            if self.structured_logger:
-                self.structured_logger.log_elicitation(
-                    func_name, "accepted", ground_truth_params
-                )
-            return ElicitResult(action="accept", content=ground_truth_params)
+            self.structured_logger.log_elicitation(func_name, "accepted", ground_truth_params)
+            return ElicitResult(
+                action="accept", content=cast(dict[str, str | int | float | bool | None], ground_truth_params)
+            )
 
         # No matching function found or no text params
         func_name = self.extract_function_name(message)
-        if self.structured_logger:
-            self.structured_logger.log_elicitation(
-                func_name, "declined", None
-            )
+        self.structured_logger.log_elicitation(func_name, "declined", None)
         return ElicitResult(action="decline")
 
 
-def create_elicitation_handler(ground_truth_data: list[list[str]], structured_logger=None):
+def create_elicitation_handler(
+    ground_truth_data: list[list[str]], structured_logger: "StructuredEventLogger"
+) -> ElicitationFnT:
     """
     Factory function to create an elicitation handler.
 
     Args:
         ground_truth_data: Ground truth data from BFCL
-        structured_logger: Optional structured logger for event tracking
+        structured_logger: Structured logger for event tracking
 
     Returns:
         Async handler function for elicitation
