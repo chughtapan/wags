@@ -3,9 +3,18 @@
 import asyncio
 from collections.abc import Generator
 from pathlib import Path
-from typing import cast
+from typing import Any, Protocol, cast
 
 import pytest
+from _pytest.reports import TestReport
+
+
+class _ItemWithFuncargs(Protocol):
+    """Protocol for pytest Item with funcargs attribute (added at runtime)."""
+
+    funcargs: dict[str, Any]
+
+    def get_closest_marker(self, name: str) -> pytest.Mark | None: ...
 
 
 @pytest.fixture(scope="session")
@@ -58,7 +67,7 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 @pytest.hookimpl(hookwrapper=True)
-def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]) -> Generator[None]:
+def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]) -> Generator[None, Any]:
     """Handle verified_models marker by converting failures to xfail for unverified models.
 
     This hook intercepts test results after execution. When a test marked with
@@ -83,8 +92,8 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]) ->
         The test execution outcome, potentially modified to xfail
     """
     # Let the test execute
-    outcome = yield
-    report = outcome.get_result()
+    outcome: Any = yield
+    report: TestReport = outcome.get_result()
 
     # Only process test execution phase (not setup/teardown) when test failed
     if report.when == "call" and report.failed:
@@ -95,7 +104,9 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]) ->
             verified_models = marker.args[0] if marker.args else []
 
             # Get the current model from test fixture
-            model = item.funcargs.get("model")
+            # funcargs is added by pytest at runtime to Function items
+            item_with_args = cast(_ItemWithFuncargs, item)
+            model = item_with_args.funcargs.get("model")
 
             # If current model is not in verified list, convert failure to xfail
             if model and model not in verified_models:

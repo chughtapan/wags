@@ -119,7 +119,7 @@ class TodoItem(BaseModel):
 class TodoServer(FastMCP):
     """Todo management server with built-in instructions.
 
-    Provides TodoWrite and TodoRead tools for task tracking.
+    Provides TodoWrite tool for task tracking.
     State is in-memory per instance.
 
     Usage:
@@ -140,7 +140,7 @@ class TodoServer(FastMCP):
         self._register_tools()
 
     def _register_tools(self) -> None:
-        """Register TodoWrite and TodoRead tools."""
+        """Register TodoWrite tool."""
 
         @self.tool(
             description=(
@@ -161,8 +161,3 @@ class TodoServer(FastMCP):
                 message += f". In progress: {in_progress_tasks[0].content}"
 
             return {"success": True, "message": message}
-
-        @self.tool(description="Read the current todo list for this session")
-        async def TodoRead() -> dict[str, list[dict[str, str]]]:
-            """Read the current todo list."""
-            return {"todos": [todo.model_dump() for todo in self._todo_list]}

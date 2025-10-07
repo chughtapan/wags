@@ -28,7 +28,6 @@ where = ["src"]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
-    "black",
     "ruff",
     "mypy",
     "bfcl-eval",
@@ -36,10 +35,6 @@ dev = [
 
 [tool.uv.sources]
 bfcl-eval = { git = "https://github.com/chughtapan/gorilla.git", subdirectory = "berkeley-function-call-leaderboard", branch = "wags-dev" }
-
-[tool.black]
-line-length = 100
-target-version = ['py313']
 
 [tool.ruff]
 line-length = 120
@@ -87,6 +82,3 @@ disallow_untyped_calls = true
 module = "bfcl_eval.*"
 ignore_missing_imports = true
 
-[[tool.mypy.overrides]]
-module = "tests.*"
-disable_error_code = ["attr-defined"]

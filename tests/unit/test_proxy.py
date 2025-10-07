@@ -54,7 +54,6 @@ class TestProxyTodoIntegration:
         # Should have todo tools available
         tools = await proxy._tool_manager.get_tools()
         assert "TodoWrite" in tools
-        assert "TodoRead" in tools
         # Should also have original tool
         assert "test_tool" in tools
 
@@ -80,9 +79,7 @@ class TestProxyTodoIntegration:
 
         # Tools should be TodoWrite, not todo_TodoWrite
         assert "TodoWrite" in tools
-        assert "TodoRead" in tools
         assert "todo_TodoWrite" not in tools
-        assert "todo_TodoRead" not in tools
 
     def test_custom_server_name(self) -> None:
         """Test creating proxy with custom name."""

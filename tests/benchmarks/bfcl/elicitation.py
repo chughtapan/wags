@@ -5,15 +5,13 @@ Provides ground truth-based elicitation for complex fields.
 """
 
 import ast
-from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, cast
 
+from mcp.client.session import ClientSession, ElicitationFnT
 from mcp.shared.context import RequestContext
-from mcp.types import ElicitRequestParams, ElicitResult
+from mcp.types import ElicitRequestParams, ElicitResult, ErrorData
 
 if TYPE_CHECKING:
-    from mcp.client.session import ClientSession
-
     from tests.utils.logger import StructuredEventLogger
 
 
@@ -156,9 +154,9 @@ class GroundTruthElicitationHandler:
 
     async def handle(
         self,
-        context: RequestContext["ClientSession", Any],
+        context: RequestContext[ClientSession, Any],
         params: ElicitRequestParams,
-    ) -> ElicitResult:
+    ) -> ElicitResult | ErrorData:
         """
         Handle elicitation request by matching against ground truth.
 
@@ -189,7 +187,7 @@ class GroundTruthElicitationHandler:
 
 def create_elicitation_handler(
     ground_truth_data: list[list[str]], structured_logger: "StructuredEventLogger"
-) -> Callable[[RequestContext["ClientSession", Any], ElicitRequestParams], Awaitable[ElicitResult]]:
+) -> ElicitationFnT:
     """
     Factory function to create an elicitation handler.
 

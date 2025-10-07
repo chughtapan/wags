@@ -65,7 +65,7 @@ async def _run_bfcl_test(test_id: str, model: str, temperature: float, output_di
         model=model,
         servers=server_names,
         instruction=instruction_path,
-        elicitation_handler=elicitation_handler,  # type: ignore[arg-type]
+        elicitation_handler=elicitation_handler,
     )
     async def run_test() -> Path:
         async with agent.run() as agent_app:
