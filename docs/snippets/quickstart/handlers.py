@@ -20,10 +20,7 @@ class GitHubHandlers:
         repo: str,
         # Allow user to review and edit these fields
         # before actually invoking the tool
-        title: Annotated[str, RequiresElicitation(
-            "Title")],
-        body: Annotated[str, RequiresElicitation(
-            "Body"
-        )]
+        title: Annotated[str, RequiresElicitation("Title")],
+        body: Annotated[str, RequiresElicitation("Body")],
     ):
         pass

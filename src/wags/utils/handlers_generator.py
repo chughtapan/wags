@@ -160,7 +160,7 @@ class {class_name}:
 async def introspect_server(config_path: Path) -> list[Tool]:
     """Connect to MCP server and get its tools."""
     config = load_config(config_path)
-    client = Client(config)
+    client = Client(config, roots=[])
     async with client:
         tools = await client.list_tools()
     return tools

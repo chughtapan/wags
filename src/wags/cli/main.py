@@ -7,6 +7,7 @@ from pathlib import Path
 import cyclopts
 from fastmcp import __version__ as fastmcp_version
 from fastmcp.utilities.logging import get_logger
+from mcp.types import Tool
 from rich.console import Console
 
 from wags import __version__
@@ -65,7 +66,7 @@ def _check_overwrite(file_path: Path, force: bool) -> bool:
     return Confirm.ask(f"File {file_path} already exists. Overwrite?", default=False)
 
 
-def _generate_handlers_file(handlers_path: Path, class_name: str, tools: list, force: bool) -> None:
+def _generate_handlers_file(handlers_path: Path, class_name: str, tools: list[Tool], force: bool) -> None:
     """Generate and write handlers file."""
     from wags.utils.handlers_generator import generate_handlers_class
 
@@ -78,9 +79,7 @@ def _generate_handlers_file(handlers_path: Path, class_name: str, tools: list, f
         console.print("[yellow]Skipped handlers file[/yellow]")
 
 
-def _generate_main_file(
-    main_path: Path, handlers_file: str, class_name: str, config_name: str, force: bool
-) -> None:
+def _generate_main_file(main_path: Path, handlers_file: str, class_name: str, config_name: str, force: bool) -> None:
     """Generate and write main file."""
     from jinja2 import Template
 
@@ -150,7 +149,18 @@ def quickstart(
         tools = []
         if not only_main:
             console.print("[cyan]Connecting to MCP server to discover tools...[/cyan]")
-            tools = asyncio.run(introspect_server(config))
+            # Handle both sync and async contexts
+            try:
+                asyncio.get_running_loop()
+                # We're in an async context, run in a thread to avoid event loop conflict
+                import concurrent.futures
+
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(asyncio.run, introspect_server(config))
+                    tools = future.result()
+            except RuntimeError:
+                # No event loop running, use asyncio.run
+                tools = asyncio.run(introspect_server(config))
             console.print(f"[green]Found {len(tools)} tools[/green]")
 
         class_name = class_name or "Handlers"

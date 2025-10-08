@@ -40,7 +40,6 @@ class TestTodoServer:
             assert result.is_error is False
             assert "2 todos" in str(result.content)
 
-
     @pytest.mark.asyncio
     async def test_in_progress_message(self) -> None:
         """Test that message includes in_progress task."""
