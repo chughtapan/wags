@@ -36,9 +36,59 @@ def version() -> None:
 
 @app.command
 def run(
+    servers: str | None = None,
+    config_path: Path | None = None,
+    instruction: Path | None = None,
+    model: str = "gpt-4o",
+) -> None:
+    """Run an interactive agent connected to wags servers.
+
+    Args:
+        servers: Comma-separated list of servers to connect to (defaults to all)
+        config_path: Path to fastagent.config.yaml (defaults to servers/fastagent.config.yaml)
+        instruction: Path to instruction file (defaults to src/wags/utils/agent_instructions.txt)
+        model: Model to use (defaults to gpt-4o)
+    """
+    from fast_agent.cli.commands.go import run_async_agent
+
+    if config_path is None:
+        config_path = Path("servers/fastagent.config.yaml")
+
+    if not config_path.exists():
+        console.print(f"[red]Error:[/red] Config file not found: {config_path}")
+        console.print("\nCreate a fastagent.config.yaml file or specify --config-path")
+        sys.exit(1)
+
+    if instruction is None:
+        instruction = Path(__file__).parent.parent / "utils" / "agent_instructions.txt"
+
+    if not instruction.exists():
+        console.print(f"[red]Error:[/red] Instruction file not found: {instruction}")
+        sys.exit(1)
+
+    try:
+        run_async_agent(
+            name="wags",
+            instruction=str(instruction),
+            config_path=str(config_path),
+            servers=servers,
+            urls=None,
+            auth=None,
+            model=model,
+            message=None,
+            prompt_file=None,
+            stdio_commands=None,
+            agent_name="agent",
+        )
+    except KeyboardInterrupt:
+        console.print("\n[dim]Agent stopped[/dim]")
+
+
+@app.command
+def start_server(
     server_path: Path,
 ) -> None:
-    """Run an MCP server with middleware.
+    """Start an MCP server with middleware.
 
     Args:
         server_path: Path to server directory containing main.py
