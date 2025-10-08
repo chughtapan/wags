@@ -6,11 +6,12 @@ Here's how to run BFCL multi-turn evaluations with <span class="wags-brand">wags
 
 ### First Time Setup
 
-If you cloned the repository without submodules:
-
 ```bash
-# Initialize the data submodule
+# 1. Initialize the BFCL data submodule
 git submodule update --init --recursive
+
+# 2. Install evaluation dependencies
+uv pip install -e ".[dev,evals]"
 ```
 
 ### Updating Data
