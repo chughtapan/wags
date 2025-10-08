@@ -10,12 +10,20 @@ The <span class="wags-brand">wags</span> toolkit is based on state-of-the-art re
 
 <div class="grid cards" markdown>
 
-- **[Getting Started](quickstart.md)**
+- **[Quick Start](quickstart.md)**
 
-    Install <span class="wags-brand">wags</span> and create your first <span class="wags-brand">wags</span> enhanced server in minutes. See [`servers/github/`](https://github.com/chughtapan/wags/tree/main/servers/github) for a complete example.
+    Connect to existing <span class="wags-brand">wags</span> servers and start using enhanced MCP features immediately.
+
+- **[Onboarding New Servers](onboarding.md)**
+
+    Create your first <span class="wags-brand">wags</span> enhanced server with middleware. See [`servers/github/`](https://github.com/chughtapan/wags/tree/main/servers/github) for a complete example.
 
 - **[Middleware](middleware/overview.md)**
 
-    Learn about available middleware and how to use them
+    Learn about available middleware and how to use them.
+
+- **[Running Evals](evals.md)**
+
+    Execute BFCL benchmarks to evaluate agent performance with <span class="wags-brand">wags</span> servers.
 
 </div>

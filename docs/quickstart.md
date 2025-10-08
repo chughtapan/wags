@@ -1,17 +1,15 @@
 # Quick Start Guide
 
-Get up and running with <span class="wags-brand">wags</span> in just a few minutes. This guide will walk you through installation and creating a proxy server with middleware for existing MCP servers.
+Get started with <span class="wags-brand">wags</span> by connecting to existing wags servers.
 
 ## Prerequisites
 
 - Python 3.13.5 or higher
-- [`uv` package manager](https://docs.astral.sh/uv/getting-started/installation/) (recommended) or `pip`
-- Basic understanding of [MCP (Model Context Protocol)](https://modelcontextprotocol.io/docs/getting-started/intro)
-- An existing MCP server to work with
+- [`uv` package manager](https://docs.astral.sh/uv/getting-started/installation/)
 
 ## Installation
 
-> ⚠️ **Warning**: <span class="wags-brand">wags</span> is based on ongoing research and is under active development. Features and APIs may change.
+> ⚠️ **Warning**: <span class="wags-brand">wags</span> is based on ongoing research and is under active development. Features and APIs may change. Some experimental MCP features are only supported in our fork of [fast-agent](https://github.com/chughtapan/fast-agent) included with <span class="wags-brand">wags</span>.
 
 ```bash
 # Clone the repository
@@ -38,61 +36,24 @@ WAGS version 0.1.0
 FastMCP version x.x.x
 ```
 
-## Creating a <span class="wags-brand">wags</span> Proxy Server
+## Getting Started
 
-<span class="wags-brand">wags</span> provides the `quickstart` command to generate proxy servers that wrap existing MCP servers with middleware.
-
-!!! tip "Complete Example Available"
-    The complete implementation for the [GitHub MCP Server](https://github.com/github/github-mcp-server) is in `servers/github/`.
-
-### Step 1: Prepare Your MCP Server Configuration
-
-Create a configuration file that describes your MCP server. Save it as `config.json`:
-
-```json title="config.json"
---8<-- "snippets/quickstart/config.json"
-```
-
-### Step 2: Generate the Proxy Server
-
-Use the `quickstart` command to generate middleware handlers and main file:
+The easiest way to connect to wags servers is using the `wags run` command:
 
 ```bash
-# Generate both handlers and main files
-wags quickstart config.json
+# Connect to all configured servers
+wags run
 
-# Or with custom file names
-wags quickstart config.json \
-  --handlers-file github_handlers.py \
-  --main-file github_proxy.py
+# Connect to specific servers only
+wags run --servers github
+
+# Use a different model
+wags run --model claude-3-5-sonnet-20241022
 ```
 
-### Step 3: Add Middleware Decorators
+`wags run` invokes fast-agent with a configuration file ([`servers/fastagent.config.yaml`](https://github.com/chughtapan/wags/blob/main/servers/fastagent.config.yaml)) and basic instructions ([`src/wags/utils/agent_instructions.txt`](https://github.com/chughtapan/wags/blob/main/src/wags/utils/agent_instructions.txt)), and connects to all servers by default. You can configure which servers to connect to using the `--servers` flag or create your own configuration and instruction files - see the [fast-agent documentation](https://github.com/chughtapan/fast-agent) for more details.
 
-Edit the generated handlers file to add middleware decorators:
+## Next Steps
 
-```python linenums="1" title="handlers.py"
---8<-- "snippets/quickstart/handlers.py"
-```
-
-### Step 4: Attach Middleware to your MCP Server
-
-The automatically generated main.py includes (commented) code to attach <span class="wags-brand">wags</span> middleware to your MCP server. You should edit the file to uncomment the middleware you need:
-
-```python linenums="1" title="main.py"
---8<-- "snippets/quickstart/main.py"
-```
-
-### Step 5: Run Your Proxy Server
-
-```bash
-python main.py 
-```
-
-Your proxy server is now running! 
-
-## Learn More
-
-- **[Middleware Overview](middleware/overview.md)** - Understand how middleware works
-- **[Roots](middleware/roots.md)** - Access control with URI templates
-- **[Elicitation](middleware/elicitation.md)** - Parameter review and collection
+- **[Onboarding New Servers](onboarding.md)** - Create your own wags server with middleware
+- **[Middleware Overview](middleware/overview.md)** - Understand available middleware features

@@ -38,12 +38,13 @@ theme:
 nav:
   - Home: index.md
   - Quick Start: quickstart.md
+  - Onboarding Servers: onboarding.md
   - Middleware:
     - Overview: middleware/overview.md
     - TodoList: middleware/todo.md
     - Roots: middleware/roots.md
     - Elicitation: middleware/elicitation.md
-  - Benchmarks: benchmarks.md
+  - Running Evals: evals.md
 
 plugins:
   - search

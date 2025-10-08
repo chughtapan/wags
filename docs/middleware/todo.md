@@ -11,40 +11,29 @@
 proxy = create_proxy(server, enable_todos=True)
 ```
 
-## Example Workflow
-
-```python
-# Agent receives task: "Build project and fix errors"
-
-# 1. Agent calls TodoWrite
-TodoWrite(todos=[
-    {"content": "Build project", "status": "pending"},
-    {"content": "Fix errors", "status": "pending"}
-])
-
-# 2. Agent starts first task
-TodoWrite(todos=[
-    {"content": "Build project", "status": "in_progress"},
-    {"content": "Fix errors", "status": "pending"}
-])
-
-# 3. Agent runs build tool, finds 3 errors
-
-# 4. Agent updates todos
-TodoWrite(todos=[
-    {"content": "Build project", "status": "completed"},
-    {"content": "Fix error in utils.py", "status": "in_progress"},
-    {"content": "Fix error in api.py", "status": "pending"},
-    {"content": "Fix error in models.py", "status": "pending"}
-])
-
-# 5. Agent fixes each error, updating status after each one
-# ... continues until all completed
-```
-
 ## How it works?
 
-When todo integration is enabled, the target MCP server is provided TodoWrite tools which help track the detailed tasks to be done and the current progress. Additionally, detailed instructions are provided to break down task into actionable steps, update status before and after each task, maintain exactly one task as `in_progress`, mark completed immediately after finishing, etc. See `src/wags/middleware/todo.py` for the full instruction text.
+When todo integration is enabled, the target MCP server is provided TodoWrite tools which help track the detailed tasks to be done and the current progress. Additionally, detailed instructions are provided to break down task into actionable steps, update status before and after each task, maintain exactly one task as `in_progress`, mark completed immediately after finishing, etc.
+
+For example, when an agent receives the task "Build project and fix errors":
+
+1. Agent calls `TodoWrite` to create initial todos:
+   - "Build project" (pending)
+   - "Fix errors" (pending)
+
+2. Agent starts first task by updating status to `in_progress`
+
+3. Agent runs build tool, finds 3 errors
+
+4. Agent updates todos to reflect discovered errors:
+   - "Build project" (completed)
+   - "Fix error in utils.py" (in_progress)
+   - "Fix error in api.py" (pending)
+   - "Fix error in models.py" (pending)
+
+5. Agent fixes each error, updating status after each one until all completed
+
+See `src/wags/middleware/todo.py` for the full instruction text.
 
 **Note:** Instructions from proxy server must be included in the agent prompt. For `fast-agent` the `{{serverInstructions}}` macro enables this feature.
 

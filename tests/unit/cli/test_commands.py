@@ -4,17 +4,17 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-from wags.cli.main import quickstart, run
+from wags.cli.main import quickstart, start_server
 
 
 @patch("wags.utils.server.run_server")
 @patch("wags.cli.main.logger")
 @patch("wags.cli.main.sys.exit")
-def test_run_command_handles_errors(mock_exit: Any, mock_logger: Any, mock_run_server: Any) -> None:
-    """Test run command handles errors gracefully."""
+def test_start_server_command_handles_errors(mock_exit: Any, mock_logger: Any, mock_run_server: Any) -> None:
+    """Test start-server command handles errors gracefully."""
     mock_run_server.side_effect = Exception("Server startup failed")
 
-    run(Path("test-server"))
+    start_server(Path("test-server"))
 
     mock_logger.error.assert_called_once()
     mock_exit.assert_called_once_with(1)
