@@ -11,7 +11,7 @@ from typing import Any
 from fastmcp import Client
 from mcp.types import Tool
 
-from wags import load_config
+from wags.utils.config import load_config
 
 
 def json_schema_to_python_type(schema: dict[str, Any]) -> str:
@@ -155,6 +155,15 @@ class {class_name}:
         code += "\n    pass"
 
     return code
+
+
+async def introspect_server(config_path: Path) -> list[Tool]:
+    """Connect to MCP server and get its tools."""
+    config = load_config(config_path)
+    client = Client(config, roots=[])
+    async with client:
+        tools = await client.list_tools()
+    return tools
 
 
 async def generate_handlers_stub(

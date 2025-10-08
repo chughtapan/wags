@@ -18,4 +18,5 @@ mcp.add_middleware(ElicitationMiddleware(handlers=handlers))
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(mcp.run_stdio_async())

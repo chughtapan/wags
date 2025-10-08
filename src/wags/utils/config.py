@@ -74,3 +74,22 @@ def load_config(config_path: Path | str) -> dict[str, Any]:
         server_config["env"] = _substitute_env_vars(server_config["env"])
 
     return config
+
+
+def resolve_server_name(config: dict[str, Any], server_name: str | None = None) -> str:
+    """Resolve server name from config."""
+    if "mcpServers" not in config:
+        raise ValueError("Config file must have 'mcpServers' section")
+
+    servers = config["mcpServers"]
+    if not servers:
+        raise ValueError("No servers found in config")
+
+    if server_name is None:
+        if len(servers) > 1:
+            raise ValueError(f"Multiple servers found, please specify one: {', '.join(servers.keys())}")
+        server_name = next(iter(servers))
+    elif server_name not in servers:
+        raise ValueError(f"Server '{server_name}' not found. Available: {', '.join(servers.keys())}")
+
+    return server_name

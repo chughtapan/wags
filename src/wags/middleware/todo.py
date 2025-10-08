@@ -5,7 +5,7 @@ from typing import Literal
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
-# Instructions embedded in this module
+# ruff: noqa: E501
 TODO_INSTRUCTIONS = """
 # Task Management (MANDATORY)
 You have access to the TodoWrite tools to help you manage and plan tasks. Use these tools VERY frequently to ensure that you are tracking your tasks and giving the user visibility into your progress.
