@@ -26,8 +26,11 @@ cd wags
 uv venv
 source .venv/bin/activate
 
-# Install the package in development mode
+# Install with dev dependencies (for testing and linting)
 uv pip install -e ".[dev]"
+
+# Optional: Install with evaluation dependencies for running benchmarks
+uv pip install -e ".[dev,evals]"
 ```
 
 ### Verify Installation
@@ -189,6 +192,13 @@ pre-commit run --all-files
 WAGS includes evaluation support for the Berkeley Function Call Leaderboard (BFCL). To run benchmarks:
 
 ### Setup
+
+First, install the evaluation dependencies:
+
+```bash
+# Install evaluation dependencies (BFCL, fast-agent, etc.)
+uv pip install -e ".[dev,evals]"
+```
 
 If you cloned the repository without submodules, initialize them:
 
