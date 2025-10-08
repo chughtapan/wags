@@ -4,7 +4,7 @@
 
 The <b style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; letter-spacing: -0.02em;">wags</b> toolkit is based on state-of-the-art research into how multi-turn agents usually fail, and makes it straightforward to implement advanced countermeasures. While Model Context Protocol (MCP) offers a standardized way for AI models to interact with external tools and data sources, we still don't fully understand what makes a good MCP server. <b style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; letter-spacing: -0.02em;">wags</b> makes it easy to deploy the latest research on context engineering and several new MCP features improve user and agent experience without rewriting your existing MCP servers.
 
-> ⚠️ **Warning**: <b style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; letter-spacing: -0.02em;">wags</b> is based on ongoing research and is under active development. Features and APIs may change.
+> ⚠️ **Warning**: <b style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; letter-spacing: -0.02em;">wags</b> is based on ongoing research and is under active development. Features and APIs may change. Some experimental MCP features are only supported in our fork of [fast-agent](https://github.com/chughtapan/fast-agent) included with <b style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; letter-spacing: -0.02em;">wags</b>.
 
 <div style="clear: both;"></div>
 
@@ -28,9 +28,6 @@ source .venv/bin/activate
 
 # Install with dev dependencies (for testing and linting)
 uv pip install -e ".[dev]"
-
-# Optional: Install with evaluation dependencies for running benchmarks
-uv pip install -e ".[dev,evals]"
 ```
 
 ### Verify Installation
@@ -47,58 +44,23 @@ FastMCP version x.x.x
 
 ## Quick Start
 
-`wags` provides the `quickstart` command to generate proxy servers that wrap existing MCP servers with middleware.
-
-### Step 1: Prepare Your MCP Server Configuration
-
-Create a configuration file that describes your MCP server. Save it as `config.json`:
-
-```json
-{
-  "mcpServers": {
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
-      }
-    }
-  }
-}
-```
-
-### Step 2: Generate the Proxy Server
-
-Use the `quickstart` command to generate middleware handlers and main file:
+### Connect to Existing Servers
 
 ```bash
-# Generate both handlers and main files
-wags quickstart config.json
+# Connect to all configured servers
+wags run
 
-# Or with custom file names
-wags quickstart config.json \
-  --handlers-file github_handlers.py \
-  --main-file github_proxy.py
+# Connect to specific servers
+wags run --servers github
 ```
 
-### Step 3: Add Middleware Decorators
+See the [Quick Start Guide](https://chughtapan.github.io/wags/quickstart/) for details.
 
-Edit the generated handlers file to add middleware decorators for access control and parameter review.
+### Onboarding New Servers
 
-### Step 4: Run Your Proxy Server
+To wrap your own MCP server with <b style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; letter-spacing: -0.02em;">wags</b> middleware, see the [Onboarding Guide](https://chughtapan.github.io/wags/onboarding/) for step-by-step instructions.
 
-```bash
-python main.py 
-```
-
-Your proxy server is now running!
-
-## CLI Commands
-
-- `wags init <name>` - Initialize a new server with middleware scaffold
-- `wags quickstart <config>` - Generate WAGS proxy server with middleware handlers
-- `wags run <server_path>` - Run an MCP server with middleware
-- `wags version` - Show version information
+**Example:** Check out `servers/github/` for a complete implementation.
 
 ## Project Structure
 
@@ -112,11 +74,13 @@ src/
     │   ├── elicitation.py    # Parameter elicitation middleware
     │   ├── roots.py          # Access control middleware
     │   └── todo.py           # Task tracking server
+    ├── templates/            # Jinja2 templates for code generation
+    │   ├── handlers.py.j2    # Handlers class template
+    │   └── main.py.j2        # Main file template
     ├── utils/                # Utility modules
     │   ├── config.py         # Configuration management
-    │   ├── quickstart.py     # Quickstart command implementation
-    │   ├── server.py         # Server discovery and running
-    │   └── server_template.py    # Scaffold generation
+    │   ├── handlers_generator.py  # Generate handler stubs from MCP
+    │   └── server.py         # Server discovery and running
     └── proxy.py              # Proxy server for middleware chain
 ```
 
@@ -189,32 +153,20 @@ pre-commit run --all-files
 
 ## Running Benchmarks
 
-WAGS includes evaluation support for the Berkeley Function Call Leaderboard (BFCL). To run benchmarks:
+WAGS includes evaluation support for the Berkeley Function Call Leaderboard (BFCL).
 
 ### Setup
-
 First, install the evaluation dependencies:
 
 ```bash
-# Install evaluation dependencies (BFCL, fast-agent, etc.)
+# 1. Initialize the data submodules
+git submodule update --init --recursive
+
+# 2. Install evaluation dependencies
 uv pip install -e ".[dev,evals]"
 ```
 
-If you cloned the repository without submodules, initialize them:
-
-```bash
-# One-time setup: Initialize the data submodule
-git submodule update --init --recursive
-```
-
-If you already have the repository set up, just ensure submodules are current:
-
-```bash
-# Update to latest data
-git submodule update --remote
-```
-
-### Run Tests
+### Run Benchmark Tests
 
 ```bash
 # Run all BFCL tests
@@ -227,9 +179,9 @@ git submodule update --remote
 .venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --model gpt-4o
 ```
 
-For detailed information about:
-- **Benchmark architecture and test categories**: See [docs/benchmarks.md](docs/benchmarks.md)
-- **Test organization and patterns**: See [tests/README.md](tests/README.md)
+For detailed information, see:
+- **Benchmark architecture and categories**: [docs/benchmarks.md](https://chughtapan.github.io/wags/benchmarks/)
+- **Test organization and patterns**: [tests/README.md](tests/README.md)
 
 ## License
 
