@@ -3228,6 +3228,8 @@ dev = [
 ]
 evals = [
     { name = "bfcl-eval" },
+    { name = "jinja2" },
+    { name = "python-dotenv" },
 ]
 
 [package.metadata]
@@ -3237,10 +3239,12 @@ requires-dist = [
     { name = "fast-agent-mcp", git = "https://github.com/chughtapan/fast-agent.git?rev=wags-dev" },
     { name = "fastmcp", git = "https://github.com/chughtapan/fastmcp.git?rev=wags-dev" },
     { name = "jinja2", specifier = ">=3.0.0" },
+    { name = "jinja2", marker = "extra == 'evals'", specifier = ">=3.0.0" },
     { name = "mcp", git = "https://github.com/chughtapan/python-sdk.git?rev=wags-dev" },
     { name = "mypy", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "python-dotenv", marker = "extra == 'evals'", specifier = ">=1.0.0" },
     { name = "rich", specifier = ">=13.0.0" },
     { name = "ruff", marker = "extra == 'dev'" },
 ]

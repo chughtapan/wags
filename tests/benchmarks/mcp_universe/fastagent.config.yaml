@@ -1,0 +1,29 @@
+# MCP-Universe Repository Management Benchmark Configuration
+
+default_model: ${DEFAULT_MODEL:gpt-4o}
+
+openai:
+  api_key: ${OPENAI_API_KEY}
+  temperature: ${TEMPERATURE:0.001}
+
+anthropic:
+  api_key: ${ANTHROPIC_API_KEY}
+
+mcp:
+  servers:
+    # GitHub MCP Server for repository management tasks
+    github:
+      command: npx
+      args:
+        - -y
+        - "@modelcontextprotocol/server-github"
+      env:
+        GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_PERSONAL_ACCESS_TOKEN}
+
+logger:
+  level: error
+  type: console
+  show_chat: false
+  show_tools: false
+  truncate_tools: false
+  progress_display: false

@@ -33,6 +33,8 @@ dev = [
 
 evals = [
     "bfcl-eval",
+    "jinja2>=3.0.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [tool.uv.sources]
@@ -88,5 +90,9 @@ disallow_untyped_calls = true
 
 [[tool.mypy.overrides]]
 module = "bfcl_eval.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "mcpuniverse.*"
 ignore_missing_imports = true
 
