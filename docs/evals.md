@@ -87,6 +87,21 @@ Validate existing logs without running new tests:
 .venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --validate-only --log-dir outputs/experiment1/raw
 ```
 
+### Parallel Execution
+
+Run tests in parallel using multiple workers:
+
+```bash
+# Run with 4 workers
+.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py -n 4
+
+# Run with 8 workers
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --dataset train -n 8
+
+# Auto-detect number of CPUs
+.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py -n auto
+```
+
 ## Further Reading
 
 ### BFCL

@@ -27,6 +27,8 @@ where = ["src"]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
+    "pytest-xdist>=3.0",
+    "pytest-timeout>=2.0",
     "ruff",
     "mypy",
 ]
@@ -86,6 +88,8 @@ filterwarnings = [
     "ignore::sqlalchemy.exc.SADeprecationWarning:appworld.apps.lib.models.db",
     "ignore::pydantic.warnings.PydanticDeprecatedSince20:appworld.apps.*",
 ]
+timeout = 0
+timeout_method = "thread"  # Use thread-based timeout for better async compatibility
 
 [tool.mypy]
 warn_return_any = true
