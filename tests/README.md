@@ -232,8 +232,6 @@ Registered markers:
 # AppWorld-specific options
 --dataset DATASET         # AppWorld dataset: train, dev, test_normal, test_challenge
 --limit N                 # Run only first N tasks from dataset
---appworld-mcp-url URL    # AppWorld MCP server URL (default: http://localhost:10000)
---appworld-api-url URL    # AppWorld API server URL (default: http://localhost:9000)
 ```
 
 ## Common Commands
