@@ -69,7 +69,7 @@ def run(
     try:
         run_async_agent(
             name="wags",
-            instruction=str(instruction),
+            instruction=instruction,
             config_path=str(config_path),
             servers=servers,
             urls=None,
