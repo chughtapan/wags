@@ -153,9 +153,11 @@ pre-commit run --all-files
 
 ## Running Benchmarks
 
-WAGS includes evaluation support for the Berkeley Function Call Leaderboard (BFCL).
+WAGS includes evaluation support for:
+- **BFCL**: Berkeley Function Call Leaderboard
+- **AppWorld**: Realistic task evaluation across 9 day-to-day apps
 
-### Setup
+### BFCL Setup
 First, install the evaluation dependencies:
 
 ```bash
@@ -166,8 +168,22 @@ git submodule update --init --recursive
 uv pip install -e ".[dev,evals]"
 ```
 
+### AppWorld Setup
+
+```bash
+# Install evaluation dependencies
+UV_GIT_LFS=1 uv pip install -e ".[dev,evals]"
+
+# Initialize AppWorld environment
+appworld install
+
+# Download benchmark data
+appworld download data
+```
+
 ### Run Benchmark Tests
 
+**BFCL:**
 ```bash
 # Run all BFCL tests
 .venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py
@@ -179,8 +195,17 @@ uv pip install -e ".[dev,evals]"
 .venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --model gpt-4o
 ```
 
+**AppWorld:**
+```bash
+# Run all train tasks
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --dataset train --model gpt-4o
+
+# Run specific task
+.venv/bin/pytest 'tests/benchmarks/appworld/test_appworld.py::test_appworld[train_001]'
+```
+
 For detailed information, see:
-- **Benchmark architecture and categories**: [docs/benchmarks.md](https://chughtapan.github.io/wags/benchmarks/)
+- **Evaluation guide**: [docs/evals.md](https://chughtapan.github.io/wags/evals/)
 - **Test organization and patterns**: [tests/README.md](tests/README.md)
 
 ## License
