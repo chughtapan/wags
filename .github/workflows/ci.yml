@@ -8,6 +8,8 @@ on:
 jobs:
   pre-commit:
     runs-on: ubuntu-latest
+    env:
+      UV_NO_SYNC: 1
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,6 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CI: 1
+      UV_NO_SYNC: 1
 
     steps:
       - name: Checkout code
