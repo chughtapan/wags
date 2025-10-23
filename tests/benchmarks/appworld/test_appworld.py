@@ -12,7 +12,7 @@ from appworld.evaluator import evaluate_task
 from appworld.task import Task
 from fast_agent import FastAgent
 
-from tests.benchmarks.appworld import appworld_helpers
+from tests.benchmarks.appworld import api_predictor, prompts
 from tests.utils.fastagent_helpers import MessageSerializer
 from tests.utils.logger import StructuredEventLogger
 
@@ -126,7 +126,7 @@ async def _run_appworld_test(
     # Create and run FastAgent
     config_path = Path(__file__).parent / "fastagent.config.yaml"
     agent = FastAgent("AppWorld Test", config_path=str(config_path), ignore_unknown_args=True)
-    system_instruction = appworld_helpers.load_system_instruction(task)
+    system_instruction = prompts.load_system_instruction(task)
 
     @agent.agent(
         name="test_agent",
@@ -162,11 +162,11 @@ def _setup_mcp_environment(
     """Configure environment variables for MCP server."""
     # Predict which APIs are needed
     try:
-        predicted_apis = appworld_helpers.predict_apis(task_id, mode=api_mode, model_name=model)
+        predicted_apis = api_predictor.predict_apis(task_id, mode=api_mode, model_name=model)
         print(f"API mode: {api_mode}, predicted {len(predicted_apis)} APIs")
     except NotImplementedError:
         print(f"Warning: {api_mode} mode not supported, falling back to ground_truth")
-        predicted_apis = appworld_helpers.predict_apis(task_id, mode="ground_truth", model_name=model)
+        predicted_apis = api_predictor.predict_apis(task_id, mode="ground_truth", model_name=model)
 
     # Set environment variables
     os.environ.update(

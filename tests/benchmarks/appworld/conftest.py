@@ -20,8 +20,11 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
         "--api-mode",
         default="ground_truth",
-        choices=["predicted", "ground_truth", "all"],
-        help="API prediction mode: predicted (LLM), ground_truth (oracle), all (default: ground_truth)",
+        choices=["predicted", "ground_truth", "app_oracle", "all"],
+        help=(
+            "API prediction mode: predicted (LLM), ground_truth (API-level oracle), "
+            "app_oracle (app-level oracle), all (default: ground_truth)"
+        ),
     )
 
 
@@ -45,7 +48,8 @@ def api_mode(request: pytest.FixtureRequest) -> str:
 
     Returns:
         "predicted": Use LLM to predict APIs (costs 1 extra call per task)
-        "ground_truth": Use oracle APIs from task data (train/dev only)
-        "all": Use all available APIs (limited to 20)
+        "ground_truth": Use oracle APIs from task data (API-level oracle, train/dev only)
+        "app_oracle": Use oracle to identify apps, load all APIs from those apps (app-level oracle)
+        "all": Use all available APIs (no limit)
     """
     return str(request.config.getoption("--api-mode"))
