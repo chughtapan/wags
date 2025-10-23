@@ -66,8 +66,12 @@ Tests with real LLMs using FastAgent patterns.
 ```
 
 ### 4. Benchmark Tests (`benchmarks/`)
-BFCL (Berkeley Function Call Leaderboard) evaluation tests.
+Large-scale evaluation suites including BFCL and AppWorld.
 
+```bash
+# First-time setup
+UV_GIT_LFS=1 uv pip install -e ".[dev,evals]"
+```
 **Characteristics:**
 - Large-scale evaluation suites
 - Excluded from default test runs
@@ -76,8 +80,9 @@ BFCL (Berkeley Function Call Leaderboard) evaluation tests.
 
 **Examples:**
 - `benchmarks/bfcl/test_bfcl.py` - BFCL multi-turn tests
+- `benchmarks/appworld/test_appworld.py` - AppWorld realistic task tests
 
-**Run:**
+**Run BFCL:**
 ```bash
 # Run all BFCL tests
 .venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --model gpt-4o
@@ -87,6 +92,21 @@ BFCL (Berkeley Function Call Leaderboard) evaluation tests.
 
 # Validate existing logs
 .venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --validate-only
+```
+
+**Run AppWorld:**
+```bash
+appworld install
+appworld download data
+
+# Run all train tasks
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --dataset train --model gpt-4o
+
+# Run specific task
+.venv/bin/pytest 'tests/benchmarks/appworld/test_appworld.py::test_appworld[train_001]'
+
+# Validate existing results
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --validate-only
 ```
 
 ### 5. Smoke Tests (`smoke/`)
@@ -208,6 +228,12 @@ Registered markers:
 --validate-only           # Only validate existing logs (benchmarks)
 --log-dir DIR             # Log directory for validation
 --max-workers N           # Max concurrent tests (default: 4)
+
+# AppWorld-specific options
+--dataset DATASET         # AppWorld dataset: train, dev, test_normal, test_challenge
+--limit N                 # Run only first N tasks from dataset
+--appworld-mcp-url URL    # AppWorld MCP server URL (default: http://localhost:10000)
+--appworld-api-url URL    # AppWorld API server URL (default: http://localhost:9000)
 ```
 
 ## Common Commands

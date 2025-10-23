@@ -1,0 +1,12 @@
+# AppWorld data directories
+data/
+experiments/
+
+# Docker volumes
+*.bundle
+
+# Test outputs
+outputs/
+*.jsonl
+*_complete.json
+*_structured.jsonl
