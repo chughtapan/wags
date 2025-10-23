@@ -54,6 +54,15 @@ pytest tests/benchmarks/appworld/test_appworld.py --validate-only
 --temperature 0.001  # Temperature for sampling (default: 0.001)
 ```
 
+### Parallel Execution
+```bash
+-n 4     # Run with 4 workers
+-n 8     # Run with 8 workers
+-n auto  # Auto-detect number of CPUs
+```
+
+Example: `pytest tests/benchmarks/appworld/test_appworld.py --dataset train -n 4`
+
 ## File Structure
 
 ```

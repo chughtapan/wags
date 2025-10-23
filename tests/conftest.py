@@ -50,7 +50,6 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--output-dir", default="outputs", help="Output directory for results")
     parser.addoption("--validate-only", action="store_true", help="Only validate existing logs")
     parser.addoption("--log-dir", default="outputs/raw", help="Directory with logs (for validate mode)")
-    parser.addoption("--max-workers", default=4, type=int, help="Max concurrent tests (default: 4)")
 
 
 def pytest_configure(config: pytest.Config) -> None:
