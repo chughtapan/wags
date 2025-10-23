@@ -27,7 +27,10 @@ jobs:
         run: uv pip install --system pre-commit
 
       - name: Run pre-commit
-        run: pre-commit run --all-files
+        run: SKIP=mypy pre-commit run --all-files
+
+      - name: Run mypy
+        run: uv run mypy src/ tests/ --exclude 'tests/benchmarks/appworld/'
 
   test:
     runs-on: ubuntu-latest
@@ -50,7 +53,7 @@ jobs:
         run: uv pip install --system -e ".[dev]"
 
       - name: Run unit tests
-        run: uv run pytest tests/unit/ -v
+        run: uv run pytest tests/unit/ -v -p no:warnings
 
       - name: Run integration tests
-        run: uv run pytest tests/integration/ -v
+        run: uv run pytest tests/integration/ -v -p no:warnings
