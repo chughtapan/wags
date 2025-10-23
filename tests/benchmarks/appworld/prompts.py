@@ -1,59 +1,16 @@
-"""AppWorld integration helpers - instructions and API prediction."""
+"""AppWorld prompt and instruction management."""
 
 import json
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any
 
 import appworld_experiments
 from appworld.common.io import dump_yaml, read_file, read_json
 from appworld.common.text import render_template
 from appworld.task import Task
-from appworld_experiments.code.common.api_predictor import APIPredictor
 
 # Path to installed appworld_experiments package
 EXPERIMENTS_PATH = Path(appworld_experiments.__file__).parent
-
-
-def predict_apis(
-    task_id: str,
-    mode: str = "predicted",
-    model_name: str = "gpt-4o-mini",
-) -> list[str]:
-    """
-    Predict which APIs are needed for a task using AppWorld's APIPredictor.
-
-    Args:
-        task_id: AppWorld task ID
-        mode: predicted/ground_truth/all
-        model_name: Model for prediction (only used if mode="predicted")
-
-    Returns:
-        List of API names (typically 6-20 APIs instead of 400+)
-    """
-    task = Task.load(
-        task_id=task_id,
-        storage_type="memory",
-        load_ground_truth=(mode == "ground_truth"),
-        ground_truth_mode="full" if mode == "ground_truth" else "minimal",
-    )
-
-    prompt_path = EXPERIMENTS_PATH / "prompts/api_predictor.txt"
-
-    predictor = APIPredictor(
-        prompt_file_path=str(prompt_path),
-        demo_task_ids=[],
-        max_predicted_apis=20,
-        app_api_separator="__",
-        mode=cast(Literal["ground_truth", "predicted", "all"], mode),
-    )
-
-    if mode == "predicted":
-        raise NotImplementedError(
-            "Predicted mode requires language model configuration. "
-            "Use mode='ground_truth' (train/dev only) or mode='all' instead."
-        )
-
-    return predictor.non_predicted_apis(task)
 
 
 def load_system_instruction(task: Task, max_steps: int = 40) -> str:
