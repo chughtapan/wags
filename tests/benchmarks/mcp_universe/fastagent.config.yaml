@@ -1,10 +1,8 @@
 # MCP-Universe Repository Management Benchmark Configuration
 
-default_model: ${DEFAULT_MODEL:gpt-4o}
-
 openai:
   api_key: ${OPENAI_API_KEY}
-  temperature: ${TEMPERATURE:0.001}
+  temperature: ${TEMPERATURE}
 
 anthropic:
   api_key: ${ANTHROPIC_API_KEY}
@@ -12,11 +10,16 @@ anthropic:
 mcp:
   servers:
     # GitHub MCP Server for repository management tasks
+    # Using Docker with pinned version v0.15.0 (before PR #1091) for research reproducibility
     github:
-      command: npx
+      command: docker
       args:
-        - -y
-        - "@modelcontextprotocol/server-github"
+        - run
+        - -i
+        - --rm
+        - -e
+        - GITHUB_PERSONAL_ACCESS_TOKEN
+        - ghcr.io/github/github-mcp-server:v0.15.0
       env:
         GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_PERSONAL_ACCESS_TOKEN}
 

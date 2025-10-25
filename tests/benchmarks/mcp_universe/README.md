@@ -4,7 +4,10 @@ This directory contains the integration of the MCP-Universe repository managemen
 
 ## Overview
 
-MCP-Universe is a comprehensive benchmark from Salesforce AI Research that evaluates LLMs on realistic tasks using real-world MCP servers. This integration focuses on the **repository management domain**, which includes 28 tasks testing GitHub operations like:
+MCP-Universe is a comprehensive benchmark from Salesforce AI Research that evaluates LLMs on realistic tasks using real-world MCP servers. This integration focuses on the **repository management domain** with:
+
+- **28 pure GitHub tasks** (github_task_0001 through github_task_0030, excluding 0013 and 0020)
+- Tests realistic GitHub operations including:
 
 - Creating repositories and branches
 - Managing files and commits
@@ -16,10 +19,17 @@ MCP-Universe is a comprehensive benchmark from Salesforce AI Research that evalu
 
 ### Prerequisites
 
-1. **Node.js and npx** - Required to run the GitHub MCP server
+1. **Docker** - REQUIRED to run the GitHub MCP server
+   - Install Docker Desktop: https://www.docker.com/products/docker-desktop
+   - **Start Docker Desktop** before running tests
+   - Verify installation: `docker --version`
+   - **Note**: Using pinned version v0.15.0 for research reproducibility (before PR #1091 which added automatic instruction generation)
+   - If `docker` command is not found, ensure Docker Desktop is running and restart your terminal
 2. **GitHub Personal Access Token** - For GitHub API access
-3. **OpenAI API Key** - For running the LLM agent
-4. **Python 3.13+** with uv
+   - **CRITICAL**: Use a dedicated test GitHub account for safety
+   - Create token: https://github.com/settings/tokens
+3. **OpenAI API Key** (or Anthropic for Claude models) - For running the LLM agent
+4. **Python 3.13+** with [uv](https://docs.astral.sh/uv/)
 
 ### Installation
 
@@ -28,15 +38,25 @@ MCP-Universe is a comprehensive benchmark from Salesforce AI Research that evalu
 git clone https://github.com/chughtapan/wags.git
 cd wags
 
-# Initialize submodules (includes MCP-Universe data)
-git submodule update --init --recursive
-
-# Install dependencies
+# Install dependencies (pulls the forked MCP-Universe package via eval extras)
 uv sync --extra evals
 
-# Install additional MCP-Universe evaluator dependencies
-uv pip install yfinance playwright blender-mcp google-api-python-client wikipedia-api
+# (optional) Install dev tooling alongside eval extras
+uv sync --extra dev --extra evals
+
+# Verify Docker is working
+docker run --rm hello-world
+
+# Pre-pull the GitHub MCP server image (recommended for faster test startup)
+docker pull ghcr.io/github/github-mcp-server:v0.15.0
 ```
+
+**Note**: The `--extra evals` flag installs:
+- `mcpuniverse` from the fork [`vinamra57/MCP-Universe@72389d8`](https://github.com/vinamra57/MCP-Universe/tree/72389d8a04044dceb855f733a938d0344ac58813), which removes heavy 3D dependencies while keeping the repository-management configs
+- `bfcl-eval` for Berkeley Function Call Leaderboard evaluation
+- Other shared evaluation dependencies
+
+All repository management task JSON files are bundled inside the installed `mcpuniverse` wheel, so no git submodules or manual data checkout are required.
 
 ### Configuration
 

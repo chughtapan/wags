@@ -1,6 +1,3 @@
 [submodule "bfcl-data"]
 	path = tests/benchmarks/bfcl/data
 	url = https://github.com/ShishirPatil/gorilla
-[submodule "tests/benchmarks/mcp_universe/data"]
-	path = tests/benchmarks/mcp_universe/data
-	url = https://github.com/SalesforceAIResearch/MCP-Universe.git

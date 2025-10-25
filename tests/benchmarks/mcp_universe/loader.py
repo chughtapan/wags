@@ -1,26 +1,49 @@
 """MCP-Universe data loading utilities."""
 
 import json
+from contextlib import suppress
+from importlib import resources
+from importlib.abc import Traversable
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
+
+_PACKAGE_SUBPATH = ("benchmark", "configs", "test", "repository_management")
+_LOCAL_DATA_DIR = (
+    Path(__file__).parent / "data" / "mcpuniverse" / "benchmark" / "configs" / "test" / "repository_management"
+)
 
 
-def _get_data_dir() -> Path:
-    """Get MCP-Universe data directory from local submodule."""
-    return (
-        Path(__file__).parent
-        / "data"
-        / "mcpuniverse"
-        / "benchmark"
-        / "configs"
-        / "test"
-        / "repository_management"
-    )
+def _package_data_root() -> Traversable | None:
+    """Return repository-management configs from the installed MCP-Universe package if available."""
+    with suppress(ModuleNotFoundError):
+        resource = resources.files("mcpuniverse")
+        for part in _PACKAGE_SUBPATH:
+            resource = resource.joinpath(part)
+        if resource.is_dir():
+            return resource
+    return None
+
+
+def _local_data_root() -> Path | None:
+    """Return repository-management configs from an optional vendored checkout."""
+    if _LOCAL_DATA_DIR.exists():
+        return _LOCAL_DATA_DIR
+    return None
+
+
+def _collect_task_ids(root: Any) -> list[str]:
+    """Collect GitHub task identifiers from a directory-like resource."""
+    task_ids: list[str] = []
+    for entry in root.iterdir():
+        name = entry.name
+        if entry.is_file() and name.startswith("github_task_") and name.endswith(".json"):
+            task_ids.append(name.removesuffix(".json"))
+    return task_ids
 
 
 def load_task(task_id: str) -> dict[str, Any]:
     """
-    Load task from MCP-Universe data.
+    Load repository management task definition.
 
     Args:
         task_id: Task identifier (e.g., "github_task_0001")
@@ -29,19 +52,30 @@ def load_task(task_id: str) -> dict[str, Any]:
         Task dictionary with question, evaluators, etc.
 
     Raises:
-        FileNotFoundError: If task file doesn't exist
-        json.JSONDecodeError: If invalid JSON
+        FileNotFoundError: If the task cannot be found in any configured source
+        json.JSONDecodeError: If the task file contains invalid JSON
     """
-    data_dir = _get_data_dir()
-    task_file = data_dir / f"{task_id}.json"
+    task_filename = f"{task_id}.json"
 
-    if not task_file.exists():
-        raise FileNotFoundError(f"Task file not found: {task_file}")
+    package_root = _package_data_root()
+    if package_root:
+        task_resource = package_root.joinpath(task_filename)
+        if task_resource.is_file():
+            with task_resource.open("r", encoding="utf-8") as fh:
+                return json.load(fh)
 
-    with open(task_file) as f:
-        task_data: dict[str, Any] = json.load(f)
+    local_root = _local_data_root()
+    if local_root:
+        task_path = local_root / task_filename
+        if task_path.is_file():
+            with open(task_path, encoding="utf-8") as fh:
+                return json.load(fh)
 
-    return task_data
+    raise FileNotFoundError(
+        f"Task file not found for {task_id!r}. Install the eval extras with 'uv sync --extra evals' "
+        "to pull the MCP-Universe package, or provide a local copy under "
+        f"{_LOCAL_DATA_DIR}."
+    )
 
 
 def find_all_task_ids() -> list[str]:
@@ -49,41 +83,25 @@ def find_all_task_ids() -> list[str]:
     Find all repository management task IDs.
 
     Returns:
-        List of all task IDs sorted
+        Sorted list of task IDs
+
+    Raises:
+        FileNotFoundError: If no task data sources are available
     """
-    data_dir = _get_data_dir()
+    package_root = _package_data_root()
+    if package_root:
+        task_ids = _collect_task_ids(package_root)
+        if task_ids:
+            return sorted(task_ids)
 
-    if not data_dir.exists():
-        return []
+    local_root = _local_data_root()
+    if local_root:
+        task_ids = _collect_task_ids(local_root)
+        if task_ids:
+            return sorted(task_ids)
 
-    task_ids = []
-    for file_path in data_dir.glob("github_task_*.json"):
-        # Extract task ID from filename (e.g., "github_task_0001.json" -> "github_task_0001")
-        task_ids.append(file_path.stem)
-
-    return sorted(task_ids)
-
-
-def find_tasks_by_pattern(pattern: str = "github_task_*", limit: int | None = None) -> list[str]:
-    """
-    Find task IDs matching a pattern.
-
-    Args:
-        pattern: Glob pattern for task files
-        limit: Maximum number of tasks to return
-
-    Returns:
-        List of task IDs
-    """
-    data_dir = _get_data_dir()
-
-    if not data_dir.exists():
-        return []
-
-    task_ids = []
-    for file_path in data_dir.glob(f"{pattern}.json"):
-        task_ids.append(file_path.stem)
-        if limit and len(task_ids) >= limit:
-            break
-
-    return sorted(task_ids)
+    raise FileNotFoundError(
+        "MCP-Universe repository management data not available. Run 'uv sync --extra evals' to install "
+        "the MCP-Universe package, or vendor the configs under "
+        f"{_LOCAL_DATA_DIR}."
+    )

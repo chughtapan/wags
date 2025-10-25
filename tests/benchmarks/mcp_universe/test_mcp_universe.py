@@ -3,29 +3,23 @@
 import asyncio
 import json
 import os
-import sys
 from pathlib import Path
 from typing import Any
 
 import pytest
+from fast_agent import FastAgent
+from mcpuniverse.common.context import Context
 
 from tests.benchmarks.mcp_universe import evaluator, loader
-
-# Add MCP-Universe to Python path for imports
-mcp_universe_path = Path(__file__).parent / "data"
-if str(mcp_universe_path) not in sys.path:
-    sys.path.insert(0, str(mcp_universe_path))
-
-from mcpuniverse.common.context import Context
 
 
 async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, output_dir: Path) -> Path:
     """Run MCP-Universe test and return path to results."""
-    from fast_agent import FastAgent
 
     task = loader.load_task(test_id)
 
     instruction_path = Path(__file__).parent / "instruction.txt"
+    instruction_content = instruction_path.read_text(encoding="utf-8")
     output_path = output_dir / "raw" / f"{test_id}_output.json"
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -49,7 +43,7 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
         name="test_agent",
         model=model,
         servers=server_names,
-        instruction=instruction_path,
+        instruction=instruction_content,
     )
     async def run_test() -> Path:
         async with agent.run() as agent_app:
@@ -133,12 +127,11 @@ async def test_mcp_universe(
 
     # Create detailed failure message if evaluation failed
     if not evaluation["passed"]:
-        failure_details = []
-        for result in evaluation["evaluation_results"]:
-            if not result["passed"]:
-                failure_details.append(
-                    f"  - {result['func']} {result['op']}: {result['reason'] or result['error']}"
-                )
+        failure_details = [
+            f"  - {result['func']} {result['op']}: {result['reason'] or result['error']}"
+            for result in evaluation["evaluation_results"]
+            if not result["passed"]
+        ]
         failure_msg = f"Evaluation failed for {test_id}:\n" + "\n".join(failure_details)
         assert evaluation["passed"], failure_msg
     else:

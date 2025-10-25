@@ -31,15 +31,38 @@ dev = [
     "mypy",
 ]
 
+bfcl = [
+    "bfcl-eval",
+    "jinja2>=3.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+mcpuniverse-eval = [
+    "mcpuniverse",
+    "jinja2>=3.0.0",
+    "python-dotenv>=1.0.0",
+]
+
 evals = [
     "bfcl-eval",
+    "mcpuniverse",
     "jinja2>=3.0.0",
     "python-dotenv>=1.0.0",
 ]
 
 [tool.uv.sources]
 bfcl-eval = { git = "https://github.com/chughtapan/gorilla.git", subdirectory = "berkeley-function-call-leaderboard", branch = "wags-dev" }
+mcpuniverse = { git = "https://github.com/vinamra57/MCP-Universe.git", branch = "wags-dev" }
 
+[tool.uv]
+override-dependencies = [
+    "openai>=1.108.0",  # Override mcpuniverse's openai==1.106.1 constraint (required by existing FastAgent integrations)
+    "anthropic>=0.68.0",  # Override mcpuniverse's anthropic==0.49.0 constraint
+    "google-genai>=1.33.0",  # Override mcpuniverse's google-genai==1.16.1 constraint
+    "mistralai>=1.7.0",  # Override mcpuniverse's mistralai==1.6.0 constraint
+    "python-dotenv>=1.1.0",  # Override mcpuniverse's python-dotenv==1.0.1 constraint
+    "mcp>=1.19.0",  # Align with wags core MCP runtime
+]
 [tool.ruff]
 line-length = 120
 target-version = "py313"
