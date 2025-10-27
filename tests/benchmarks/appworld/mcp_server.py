@@ -230,7 +230,7 @@ async def serve_task_mcp(task_id: str, experiment_name: str = "wags-benchmark") 
             # Save databases on task completion
             if api_name == "complete_task" or name == "supervisor__complete_task":
                 Path(db_paths.output_db_path).mkdir(parents=True, exist_ok=True)
-                collections.model_collection.save(db_home_path=db_paths.output_db_path)
+                collections.model_collection.save(db_home_path=db_paths.output_db_path, save_model_hashes=True)
 
             return format_tool_response(response)
         except Exception as e:

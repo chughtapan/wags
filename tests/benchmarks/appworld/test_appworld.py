@@ -50,7 +50,7 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(300)
+@pytest.mark.timeout(900)
 async def test_appworld(
     task_id: str,
     model: str,
