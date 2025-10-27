@@ -6,12 +6,12 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from appworld import load_task_ids
 from appworld.common.path_store import path_store
 from appworld.evaluator import evaluate_task
 from appworld.task import Task
 from fast_agent import FastAgent
 
-from appworld import load_task_ids
 from tests.benchmarks.appworld import api_predictor, prompts
 from tests.utils.fastagent_helpers import MessageSerializer
 from tests.utils.logger import StructuredEventLogger
