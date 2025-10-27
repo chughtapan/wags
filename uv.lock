@@ -1090,7 +1090,7 @@ name = "grpcio"
 version = "1.76.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions" },
+    { name = "typing-extensions", marker = "python_full_version < '4'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b6/e0/318c1ce3ae5a17894d5791e87aea147587c9e702f24122cc7a5c8bbaeeb1/grpcio-1.76.0.tar.gz", hash = "sha256:7be78388d6da1a25c0d5ec506523db58b18be22d9c37d8d3a32c08be4987bd73", size = 12785182, upload-time = "2025-10-21T16:23:12.106Z" }
 wheels = [
@@ -2053,8 +2053,8 @@ name = "opentelemetry-exporter-otlp"
 version = "1.38.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "opentelemetry-exporter-otlp-proto-grpc" },
-    { name = "opentelemetry-exporter-otlp-proto-http" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc", marker = "python_full_version < '4'" },
+    { name = "opentelemetry-exporter-otlp-proto-http", marker = "python_full_version < '4'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c2/2d/16e3487ddde2dee702bd746dd41950a8789b846d22a1c7e64824aac5ebea/opentelemetry_exporter_otlp-1.38.0.tar.gz", hash = "sha256:2f55acdd475e4136117eff20fbf1b9488b1b0b665ab64407516e1ac06f9c3f9d", size = 6147, upload-time = "2025-10-16T08:35:52.53Z" }
 wheels = [
@@ -2078,13 +2078,13 @@ name = "opentelemetry-exporter-otlp-proto-grpc"
 version = "1.38.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "googleapis-common-protos" },
-    { name = "grpcio" },
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-exporter-otlp-proto-common" },
-    { name = "opentelemetry-proto" },
-    { name = "opentelemetry-sdk" },
-    { name = "typing-extensions" },
+    { name = "googleapis-common-protos", marker = "python_full_version < '4'" },
+    { name = "grpcio", marker = "python_full_version < '4'" },
+    { name = "opentelemetry-api", marker = "python_full_version < '4'" },
+    { name = "opentelemetry-exporter-otlp-proto-common", marker = "python_full_version < '4'" },
+    { name = "opentelemetry-proto", marker = "python_full_version < '4'" },
+    { name = "opentelemetry-sdk", marker = "python_full_version < '4'" },
+    { name = "typing-extensions", marker = "python_full_version < '4'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a2/c0/43222f5b97dc10812bc4f0abc5dc7cd0a2525a91b5151d26c9e2e958f52e/opentelemetry_exporter_otlp_proto_grpc-1.38.0.tar.gz", hash = "sha256:2473935e9eac71f401de6101d37d6f3f0f1831db92b953c7dcc912536158ebd6", size = 24676, upload-time = "2025-10-16T08:35:53.83Z" }
 wheels = [
@@ -2129,10 +2129,10 @@ name = "opentelemetry-instrumentation-anthropic"
 version = "0.47.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-semantic-conventions" },
-    { name = "opentelemetry-semantic-conventions-ai" },
+    { name = "opentelemetry-api", marker = "python_full_version < '4'" },
+    { name = "opentelemetry-instrumentation", marker = "python_full_version < '4'" },
+    { name = "opentelemetry-semantic-conventions", marker = "python_full_version < '4'" },
+    { name = "opentelemetry-semantic-conventions-ai", marker = "python_full_version < '4'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/87/ee/57e88683d32a49f1ff4ec2b1ed94359d7784135b63d8e0d6bc0b8cc4aa31/opentelemetry_instrumentation_anthropic-0.47.4.tar.gz", hash = "sha256:4ec2ec5f85a85e7fad492a3cea81e8e589fd87e2ecc6bb7dde6f008ca6b337f2", size = 14684, upload-time = "2025-10-22T17:38:06.171Z" }
 wheels = [
@@ -2159,11 +2159,11 @@ name = "opentelemetry-instrumentation-mcp"
 version = "0.47.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-exporter-otlp" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-semantic-conventions" },
-    { name = "opentelemetry-semantic-conventions-ai" },
+    { name = "opentelemetry-api", marker = "python_full_version < '4'" },
+    { name = "opentelemetry-exporter-otlp", marker = "python_full_version < '4'" },
+    { name = "opentelemetry-instrumentation", marker = "python_full_version < '4'" },
+    { name = "opentelemetry-semantic-conventions", marker = "python_full_version < '4'" },
+    { name = "opentelemetry-semantic-conventions-ai", marker = "python_full_version < '4'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/67/ad/2894d1e405da43e34377a5025ecae4ad4ae1d0fbe0ad1a40f4fab8e2999a/opentelemetry_instrumentation_mcp-0.47.4.tar.gz", hash = "sha256:5aa03da02db479c4d846e52d240150aac9773e02a3cbaec07ba9a9bf3799cb58", size = 8832, upload-time = "2025-10-22T17:38:16.71Z" }
 wheels = [
@@ -2175,10 +2175,10 @@ name = "opentelemetry-instrumentation-openai"
 version = "0.47.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-semantic-conventions" },
-    { name = "opentelemetry-semantic-conventions-ai" },
+    { name = "opentelemetry-api", marker = "python_full_version < '4'" },
+    { name = "opentelemetry-instrumentation", marker = "python_full_version < '4'" },
+    { name = "opentelemetry-semantic-conventions", marker = "python_full_version < '4'" },
+    { name = "opentelemetry-semantic-conventions-ai", marker = "python_full_version < '4'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/98/46/eaf1a823c0f64cd737c9e112bf951e6f8b9bc2833d889b509543add8582a/opentelemetry_instrumentation_openai-0.47.4.tar.gz", hash = "sha256:3e70d9b44589886ee90a4bb4f4047f2a565207ba7164a09fc20425cdfb9f34ca", size = 25412, upload-time = "2025-10-22T17:38:20.376Z" }
 wheels = [
@@ -2848,6 +2848,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/42/86/9e3c5f48f7b7b638b216e4b9e645f54d199d7abbbab7a64a13b4e12ba10f/pytest_asyncio-1.2.0.tar.gz", hash = "sha256:c609a64a2a8768462d0c99811ddb8bd2583c33fd33cf7f21af1c142e824ffb57", size = 50119, upload-time = "2025-09-12T07:33:53.816Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/04/93/2fa34714b7a4ae72f2f8dad66ba17dd9a2c793220719e736dda28b7aec27/pytest_asyncio-1.2.0-py3-none-any.whl", hash = "sha256:8e17ae5e46d8e7efe51ab6494dd2010f4ca8dae51652aa3c8d55acf50bfb2e99", size = 15095, upload-time = "2025-09-12T07:33:52.639Z" },
+]
+
+[[package]]
+name = "pytest-timeout"
+version = "2.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ac/82/4c9ecabab13363e72d880f2fb504c5f750433b2b6f16e99f4ec21ada284c/pytest_timeout-2.4.0.tar.gz", hash = "sha256:7e68e90b01f9eff71332b25001f85c75495fc4e3a836701876183c4bcfd0540a", size = 17973, upload-time = "2025-05-05T19:44:34.99Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fa/b6/3127540ecdf1464a00e5a01ee60a1b09175f6913f0644ac748494d9c4b21/pytest_timeout-2.4.0-py3-none-any.whl", hash = "sha256:c42667e5cdadb151aeb5b26d114aff6bdf5a907f176a007a30b940d3d865b5c2", size = 14382, upload-time = "2025-05-05T19:44:33.502Z" },
 ]
 
 [[package]]
@@ -3708,6 +3720,8 @@ dev = [
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
+    { name = "pytest-timeout" },
+    { name = "pytest-xdist" },
     { name = "ruff" },
 ]
 evals = [
@@ -3729,6 +3743,8 @@ requires-dist = [
     { name = "mypy", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "pytest-timeout", marker = "extra == 'dev'", specifier = ">=2.0" },
+    { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.0" },
     { name = "rich", specifier = ">=13.0.0" },
     { name = "ruff", marker = "extra == 'dev'" },
 ]
