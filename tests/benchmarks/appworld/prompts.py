@@ -13,13 +13,12 @@ from appworld.task import Task
 EXPERIMENTS_PATH = Path(appworld_experiments.__file__).parent
 
 
-def load_system_instruction(task: Task, max_steps: int = 40) -> str:
+def load_system_instruction(task: Task) -> str:
     """
     Load and render system instruction from AppWorld's template with demo examples.
 
     Args:
         task: AppWorld Task object
-        max_steps: Maximum number of turns allowed
 
     Returns:
         Rendered system instruction with supervisor info, rules, and demos
@@ -40,7 +39,6 @@ def load_system_instruction(task: Task, max_steps: int = 40) -> str:
         template_content,
         main_user=task.supervisor,
         app_descriptions=app_descriptions_yaml,
-        max_steps=max_steps,
     )
 
     # Load demo messages and format them
