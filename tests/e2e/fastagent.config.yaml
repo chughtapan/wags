@@ -4,8 +4,8 @@ mcp:
       transport: stdio
       command: wags
       args:
-        - run
-        - /Users/tapanc/dev/wags/servers/github
+        - start-server
+        - ../../servers/github
       env:
         GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_PERSONAL_ACCESS_TOKEN}
       roots:
