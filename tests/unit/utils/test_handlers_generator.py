@@ -95,7 +95,10 @@ class TestJsonSchemaToPythonType:
         assert json_schema_to_python_type({"type": "boolean"}) == "bool"
         assert json_schema_to_python_type({"type": "null"}) == "None"
         assert json_schema_to_python_type({"type": "array", "items": {"type": "string"}}) == "list[str]"
-        nested_array = {"type": "array", "items": {"type": "array", "items": {"type": "integer"}}}
+        nested_array = {
+            "type": "array",
+            "items": {"type": "array", "items": {"type": "integer"}},
+        }
         assert json_schema_to_python_type(nested_array) == "list[list[int]]"
         obj_schema = {"type": "object", "properties": {"key": {"type": "string"}}}
         assert json_schema_to_python_type(obj_schema) == "dict[str, Any]"
@@ -125,7 +128,11 @@ class TestGenerateMethodStub:
     """Tests for generate_method_stub function."""
 
     def test_all_tool_types(
-        self, tool_with_params: Tool, tool_with_enum: Tool, tool_with_boolean: Tool, empty_tool: Tool
+        self,
+        tool_with_params: Tool,
+        tool_with_enum: Tool,
+        tool_with_boolean: Tool,
+        empty_tool: Tool,
     ) -> None:
         """Test generating method stubs for all tool types."""
         # Test simple tool with parameters
