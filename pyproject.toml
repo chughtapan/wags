@@ -27,6 +27,8 @@ where = ["src"]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
+    "pytest-xdist>=3.0",
+    "pytest-timeout>=2.0",
     "ruff",
     "mypy",
 ]
@@ -48,11 +50,20 @@ evals = [
     "mcpuniverse",
     "jinja2>=3.0.0",
     "python-dotenv>=1.0.0",
+    "appworld",
+    "appworld-experiments[simplified]",
+]
+
+[tool.uv]
+override-dependencies = [
+    "openai[aiohttp]>=1.108.0",  # Override appworld-experiments' openai<=1.99.8 constraint
 ]
 
 [tool.uv.sources]
 bfcl-eval = { git = "https://github.com/chughtapan/gorilla.git", subdirectory = "berkeley-function-call-leaderboard", branch = "wags-dev" }
 mcpuniverse = { git = "https://github.com/vinamra57/MCP-Universe.git", branch = "wags-dev" }
+appworld = { git = "https://github.com/StonyBrookNLP/appworld.git", rev = "f31e671ea7e5acc5eb093c0d2761aee3b7a6567b" }
+appworld-experiments = { git = "https://github.com/StonyBrookNLP/appworld.git", rev = "f31e671ea7e5acc5eb093c0d2761aee3b7a6567b", subdirectory = "experiments" }
 
 [tool.uv]
 override-dependencies = [
@@ -86,6 +97,8 @@ ignore = ["PERF203", "PLC0415", "PLR0402"]
 "servers/*/handlers.py" = ["PLR0913"]
 # CLI commands naturally have many parameters (one per flag/option)
 "src/wags/cli/main.py" = ["PLR0913"]
+# Pytest fixtures require many parameters
+"tests/benchmarks/appworld/test_appworld.py" = ["PLR0913"]
 
 [tool.ruff.lint.pylint]
 allow-magic-value-types = ["bytes", "float", "int", "str"]
@@ -96,6 +109,12 @@ asyncio_mode = "auto"
 addopts = "-v --tb=short"
 # Only run unit and integration tests by default
 norecursedirs = ["tests/benchmarks", "tests/e2e", "tests/smoke"]
+filterwarnings = [
+    "ignore::sqlalchemy.exc.SADeprecationWarning:appworld.apps.lib.models.db",
+    "ignore::pydantic.warnings.PydanticDeprecatedSince20:appworld.apps.*",
+]
+timeout = 0
+timeout_method = "thread"  # Use thread-based timeout for better async compatibility
 
 [tool.mypy]
 warn_return_any = true
@@ -119,3 +138,13 @@ ignore_missing_imports = true
 module = "mcpuniverse.*"
 ignore_missing_imports = true
 
+module = [
+    "appworld.*",
+    "appworld_experiments.*",
+]
+follow_untyped_imports = true
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "tests.benchmarks.appworld.mcp_server"
+disable_error_code = ["attr-defined", "no-untyped-call", "misc"]

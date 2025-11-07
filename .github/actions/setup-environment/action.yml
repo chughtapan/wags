@@ -1,0 +1,17 @@
+name: Setup Environment
+description: Setup Python, uv, and install dev dependencies
+
+runs:
+  using: composite
+  steps:
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+
+    - name: Install dependencies
+      shell: bash
+      run: uv pip install --system -e ".[dev]"

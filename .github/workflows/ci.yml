@@ -6,51 +6,52 @@ on:
     branches: [main]
 
 jobs:
-  pre-commit:
+  lint:
     runs-on: ubuntu-latest
+    env:
+      UV_NO_SYNC: 1
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Install dependencies
-        run: uv pip install --system -e ".[dev]"
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
 
       - name: Install pre-commit
         run: uv pip install --system pre-commit
 
-      - name: Run pre-commit
-        run: pre-commit run --all-files
+      - name: Run linting
+        run: SKIP=mypy pre-commit run --all-files
+
+  typecheck:
+    runs-on: ubuntu-latest
+    env:
+      UV_NO_SYNC: 1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+
+      - name: Run mypy
+        run: uv run mypy src/ tests/ --exclude 'tests/benchmarks/appworld/'
 
   test:
     runs-on: ubuntu-latest
     env:
       CI: 1
+      UV_NO_SYNC: 1
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Install dependencies
-        run: uv pip install --system -e ".[dev]"
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
 
       - name: Run unit tests
-        run: uv run pytest tests/unit/ -v
+        run: uv run pytest tests/unit/ -v -p no:warnings
 
       - name: Run integration tests
-        run: uv run pytest tests/integration/ -v
+        run: uv run pytest tests/integration/ -v -p no:warnings

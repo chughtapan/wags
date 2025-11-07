@@ -38,7 +38,7 @@ def version() -> None:
 def run(
     servers: str | None = None,
     config_path: Path | None = None,
-    instruction: Path | None = None,
+    instruction_file: Path | None = None,
     model: str = "gpt-4o",
 ) -> None:
     """Run an interactive agent connected to wags servers.
@@ -46,7 +46,7 @@ def run(
     Args:
         servers: Comma-separated list of servers to connect to (defaults to all)
         config_path: Path to fastagent.config.yaml (defaults to servers/fastagent.config.yaml)
-        instruction: Path to instruction file (defaults to src/wags/utils/agent_instructions.txt)
+        instruction_file: Path to instruction file (defaults to src/wags/utils/agent_instructions.txt)
         model: Model to use (defaults to gpt-4o)
     """
     from fast_agent.cli.commands.go import run_async_agent
@@ -59,17 +59,17 @@ def run(
         console.print("\nCreate a fastagent.config.yaml file or specify --config-path")
         sys.exit(1)
 
-    if instruction is None:
-        instruction = Path(__file__).parent.parent / "utils" / "agent_instructions.txt"
+    if instruction_file is None:
+        instruction_file = Path(__file__).parent.parent / "utils" / "agent_instructions.txt"
 
-    if not instruction.exists():
-        console.print(f"[red]Error:[/red] Instruction file not found: {instruction}")
+    if not instruction_file.exists():
+        console.print(f"[red]Error:[/red] Instruction file not found: {instruction_file}")
         sys.exit(1)
 
     try:
         run_async_agent(
             name="wags",
-            instruction=str(instruction),
+            instruction=instruction_file.read_text(encoding="utf-8"),
             config_path=str(config_path),
             servers=servers,
             urls=None,
