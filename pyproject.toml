@@ -41,7 +41,8 @@ evals = [
 
 [tool.uv]
 override-dependencies = [
-    "openai>=1.108.0",  # Override appworld-experiments' openai<=1.99.8 constraint
+    "openai[aiohttp]>=1.108.0",  # Override appworld-experiments' openai<=1.99.8 constraint
+    "mcp>=1.19.0"
 ]
 
 [tool.uv.sources]
