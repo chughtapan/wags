@@ -7,6 +7,10 @@ openai:
 anthropic:
   api_key: ${ANTHROPIC_API_KEY}
 
+generic:
+  api_key: ${GENERIC_API_KEY}
+  base_url: ${GENERIC_BASE_URL}
+
 mcp:
   servers:
     # GitHub MCP Server for repository management tasks
@@ -24,9 +28,9 @@ mcp:
         GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_PERSONAL_ACCESS_TOKEN}
 
 logger:
-  level: error
+  level: info
   type: console
-  show_chat: false
-  show_tools: false
+  show_chat: true
+  show_tools: true
   truncate_tools: false
-  progress_display: false
+  progress_display: true

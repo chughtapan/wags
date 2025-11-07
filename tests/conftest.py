@@ -9,6 +9,44 @@ import pytest
 from _pytest.reports import TestReport
 
 
+def _patch_rich_markup() -> None:
+    """
+    Patch fast-agent's ConsoleDisplay to disable markup parsing.
+
+    This prevents crashes when model output contains square brackets that look like
+    markup tags (e.g., [/rosout] for ROS topics, [/INST] for instruction markers).
+
+    Background:
+    - gpt-5-mini crashed on task_0010 with: MarkupError: closing tag '[/rosout]'
+    - Claude crashed on task_0026 with: MarkupError: closing tag '[/INST]'
+
+    Root cause: fast_agent/ui/console_display.py calls console.print(markup=self._markup)
+    which explicitly passes markup parameter, overriding Console defaults.
+
+    Solution: Monkey-patch ConsoleDisplay.__init__ to force _markup=False.
+    """
+    try:
+        from fast_agent.ui.console_display import ConsoleDisplay
+
+        # Store original __init__
+        original_init = ConsoleDisplay.__init__
+
+        def patched_init(self, *args, **kwargs):
+            """Patched ConsoleDisplay.__init__ that forces _markup=False."""
+            original_init(self, *args, **kwargs)
+            # Override _markup attribute after initialization
+            self._markup = False
+
+        # Apply patch
+        ConsoleDisplay.__init__ = patched_init
+        print("[PATCH] ConsoleDisplay patched: _markup=False (prevents crashes on square brackets)")
+
+    except ImportError:
+        print("[PATCH] Warning: Could not import fast_agent.ui.console_display - Rich markup fix not applied")
+    except Exception as e:
+        print(f"[PATCH] Warning: Error applying Rich markup fix: {e}")
+
+
 class _ItemWithFuncargs(Protocol):
     """Protocol for pytest Item with funcargs attribute (added at runtime)."""
 
@@ -47,7 +85,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     """Add custom CLI options."""
     parser.addoption("--model", default="gpt-4o-mini", help="Model to use")
     parser.addoption("--temperature", default=0.001, type=float, help="Temperature for LLM (default: 0.001)")
-    parser.addoption("--output-dir", default="outputs", help="Output directory for results")
+    parser.addoption("--output-dir", default="outputs/mcp_universe/checkpoint-2025-11-05", help="Output directory for results")
     parser.addoption("--validate-only", action="store_true", help="Only validate existing logs")
     parser.addoption("--log-dir", default="outputs/raw", help="Directory with logs (for validate mode)")
     parser.addoption("--max-workers", default=4, type=int, help="Max concurrent tests (default: 4)")
@@ -64,6 +102,10 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers", "verified_models(models): mark test to only require passing with specified models"
     )
+
+    # Fix Rich markup crashes when model output contains square brackets like [/rosout] or [/INST]
+    # These strings appear in ROS topics and instruction markers but Rich interprets them as markup tags
+    _patch_rich_markup()
 
 
 @pytest.hookimpl(hookwrapper=True)
