@@ -251,6 +251,11 @@ async def serve_task_mcp(task_id: str, experiment_name: str = "wags-benchmark") 
             ),
         )
 
+    # Clean up database connections before exiting
+    # This ensures SQLite connections are closed and the process can exit cleanly
+    collections.model_collection.close()
+    collections.apis.close()
+
 
 async def main() -> None:
     parser = argparse.ArgumentParser(description="AppWorld MCP Server with task-specific state")
