@@ -51,9 +51,9 @@ def _get_bfcl_instruction(test_id: str) -> str:
 def _get_appworld_test_ids(dataset: str, limit: int | None = None) -> list[str]:
     """Get task IDs from AppWorld dataset."""
     try:
-        from appworld import load_task_ids
+        from appworld import load_task_ids  # type: ignore[import-not-found,unused-ignore]
 
-        task_ids = load_task_ids(dataset)
+        task_ids: list[str] = load_task_ids(dataset)
         if limit:
             task_ids = task_ids[:limit]
         return task_ids
@@ -63,10 +63,11 @@ def _get_appworld_test_ids(dataset: str, limit: int | None = None) -> list[str]:
 
 def _get_appworld_instruction(task_id: str) -> str:
     """Get instruction from AppWorld task."""
-    from appworld.task import Task
+    from appworld.task import Task  # type: ignore[import-not-found,unused-ignore]
 
     task = Task.load(task_id=task_id, storage_type="memory")
-    return task.instruction
+    instruction: str = task.instruction
+    return instruction
 
 
 # ========================================
