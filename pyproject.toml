@@ -37,6 +37,10 @@ evals = [
     "bfcl-eval",
     "appworld",
     "appworld-experiments[simplified]",
+    "marimo",
+    "plotly",
+    "pandas",
+    "pandas-stubs"
 ]
 
 [tool.uv]
