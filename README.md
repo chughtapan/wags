@@ -165,7 +165,7 @@ First, install the evaluation dependencies:
 git submodule update --init --recursive
 
 # 2. Install evaluation dependencies
-uv pip install -e ".[dev,evals]"
+UV_GIT_LFS=1 uv pip install -e ".[dev,evals]"
 ```
 
 ### AppWorld Setup
