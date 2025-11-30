@@ -13,7 +13,7 @@ Here's how to run benchmark evaluations with <span class="wags-brand">wags</span
 git submodule update --init --recursive
 
 # 2. Install evaluation dependencies
-uv pip install -e ".[dev,evals]"
+UV_GIT_LFS=1 uv pip install -e ".[dev,evals]"
 ```
 
 ### Updating Data
