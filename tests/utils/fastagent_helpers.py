@@ -122,7 +122,7 @@ class MessageSerializer:
     def _serialize_content_item(content: Any) -> dict[str, Any]:
         """Serialize a single content item (text, tool use, etc.)."""
         if hasattr(content, "model_dump"):
-            result: dict[str, Any] = content.model_dump(mode='json')
+            result: dict[str, Any] = content.model_dump()
             return result
         elif hasattr(content, "__dict__"):
             content_dict: dict[str, Any] = {"type": getattr(content, "type", "text")}

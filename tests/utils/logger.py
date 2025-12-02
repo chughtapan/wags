@@ -6,6 +6,7 @@ approach of grepping for magic strings in mixed debug logs.
 """
 
 import json
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -34,6 +35,9 @@ class HumanReadableLogger:
         # Clear existing log for fresh start
         if self.log_path.exists():
             self.log_path.unlink()
+
+        self.start_time = time.time()
+        self.turn_start_times: dict[int, float] = {}
 
         self._write_separator("=")
         self._write_line("MCP-UNIVERSE TEST EXECUTION LOG")
@@ -64,8 +68,10 @@ class HumanReadableLogger:
 
     def log_turn_start(self, turn_id: int, user_message: str) -> None:
         """Log the start of a conversation turn."""
+        self.turn_start_times[turn_id] = time.time()
+        elapsed = time.time() - self.start_time
         self._write_separator("=")
-        self._write_line(f"TURN {turn_id}")
+        self._write_line(f"TURN {turn_id} (elapsed: {elapsed:.2f}s)")
         self._write_separator("=")
         self._write_line(f"User Request: {user_message[:200]}...")
         self._write_line("")
@@ -108,6 +114,9 @@ class HumanReadableLogger:
 
     def log_turn_end(self, turn_id: int) -> None:
         """Log end of turn."""
+        if turn_id in self.turn_start_times:
+            turn_duration = time.time() - self.turn_start_times[turn_id]
+            self._write_line(f"  [Turn {turn_id} completed in {turn_duration:.2f}s]")
         self._write_line("")
 
     def log_execution_summary(
@@ -201,6 +210,38 @@ class HumanReadableLogger:
         self._write_line(f"FINAL VERDICT: {verdict}")
         self._write_line("")
         self._write_separator("=")
+
+    def log_infrastructure_event(
+        self,
+        event_type: str,
+        component: str,
+        status: str,
+        details: str | None = None
+    ) -> None:
+        """Log infrastructure events."""
+        self._write_separator("-")
+        self._write_line(f"[INFRASTRUCTURE] {event_type.upper()}")
+        self._write_line(f"Component: {component}")
+        self._write_line(f"Status: {status}")
+        if details:
+            self._write_line(f"Details: {details}")
+        self._write_line("")
+
+    def log_error_classification(
+        self,
+        error_message: str,
+        classification: str,
+        confidence: str,
+        reasoning: str
+    ) -> None:
+        """Log error classification."""
+        self._write_separator("-")
+        self._write_line(f"[ERROR CLASSIFICATION]")
+        self._write_line(f"Type: {classification.upper()}")
+        self._write_line(f"Confidence: {confidence}")
+        self._write_line(f"Error: {error_message[:200]}")
+        self._write_line(f"Reasoning: {reasoning}")
+        self._write_line("")
 
 
 class StructuredEventLogger:
@@ -385,3 +426,54 @@ class StructuredEventLogger:
                 "errors": errors,
             }
             self._write_event(event)
+
+    def log_infrastructure_event(
+        self,
+        event_type: str,
+        component: str,
+        status: str,
+        details: dict[str, Any] | None = None
+    ) -> None:
+        """
+        Log infrastructure-related events for debugging system issues.
+
+        Args:
+            event_type: Type of infrastructure event (e.g., "docker_start", "mcp_connection", "github_auth")
+            component: Component involved (e.g., "github-mcp-server", "docker", "github-api")
+            status: Status of the event (e.g., "started", "connected", "failed", "rate_limited")
+            details: Additional details about the event
+        """
+        event: dict[str, Any] = {
+            "type": "infrastructure",
+            "event_type": event_type,
+            "component": component,
+            "status": status,
+        }
+        if details:
+            event["details"] = details
+        self._write_event(event)
+
+    def log_error_classification(
+        self,
+        error_message: str,
+        classification: str,
+        confidence: str,
+        reasoning: str
+    ) -> None:
+        """
+        Log error classification to distinguish infrastructure vs model issues.
+
+        Args:
+            error_message: The error message
+            classification: "infrastructure" or "model_failure"
+            confidence: "high", "medium", or "low"
+            reasoning: Explanation of why it was classified this way
+        """
+        event = {
+            "type": "error_classification",
+            "error_message": error_message[:500],
+            "classification": classification,
+            "confidence": confidence,
+            "reasoning": reasoning,
+        }
+        self._write_event(event)
