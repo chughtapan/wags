@@ -16,6 +16,10 @@ import httpx
 import os
 from typing import Tuple, List, Optional, Literal
 
+import mcpuniverse.evaluator.github.functions as github_functions
+from mcpuniverse.evaluator.github.functions import github__check_repository
+from mcpuniverse.evaluator.functions import compare_func
+
 # GitHub REST API base URL
 GITHUB_API_BASE = "https://api.github.com"
 
@@ -30,11 +34,6 @@ def apply_patch():
     Apply patch to MCP-Universe evaluator for compatibility with GitHub MCP Server v0.15.0.
     """
     print("[PATCH] Applying evaluator patch for GitHub MCP Server v0.15.0...")
-
-    # Import the module containing the buggy functions
-    import mcpuniverse.evaluator.github.functions as github_functions
-    from mcpuniverse.evaluator.github.functions import github__check_repository
-    from mcpuniverse.evaluator.utils import compare_func
 
     # ============================================================================
     # HELPER: Direct GitHub REST API calls (bypassing MCP server for evaluation)

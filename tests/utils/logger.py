@@ -14,36 +14,24 @@ from typing import Any
 
 class HumanReadableLogger:
     """
-    Human-readable logger that writes detailed, formatted logs for debugging.
+    Human-readable logger optimized for manual annotation.
 
-    This logger creates easy-to-read log files that help understand:
-    - What the agent was asked to do
-    - What actions it took
-    - What went wrong and why
-    - What the evaluation expected vs what was created
+    Design principles:
+    - No infrastructure noise (no GitHub auth, FastAgent init logs)
+    - Full text, no truncation (task descriptions, tool results, errors)
+    - Clear step-by-step narrative
+    - Easy to identify failure reasons
     """
 
     def __init__(self, log_path: Path):
-        """
-        Initialize the human-readable logger.
-
-        Args:
-            log_path: Path where the human-readable log will be written
-        """
+        """Initialize the human-readable logger."""
         self.log_path = log_path
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
-        # Clear existing log for fresh start
         if self.log_path.exists():
             self.log_path.unlink()
 
         self.start_time = time.time()
         self.turn_start_times: dict[int, float] = {}
-
-        self._write_separator("=")
-        self._write_line("MCP-UNIVERSE TEST EXECUTION LOG")
-        self._write_line(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        self._write_separator("=")
-        self._write_line("")
 
     def _write_line(self, text: str = "") -> None:
         """Write a line to the log file."""
@@ -55,68 +43,73 @@ class HumanReadableLogger:
         self._write_line(char * width)
 
     def log_test_start(self, task_id: str, model: str, task_description: str) -> None:
-        """Log test initialization with task details."""
+        """Log test initialization with FULL task details."""
         self._write_separator("=")
-        self._write_line("TEST INITIALIZATION")
+        self._write_line(f"TEST: {task_id}")
+        self._write_line(f"MODEL: {model}")
+        self._write_line(f"TIME: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         self._write_separator("=")
-        self._write_line(f"Task ID: {task_id}")
-        self._write_line(f"Model: {model}")
         self._write_line("")
         self._write_line("TASK DESCRIPTION:")
-        self._write_line(task_description[:500] + "..." if len(task_description) > 500 else task_description)
+        self._write_line(task_description)  # FULL description, no truncation
+        self._write_line("")
+        self._write_separator("=")
+        self._write_line("MODEL EXECUTION")
+        self._write_separator("=")
         self._write_line("")
 
     def log_turn_start(self, turn_id: int, user_message: str) -> None:
         """Log the start of a conversation turn."""
         self.turn_start_times[turn_id] = time.time()
         elapsed = time.time() - self.start_time
-        self._write_separator("=")
-        self._write_line(f"TURN {turn_id} (elapsed: {elapsed:.2f}s)")
-        self._write_separator("=")
-        self._write_line(f"User Request: {user_message[:200]}...")
+        self._write_separator("-")
+        self._write_line(f"TURN {turn_id} (t={elapsed:.1f}s)")
+        self._write_separator("-")
+        self._write_line(user_message)  # FULL message, no truncation
         self._write_line("")
 
     def log_tool_call(self, turn_id: int, tool_name: str, arguments: dict[str, Any]) -> None:
-        """Log a tool call with formatted arguments."""
-        self._write_line(f"  [TOOL CALL] {tool_name}")
-        # Format key arguments for readability
-        if "owner" in arguments and "repo" in arguments:
-            self._write_line(f"    → Repository: {arguments['owner']}/{arguments['repo']}")
-        if "path" in arguments:
-            self._write_line(f"    → Path: {arguments['path']}")
-        if "branch" in arguments:
-            self._write_line(f"    → Branch: {arguments['branch']}")
-        if "query" in arguments:
-            self._write_line(f"    → Query: {arguments['query']}")
-        if "title" in arguments:
-            self._write_line(f"    → Title: {arguments['title']}")
-        if "base" in arguments and "head" in arguments:
-            self._write_line(f"    → Merge: {arguments['head']} → {arguments['base']}")
+        """Log a tool call with FULL arguments."""
+        self._write_line(f"[TOOL] {tool_name}")
+
+        # Show ALL arguments in readable format
+        if arguments:
+            for key, value in arguments.items():
+                # Format multi-line strings nicely
+                if isinstance(value, str) and ("\n" in value or len(value) > 80):
+                    self._write_line(f"  {key}:")
+                    for line in value.split("\n"):
+                        self._write_line(f"    {line}")
+                else:
+                    # Single line values
+                    self._write_line(f"  {key}: {value}")
 
     def log_tool_result(self, turn_id: int, tool_name: str, result: Any, is_error: bool) -> None:
-        """Log a tool result."""
+        """Log tool result with NO truncation."""
         if is_error:
-            self._write_line(f"  [ERROR] {tool_name} failed:")
-            error_msg = str(result)[:300]
-            self._write_line(f"    ✗ {error_msg}")
+            self._write_line(f"[ERROR] {tool_name}")
+            # Show FULL error message
+            error_msg = str(result)
+            self._write_line(f"  {error_msg}")
         else:
+            # Show FULL result
             result_str = str(result)
-            if len(result_str) > 200:
-                result_str = result_str[:200] + "..."
-            self._write_line(f"  [SUCCESS] {tool_name}")
             if result_str and result_str != "None":
-                self._write_line(f"    ✓ {result_str}")
+                self._write_line(f"[RESULT] {result_str}")
+        self._write_line("")
 
     def log_assistant_response(self, turn_id: int, text: str) -> None:
-        """Log assistant's text response."""
+        """Log assistant's FULL text response."""
         if text.strip():
-            self._write_line(f"  [ASSISTANT] {text[:300]}...")
+            self._write_line(f"[ASSISTANT]")
+            self._write_line(text)  # FULL response, no truncation
+            self._write_line("")
 
     def log_turn_end(self, turn_id: int) -> None:
         """Log end of turn."""
         if turn_id in self.turn_start_times:
             turn_duration = time.time() - self.turn_start_times[turn_id]
-            self._write_line(f"  [Turn {turn_id} completed in {turn_duration:.2f}s]")
+            self._write_line(f"(Turn {turn_id} duration: {turn_duration:.1f}s)")
         self._write_line("")
 
     def log_execution_summary(
@@ -132,10 +125,11 @@ class HumanReadableLogger:
         self._write_line("EXECUTION SUMMARY")
         self._write_separator("=")
         self._write_line(f"Status: {status.upper()}")
-        self._write_line(f"Reason: {reason}")
         self._write_line(f"Total Turns: {total_turns}")
         self._write_line(f"Total Tool Calls: {total_tool_calls}")
-        self._write_line(f"Errors: {error_count}")
+        self._write_line(f"Tool Errors: {error_count}")
+        if reason:
+            self._write_line(f"Completion Reason: {reason}")
         self._write_line("")
 
     def log_errors(self, errors: list[dict[str, Any]]) -> None:
@@ -143,12 +137,13 @@ class HumanReadableLogger:
         if not errors:
             return
 
-        self._write_separator("=")
-        self._write_line("ERROR DETAILS")
-        self._write_separator("=")
+        self._write_separator("-")
+        self._write_line(f"ERRORS ENCOUNTERED ({len(errors)} total)")
+        self._write_separator("-")
         for i, error in enumerate(errors, 1):
             self._write_line(f"{i}. Turn {error['turn_id']}: {error['tool_name']}")
-            self._write_line(f"   Error: {error['error_message']}")
+            # Show FULL error message
+            self._write_line(f"   {error['error_message']}")
         self._write_line("")
 
     def log_evaluation_start(self) -> None:
@@ -156,6 +151,7 @@ class HumanReadableLogger:
         self._write_separator("=")
         self._write_line("EVALUATION")
         self._write_separator("=")
+        self._write_line("")
 
     def log_evaluation_check(
         self,
@@ -166,38 +162,44 @@ class HumanReadableLogger:
         expected: Any = None,
         actual: Any = None
     ) -> None:
-        """Log a single evaluation check."""
-        status = "✓ PASS" if passed else "✗ FAIL"
-        self._write_line(f"{check_num}. {operation}: {status}")
+        """Log a single evaluation check with FULL details."""
+        status_symbol = "✓" if passed else "✗"
+        status_text = "PASS" if passed else "FAIL"
+
+        self._write_line(f"{check_num}. [{status_symbol}] {operation} - {status_text}")
 
         if not passed and reason:
-            self._write_line(f"   Reason: {reason}")
+            self._write_line(f"   WHY IT FAILED: {reason}")  # Key for annotation!
 
         if expected is not None:
-            self._write_line(f"   Expected: {self._format_value(expected)}")
+            expected_str = self._format_value_full(expected)
+            self._write_line(f"   EXPECTED: {expected_str}")
 
         if actual is not None:
-            self._write_line(f"   Actual: {self._format_value(actual)}")
+            actual_str = self._format_value_full(actual)
+            self._write_line(f"   ACTUAL: {actual_str}")
 
         if not passed and not reason:
-            self._write_line(f"   No additional details available")
+            self._write_line(f"   (No failure reason provided)")
 
         self._write_line("")
 
-    def _format_value(self, value: Any) -> str:
-        """Format a value for display."""
+    def _format_value_full(self, value: Any) -> str:
+        """Format a value for display with NO truncation."""
         if isinstance(value, dict):
-            if "owner" in value and "repo" in value:
-                return f"File from {value['owner']}/{value['repo']}/{value.get('path', '')}"
-            return str(value)[:200]
-        return str(value)[:200]
+            return json.dumps(value, indent=2)
+        elif isinstance(value, list):
+            return json.dumps(value, indent=2)
+        return str(value)  # FULL value, no truncation
 
     def log_evaluation_summary(self, passed: bool, total_checks: int, failed_checks: int) -> None:
         """Log evaluation summary."""
         self._write_separator("=")
         self._write_line("EVALUATION SUMMARY")
         self._write_separator("=")
-        self._write_line(f"Overall: {'✓ PASSED' if passed else '✗ FAILED'}")
+        result = "PASSED" if passed else "FAILED"
+        symbol = "✓" if passed else "✗"
+        self._write_line(f"Overall Result: [{symbol}] {result}")
         self._write_line(f"Checks Passed: {total_checks - failed_checks}/{total_checks}")
         if failed_checks > 0:
             self._write_line(f"Checks Failed: {failed_checks}")
@@ -207,7 +209,7 @@ class HumanReadableLogger:
     def log_final_verdict(self, verdict: str) -> None:
         """Log final verdict."""
         self._write_line("")
-        self._write_line(f"FINAL VERDICT: {verdict}")
+        self._write_line(f"FINAL VERDICT: {verdict.upper()}")
         self._write_line("")
         self._write_separator("=")
 
@@ -218,14 +220,12 @@ class HumanReadableLogger:
         status: str,
         details: str | None = None
     ) -> None:
-        """Log infrastructure events."""
-        self._write_separator("-")
-        self._write_line(f"[INFRASTRUCTURE] {event_type.upper()}")
-        self._write_line(f"Component: {component}")
-        self._write_line(f"Status: {status}")
-        if details:
-            self._write_line(f"Details: {details}")
-        self._write_line("")
+        """
+        Skip infrastructure events for annotation logs.
+
+        These don't help understand model behavior, so we ignore them.
+        """
+        pass  # Don't log infrastructure noise
 
     def log_error_classification(
         self,
@@ -234,220 +234,178 @@ class HumanReadableLogger:
         confidence: str,
         reasoning: str
     ) -> None:
-        """Log error classification."""
-        self._write_separator("-")
-        self._write_line(f"[ERROR CLASSIFICATION]")
-        self._write_line(f"Type: {classification.upper()}")
-        self._write_line(f"Confidence: {confidence}")
-        self._write_line(f"Error: {error_message[:200]}")
-        self._write_line(f"Reasoning: {reasoning}")
-        self._write_line("")
+        """Skip error classification for annotation logs."""
+        pass  # Don't log this either
 
 
 class StructuredEventLogger:
     """
-    Structured logger for typed, searchable events.
+    Structured logger for typed, searchable events in JSONL format.
 
-    Each event is properly typed and searchable, making it much easier
-    to extract and analyze specific events.
+    This creates machine-readable logs for automated analysis.
+    Separate from human-readable logs which are for manual annotation.
     """
 
     def __init__(self, log_path: Path):
-        """
-        Initialize the structured event logger.
-
-        Args:
-            log_path: Path where the structured JSONL log will be written
-        """
+        """Initialize the structured logger."""
         self.log_path = log_path
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
-        # Clear existing log for fresh start
         if self.log_path.exists():
             self.log_path.unlink()
 
-    def _write_event(self, event: dict[str, Any]) -> None:
-        """
-        Write a single structured event to JSONL.
+        self.start_time = time.time()
+        self.turn_start_times: dict[int, float] = {}
+        self.current_turn: int | None = None
 
-        Args:
-            event: Event dictionary to write
-        """
-        event["timestamp"] = datetime.now().isoformat()
+    def _write_event(self, event: dict[str, Any]) -> None:
+        """Write a structured event as JSONL."""
+        event["timestamp"] = time.time()
+        event["elapsed"] = time.time() - self.start_time
         with open(self.log_path, "a") as f:
             f.write(json.dumps(event) + "\n")
 
-    def log_turn(self, turn_id: int, phase: str, user_message: str | None = None) -> None:
-        """
-        Log turn start/end with proper structure.
+    def log_turn(self, turn_id: int, event_type: str, message: str | None = None) -> None:
+        """Log a turn event."""
+        if event_type == "start":
+            self.current_turn = turn_id
+            self.turn_start_times[turn_id] = time.time()
 
-        Args:
-            turn_id: The turn number
-            phase: Either "start" or "end"
-            user_message: The user's message (only for start phase)
-        """
-        event = {"type": "turn", "turn_id": turn_id, "phase": phase}
-        if user_message and phase == "start":
-            event["user_message"] = user_message
+        event = {
+            "event": "turn",
+            "turn_id": turn_id,
+            "type": event_type,
+        }
+        if message:
+            event["message"] = message
+
+        if event_type == "end" and turn_id in self.turn_start_times:
+            event["duration"] = time.time() - self.turn_start_times[turn_id]
+
         self._write_event(event)
 
-    def log_tool_call(self, turn_id: int, tool_name: str, arguments: dict[str, Any], tool_id: str) -> None:
-        """
-        Log a tool call with full details.
-
-        Args:
-            turn_id: The turn number
-            tool_name: Name of the tool being called
-            arguments: Arguments passed to the tool
-            tool_id: Unique identifier for this tool call
-        """
-        event = {
-            "type": "tool_call",
+    def log_tool_call(
+        self,
+        turn_id: int,
+        tool_name: str,
+        arguments: dict[str, Any],
+        tool_id: str
+    ) -> None:
+        """Log a tool call."""
+        self._write_event({
+            "event": "tool_call",
             "turn_id": turn_id,
             "tool_name": tool_name,
-            "arguments": arguments,
             "tool_id": tool_id,
-        }
-        self._write_event(event)
+            "arguments": arguments
+        })
 
-    def log_tool_result(self, turn_id: int, tool_id: str, result: Any, is_error: bool = False) -> None:
-        """
-        Log a tool result.
-
-        Args:
-            turn_id: The turn number
-            tool_id: Identifier matching the tool call
-            result: The result from the tool
-            is_error: Whether the result is an error
-        """
-        event = {
-            "type": "tool_result",
+    def log_tool_result(
+        self,
+        turn_id: int,
+        tool_id: str,
+        result: Any,
+        is_error: bool
+    ) -> None:
+        """Log a tool result."""
+        self._write_event({
+            "event": "tool_result",
             "turn_id": turn_id,
             "tool_id": tool_id,
-            "result": str(result) if not isinstance(result, (dict, list)) else result,
-            "is_error": is_error,
-        }
-        self._write_event(event)
+            "result": result if not isinstance(result, (dict, list)) else json.dumps(result),
+            "is_error": is_error
+        })
 
     def log_assistant_response(self, turn_id: int, text: str) -> None:
-        """
-        Log assistant text response.
-
-        Args:
-            turn_id: The turn number
-            text: The assistant's text response
-        """
-        event = {"type": "assistant_text", "turn_id": turn_id, "text": text}
-        self._write_event(event)
-
-    def log_elicitation(self, function_name: str, decision: str, params: dict[str, Any] | None = None) -> None:
-        """
-        Log elicitation decision with structure.
-
-        Args:
-            function_name: Name of the function being elicited
-            decision: Either "accepted" or "declined"
-            params: Parameters if accepted, None if declined
-        """
-        event: dict[str, Any] = {"type": "elicitation", "function": function_name, "decision": decision}
-        if params and decision == "accepted":
-            event["params"] = params
-        self._write_event(event)
+        """Log assistant response."""
+        self._write_event({
+            "event": "assistant_response",
+            "turn_id": turn_id,
+            "text": text
+        })
 
     def log_message_summary(self, messages: list[Any]) -> None:
-        """
-        Log a summary of all messages for debugging.
+        """Log message summary."""
+        self._write_event({
+            "event": "message_summary",
+            "total_messages": len(messages)
+        })
 
-        Args:
-            messages: List of messages to summarize
-        """
-        role_counts: dict[str, int] = {}
-        tool_call_count = 0
-        tool_result_count = 0
+    def log_error_summary(self, errors: list[dict[str, Any]]) -> None:
+        """Log error summary."""
+        self._write_event({
+            "event": "error_summary",
+            "errors": errors
+        })
 
-        for msg in messages:
-            role = str(msg.role)
-            role_counts[role] = role_counts.get(role, 0) + 1
-            if hasattr(msg, "tool_calls") and msg.tool_calls:
-                tool_call_count += len(msg.tool_calls)
-            if hasattr(msg, "tool_results") and msg.tool_results:
-                tool_result_count += len(msg.tool_results)
-
-        summary: dict[str, Any] = {
-            "type": "summary",
-            "total_messages": len(messages),
-            "role_counts": role_counts,
-            "tool_call_count": tool_call_count,
-            "tool_result_count": tool_result_count,
-        }
-
-        self._write_event(summary)
-
-    def log_completion_status(
+    def log_execution_summary(
         self,
         status: str,
-        reason: str | None = None,
-        total_tool_calls: int = 0,
-        error_count: int = 0,
-        final_message: str | None = None
+        reason: str,
+        total_tool_calls: int,
+        error_count: int,
+        total_turns: int
     ) -> None:
-        """
-        Log the completion status of the agent run.
-
-        Args:
-            status: One of "completed", "max_iterations", "error"
-            reason: Human-readable reason for stopping
-            total_tool_calls: Total number of tool calls made
-            error_count: Number of tool calls that resulted in errors
-            final_message: The agent's final message (if any)
-        """
-        event: dict[str, Any] = {
-            "type": "completion_status",
+        """Log execution summary."""
+        self._write_event({
+            "event": "execution_summary",
             "status": status,
+            "reason": reason,
             "total_tool_calls": total_tool_calls,
             "error_count": error_count,
+            "total_turns": total_turns
+        })
+
+    def log_evaluation_start(self) -> None:
+        """Log evaluation start."""
+        self._write_event({"event": "evaluation_start"})
+
+    def log_evaluation_check(
+        self,
+        check_num: int,
+        operation: str,
+        passed: bool,
+        reason: str = "",
+        expected: Any = None,
+        actual: Any = None
+    ) -> None:
+        """Log evaluation check."""
+        event: dict[str, Any] = {
+            "event": "evaluation_check",
+            "check_num": check_num,
+            "operation": operation,
+            "passed": passed
         }
         if reason:
             event["reason"] = reason
-        if final_message:
-            event["final_message"] = final_message
+        if expected is not None:
+            event["expected"] = expected if not isinstance(expected, (dict, list)) else json.dumps(expected)
+        if actual is not None:
+            event["actual"] = actual if not isinstance(actual, (dict, list)) else json.dumps(actual)
+
         self._write_event(event)
 
-    def log_error_summary(self, errors: list[dict[str, Any]]) -> None:
-        """
-        Log a summary of all errors encountered.
-
-        Args:
-            errors: List of error dictionaries with tool_name, error_message, turn_id
-        """
-        if errors:
-            event = {
-                "type": "error_summary",
-                "error_count": len(errors),
-                "errors": errors,
-            }
-            self._write_event(event)
+    def log_evaluation_summary(self, passed: bool, total_checks: int, failed_checks: int) -> None:
+        """Log evaluation summary."""
+        self._write_event({
+            "event": "evaluation_summary",
+            "passed": passed,
+            "total_checks": total_checks,
+            "failed_checks": failed_checks
+        })
 
     def log_infrastructure_event(
         self,
         event_type: str,
         component: str,
         status: str,
-        details: dict[str, Any] | None = None
+        details: Any = None
     ) -> None:
-        """
-        Log infrastructure-related events for debugging system issues.
-
-        Args:
-            event_type: Type of infrastructure event (e.g., "docker_start", "mcp_connection", "github_auth")
-            component: Component involved (e.g., "github-mcp-server", "docker", "github-api")
-            status: Status of the event (e.g., "started", "connected", "failed", "rate_limited")
-            details: Additional details about the event
-        """
+        """Log infrastructure event."""
         event: dict[str, Any] = {
-            "type": "infrastructure",
-            "event_type": event_type,
+            "event": "infrastructure",
+            "type": event_type,
             "component": component,
-            "status": status,
+            "status": status
         }
         if details:
             event["details"] = details
@@ -460,20 +418,11 @@ class StructuredEventLogger:
         confidence: str,
         reasoning: str
     ) -> None:
-        """
-        Log error classification to distinguish infrastructure vs model issues.
-
-        Args:
-            error_message: The error message
-            classification: "infrastructure" or "model_failure"
-            confidence: "high", "medium", or "low"
-            reasoning: Explanation of why it was classified this way
-        """
-        event = {
-            "type": "error_classification",
-            "error_message": error_message[:500],
+        """Log error classification."""
+        self._write_event({
+            "event": "error_classification",
+            "error_message": error_message,
             "classification": classification,
             "confidence": confidence,
-            "reasoning": reasoning,
-        }
-        self._write_event(event)
+            "reasoning": reasoning
+        })
