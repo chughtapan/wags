@@ -8,6 +8,7 @@ import appworld_experiments
 from appworld.common.io import dump_yaml, read_file, read_json
 from appworld.common.text import render_template
 from appworld.task import Task
+from fast_agent.mcp.common import create_namespaced_name
 
 # Path to installed appworld_experiments package
 EXPERIMENTS_PATH = Path(appworld_experiments.__file__).parent
@@ -54,8 +55,14 @@ def load_system_instruction(task: Task) -> str:
     return base_instruction + demo_text
 
 
-def _format_demo_messages(demo_messages: list[dict[str, Any]]) -> str:
-    """Format demo messages as readable conversation."""
+def _format_demo_messages(demo_messages: list[dict[str, Any]], server_name: str = "appworld") -> str:
+    """
+    Format demo messages as readable conversation.
+
+    Args:
+        demo_messages: List of demo message dictionaries
+        server_name: MCP server name (default: "appworld")
+    """
     demo_text_parts = ["\n"]
 
     for msg in demo_messages:
@@ -72,13 +79,14 @@ def _format_demo_messages(demo_messages: list[dict[str, Any]]) -> str:
                 calls = []
                 for tc in tool_calls:
                     func_name = tc["function"]["name"]
+                    prefixed_name = create_namespaced_name(server_name, func_name)
                     func_args = tc["function"]["arguments"]
                     args_dict = json.loads(func_args) if isinstance(func_args, str) else func_args
                     if args_dict:
                         args_str = ", ".join(f"{k}={repr(v)}" for k, v in args_dict.items())
-                        calls.append(f"{func_name}({args_str})")
+                        calls.append(f"{prefixed_name}({args_str})")
                     else:
-                        calls.append(f"{func_name}()")
+                        calls.append(f"{prefixed_name}()")
                 demo_text_parts.append("\n" + "\n".join(calls))
             elif content:
                 demo_text_parts.append(f"\n{content}")

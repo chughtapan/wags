@@ -1,15 +1,8 @@
 default_model: "openai.gpt-4o-mini"
-
-mcp:
-  servers:
-    minimal_test:
-      command: python
-      args: ["/Users/tapanc/dev/elicitation_evals/test_minimal_mcp.py"]
-
 logger:
   level: debug
   type: file
-  path: /Users/tapanc/dev/elicitation_evals/minimal_test.jsonl
+  path: fastagent.log.jsonl
   show_chat: true
   show_tools: true
   truncate_tools: false
