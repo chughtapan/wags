@@ -101,7 +101,7 @@ class HumanReadableLogger:
     def log_assistant_response(self, turn_id: int, text: str) -> None:
         """Log assistant's FULL text response."""
         if text.strip():
-            self._write_line(f"[ASSISTANT]")
+            self._write_line("[ASSISTANT]")
             self._write_line(text)  # FULL response, no truncation
             self._write_line("")
 
@@ -113,12 +113,7 @@ class HumanReadableLogger:
         self._write_line("")
 
     def log_execution_summary(
-        self,
-        status: str,
-        reason: str,
-        total_tool_calls: int,
-        error_count: int,
-        total_turns: int
+        self, status: str, reason: str, total_tool_calls: int, error_count: int, total_turns: int
     ) -> None:
         """Log execution summary."""
         self._write_separator("=")
@@ -154,13 +149,7 @@ class HumanReadableLogger:
         self._write_line("")
 
     def log_evaluation_check(
-        self,
-        check_num: int,
-        operation: str,
-        passed: bool,
-        reason: str = "",
-        expected: Any = None,
-        actual: Any = None
+        self, check_num: int, operation: str, passed: bool, reason: str = "", expected: Any = None, actual: Any = None
     ) -> None:
         """Log a single evaluation check with FULL details."""
         status_symbol = "✓" if passed else "✗"
@@ -180,7 +169,7 @@ class HumanReadableLogger:
             self._write_line(f"   ACTUAL: {actual_str}")
 
         if not passed and not reason:
-            self._write_line(f"   (No failure reason provided)")
+            self._write_line("   (No failure reason provided)")
 
         self._write_line("")
 
@@ -214,11 +203,7 @@ class HumanReadableLogger:
         self._write_separator("=")
 
     def log_infrastructure_event(
-        self,
-        event_type: str,
-        component: str,
-        status: str,
-        details: str | None = None
+        self, event_type: str, component: str, status: str, details: str | None = None
     ) -> None:
         """
         Skip infrastructure events for annotation logs.
@@ -228,11 +213,7 @@ class HumanReadableLogger:
         pass  # Don't log infrastructure noise
 
     def log_error_classification(
-        self,
-        error_message: str,
-        classification: str,
-        confidence: str,
-        reasoning: str
+        self, error_message: str, classification: str, confidence: str, reasoning: str
     ) -> None:
         """Skip error classification for annotation logs."""
         pass  # Don't log this either
@@ -283,97 +264,70 @@ class StructuredEventLogger:
 
         self._write_event(event)
 
-    def log_tool_call(
-        self,
-        turn_id: int,
-        tool_name: str,
-        arguments: dict[str, Any],
-        tool_id: str
-    ) -> None:
+    def log_tool_call(self, turn_id: int, tool_name: str, arguments: dict[str, Any], tool_id: str) -> None:
         """Log a tool call."""
-        self._write_event({
-            "event": "tool_call",
-            "turn_id": turn_id,
-            "tool_name": tool_name,
-            "tool_id": tool_id,
-            "arguments": arguments
-        })
+        self._write_event(
+            {
+                "event": "tool_call",
+                "turn_id": turn_id,
+                "tool_name": tool_name,
+                "tool_id": tool_id,
+                "arguments": arguments,
+            }
+        )
 
-    def log_tool_result(
-        self,
-        turn_id: int,
-        tool_id: str,
-        result: Any,
-        is_error: bool
-    ) -> None:
+    def log_tool_result(self, turn_id: int, tool_id: str, result: Any, is_error: bool) -> None:
         """Log a tool result."""
-        self._write_event({
-            "event": "tool_result",
-            "turn_id": turn_id,
-            "tool_id": tool_id,
-            "result": result if not isinstance(result, (dict, list)) else json.dumps(result),
-            "is_error": is_error
-        })
+        self._write_event(
+            {
+                "event": "tool_result",
+                "turn_id": turn_id,
+                "tool_id": tool_id,
+                "result": result if not isinstance(result, (dict, list)) else json.dumps(result),
+                "is_error": is_error,
+            }
+        )
 
     def log_assistant_response(self, turn_id: int, text: str) -> None:
         """Log assistant response."""
-        self._write_event({
-            "event": "assistant_response",
-            "turn_id": turn_id,
-            "text": text
-        })
+        self._write_event({"event": "assistant_response", "turn_id": turn_id, "text": text})
 
     def log_message_summary(self, messages: list[Any]) -> None:
         """Log message summary."""
-        self._write_event({
-            "event": "message_summary",
-            "total_messages": len(messages)
-        })
+        self._write_event({"event": "message_summary", "total_messages": len(messages)})
 
     def log_error_summary(self, errors: list[dict[str, Any]]) -> None:
         """Log error summary."""
-        self._write_event({
-            "event": "error_summary",
-            "errors": errors
-        })
+        self._write_event({"event": "error_summary", "errors": errors})
 
     def log_execution_summary(
-        self,
-        status: str,
-        reason: str,
-        total_tool_calls: int,
-        error_count: int,
-        total_turns: int
+        self, status: str, reason: str, total_tool_calls: int, error_count: int, total_turns: int
     ) -> None:
         """Log execution summary."""
-        self._write_event({
-            "event": "execution_summary",
-            "status": status,
-            "reason": reason,
-            "total_tool_calls": total_tool_calls,
-            "error_count": error_count,
-            "total_turns": total_turns
-        })
+        self._write_event(
+            {
+                "event": "execution_summary",
+                "status": status,
+                "reason": reason,
+                "total_tool_calls": total_tool_calls,
+                "error_count": error_count,
+                "total_turns": total_turns,
+            }
+        )
 
     def log_evaluation_start(self) -> None:
         """Log evaluation start."""
         self._write_event({"event": "evaluation_start"})
 
     def log_evaluation_check(
-        self,
-        check_num: int,
-        operation: str,
-        passed: bool,
-        reason: str = "",
-        expected: Any = None,
-        actual: Any = None
+        self, check_num: int, operation: str, passed: bool, reason: str = "", expected: Any = None, actual: Any = None
     ) -> None:
         """Log evaluation check."""
         event: dict[str, Any] = {
             "event": "evaluation_check",
             "check_num": check_num,
             "operation": operation,
-            "passed": passed
+            "passed": passed,
         }
         if reason:
             event["reason"] = reason
@@ -386,43 +340,59 @@ class StructuredEventLogger:
 
     def log_evaluation_summary(self, passed: bool, total_checks: int, failed_checks: int) -> None:
         """Log evaluation summary."""
-        self._write_event({
-            "event": "evaluation_summary",
-            "passed": passed,
-            "total_checks": total_checks,
-            "failed_checks": failed_checks
-        })
+        self._write_event(
+            {
+                "event": "evaluation_summary",
+                "passed": passed,
+                "total_checks": total_checks,
+                "failed_checks": failed_checks,
+            }
+        )
 
-    def log_infrastructure_event(
-        self,
-        event_type: str,
-        component: str,
-        status: str,
-        details: Any = None
-    ) -> None:
+    def log_infrastructure_event(self, event_type: str, component: str, status: str, details: Any = None) -> None:
         """Log infrastructure event."""
         event: dict[str, Any] = {
             "event": "infrastructure",
             "type": event_type,
             "component": component,
-            "status": status
+            "status": status,
         }
         if details:
             event["details"] = details
         self._write_event(event)
 
     def log_error_classification(
-        self,
-        error_message: str,
-        classification: str,
-        confidence: str,
-        reasoning: str
+        self, error_message: str, classification: str, confidence: str, reasoning: str
     ) -> None:
         """Log error classification."""
-        self._write_event({
-            "event": "error_classification",
-            "error_message": error_message,
-            "classification": classification,
-            "confidence": confidence,
-            "reasoning": reasoning
-        })
+        self._write_event(
+            {
+                "event": "error_classification",
+                "error_message": error_message,
+                "classification": classification,
+                "confidence": confidence,
+                "reasoning": reasoning,
+            }
+        )
+
+    def log_elicitation(self, func_name: str, action: str, params: dict[str, Any] | None) -> None:
+        """Log parameter elicitation event."""
+        event: dict[str, Any] = {"event": "elicitation", "func_name": func_name, "action": action}
+        if params:
+            event["params"] = params
+        self._write_event(event)
+
+    def log_completion_status(
+        self, status: str, reason: str, total_tool_calls: int, error_count: int, final_message: str | None
+    ) -> None:
+        """Log execution completion status."""
+        event: dict[str, Any] = {
+            "event": "completion_status",
+            "status": status,
+            "reason": reason,
+            "total_tool_calls": total_tool_calls,
+            "error_count": error_count,
+        }
+        if final_message:
+            event["final_message"] = final_message
+        self._write_event(event)

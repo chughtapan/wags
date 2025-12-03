@@ -12,12 +12,13 @@ from mcpuniverse.common.context import Context
 
 # CRITICAL: Apply patch BEFORE importing evaluator to ensure it works
 from tests.benchmarks.mcp_universe.evaluator_patch import apply_patch
+
 apply_patch()
 
 # Now import evaluator and loader AFTER patch is applied
-from tests.benchmarks.mcp_universe import evaluator, loader
-from tests.utils.fastagent_helpers import MessageSerializer
-from tests.utils.logger import HumanReadableLogger, StructuredEventLogger
+from tests.benchmarks.mcp_universe import evaluator, loader  # noqa: E402
+from tests.utils.fastagent_helpers import MessageSerializer  # noqa: E402
+from tests.utils.logger import HumanReadableLogger, StructuredEventLogger  # noqa: E402
 
 
 def _parse_question(question: Any) -> str:
@@ -47,32 +48,25 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
         "test_initialization",
         "test_framework",
         "started",
-        {"test_id": test_id, "model": model, "temperature": temperature}
+        {"test_id": test_id, "model": model, "temperature": temperature},
     )
     human_logger.log_infrastructure_event(
         "test_initialization",
         "test_framework",
         "started",
-        f"Starting test {test_id} with model {model} (temp={temperature})"
+        f"Starting test {test_id} with model {model} (temp={temperature})",
     )
 
     # Validate GitHub token is available
     if not os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN"):
         structured_logger.log_infrastructure_event(
-            "github_auth",
-            "github-api",
-            "failed",
-            {"error": "GITHUB_PERSONAL_ACCESS_TOKEN not set"}
+            "github_auth", "github-api", "failed", {"error": "GITHUB_PERSONAL_ACCESS_TOKEN not set"}
         )
         human_logger.log_infrastructure_event(
-            "github_auth",
-            "github-api",
-            "failed",
-            "GITHUB_PERSONAL_ACCESS_TOKEN environment variable not set"
+            "github_auth", "github-api", "failed", "GITHUB_PERSONAL_ACCESS_TOKEN environment variable not set"
         )
         raise ValueError(
-            "GITHUB_PERSONAL_ACCESS_TOKEN environment variable not set. "
-            "Please set it before running tests."
+            "GITHUB_PERSONAL_ACCESS_TOKEN environment variable not set. Please set it before running tests."
         )
 
     # Set GitHub account name (required for evaluators)
@@ -90,32 +84,19 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
     )
 
     # Log GitHub authentication success
-    structured_logger.log_infrastructure_event(
-        "github_auth",
-        "github-api",
-        "success",
-        {"account": github_account_name}
-    )
+    structured_logger.log_infrastructure_event("github_auth", "github-api", "success", {"account": github_account_name})
     human_logger.log_infrastructure_event(
-        "github_auth",
-        "github-api",
-        "success",
-        f"GitHub authenticated as {github_account_name}"
+        "github_auth", "github-api", "success", f"GitHub authenticated as {github_account_name}"
     )
 
     # Load task
-    structured_logger.log_infrastructure_event(
-        "task_loading",
-        "test_framework",
-        "started",
-        {"test_id": test_id}
-    )
+    structured_logger.log_infrastructure_event("task_loading", "test_framework", "started", {"test_id": test_id})
     task = loader.load_task(test_id)
     structured_logger.log_infrastructure_event(
         "task_loading",
         "test_framework",
         "success",
-        {"test_id": test_id, "evaluator_count": len(task.get("evaluators", []))}
+        {"test_id": test_id, "evaluator_count": len(task.get("evaluators", []))},
     )
 
     instruction_path = Path(__file__).parent / "instruction.txt"
@@ -130,49 +111,27 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
 
     # Create FastAgent
     structured_logger.log_infrastructure_event(
-        "fastagent_init",
-        "fast-agent",
-        "started",
-        {"config_path": str(Path(__file__).parent / "fastagent.config.yaml")}
+        "fastagent_init", "fast-agent", "started", {"config_path": str(Path(__file__).parent / "fastagent.config.yaml")}
     )
     human_logger.log_infrastructure_event(
-        "fastagent_init",
-        "fast-agent",
-        "started",
-        "Initializing FastAgent with MCP server configuration"
+        "fastagent_init", "fast-agent", "started", "Initializing FastAgent with MCP server configuration"
     )
 
     test_dir = Path(__file__).parent
     config_path = test_dir / "fastagent.config.yaml"
     agent = FastAgent("MCP-Universe Test", config_path=str(config_path), ignore_unknown_args=True)
 
-    structured_logger.log_infrastructure_event(
-        "fastagent_init",
-        "fast-agent",
-        "success",
-        {}
-    )
+    structured_logger.log_infrastructure_event("fastagent_init", "fast-agent", "success", {})
     human_logger.log_infrastructure_event(
-        "fastagent_init",
-        "fast-agent",
-        "success",
-        "FastAgent initialized successfully"
+        "fastagent_init", "fast-agent", "success", "FastAgent initialized successfully"
     )
 
     # Determine which servers to use (currently only github for repository management)
     server_names = ["github"]
 
-    structured_logger.log_infrastructure_event(
-        "mcp_servers",
-        "mcp",
-        "configuring",
-        {"servers": server_names}
-    )
+    structured_logger.log_infrastructure_event("mcp_servers", "mcp", "configuring", {"servers": server_names})
     human_logger.log_infrastructure_event(
-        "mcp_servers",
-        "mcp",
-        "configuring",
-        f"Configuring MCP servers: {', '.join(server_names)}"
+        "mcp_servers", "mcp", "configuring", f"Configuring MCP servers: {', '.join(server_names)}"
     )
 
     @agent.agent(
@@ -184,30 +143,19 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
     )
     async def run_test() -> Path:
         structured_logger.log_infrastructure_event(
-            "agent_execution",
-            "fast-agent",
-            "starting",
-            {"max_tokens": 16000, "max_iterations": 500}
+            "agent_execution", "fast-agent", "starting", {"max_tokens": 16000, "max_iterations": 500}
         )
         human_logger.log_infrastructure_event(
             "agent_execution",
             "fast-agent",
             "starting",
-            "Agent execution starting (max_tokens=16000, max_iterations=500)"
+            "Agent execution starting (max_tokens=16000, max_iterations=500)",
         )
 
         async with agent.run() as agent_app:
-            structured_logger.log_infrastructure_event(
-                "agent_execution",
-                "fast-agent",
-                "running",
-                {}
-            )
+            structured_logger.log_infrastructure_event("agent_execution", "fast-agent", "running", {})
             human_logger.log_infrastructure_event(
-                "agent_execution",
-                "fast-agent",
-                "running",
-                "Agent is now running and ready to process requests"
+                "agent_execution", "fast-agent", "running", "Agent is now running and ready to process requests"
             )
             questions = task.get("question", [])
 
@@ -241,17 +189,8 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
                     if hasattr(msg_obj, "tool_calls") and msg_obj.tool_calls:
                         for tool_id, call in msg_obj.tool_calls.items():
                             total_tool_calls += 1
-                            structured_logger.log_tool_call(
-                                turn_idx,
-                                call.params.name,
-                                call.params.arguments,
-                                tool_id
-                            )
-                            human_logger.log_tool_call(
-                                turn_idx,
-                                call.params.name,
-                                call.params.arguments
-                            )
+                            structured_logger.log_tool_call(turn_idx, call.params.name, call.params.arguments, tool_id)
+                            human_logger.log_tool_call(turn_idx, call.params.name, call.params.arguments)
 
                     # Log tool results
                     if hasattr(msg_obj, "tool_results") and msg_obj.tool_results:
@@ -274,29 +213,25 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
                                         break
 
                             structured_logger.log_tool_result(
-                                turn_idx,
-                                tool_id,
-                                result_content if result_content else str(result),
-                                is_error
+                                turn_idx, tool_id, result_content if result_content else str(result), is_error
                             )
 
                             human_logger.log_tool_result(
-                                turn_idx,
-                                tool_name,
-                                result_content if result_content else str(result),
-                                is_error
+                                turn_idx, tool_name, result_content if result_content else str(result), is_error
                             )
 
                             # Track errors for summary
                             if is_error:
                                 error_msg = str(result_content) if result_content else str(result)
 
-                                errors.append({
-                                    "turn_id": turn_idx,
-                                    "tool_id": tool_id,
-                                    "tool_name": tool_name,
-                                    "error_message": error_msg,
-                                })
+                                errors.append(
+                                    {
+                                        "turn_id": turn_idx,
+                                        "tool_id": tool_id,
+                                        "tool_name": tool_name,
+                                        "error_message": error_msg,
+                                    }
+                                )
 
                     # Log assistant text responses
                     if hasattr(msg_obj, "role") and msg_obj.role == "assistant":
@@ -353,7 +288,7 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
                 reason=reason,
                 total_tool_calls=total_tool_calls,
                 error_count=len(errors),
-                final_message=final_assistant_msg
+                final_message=final_assistant_msg,
             )
 
             # Log detailed error breakdown
@@ -367,13 +302,13 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
                         "infrastructure_errors": infrastructure_errors,
                         "model_errors": model_errors,
                         "unknown_errors": unknown_errors,
-                    }
+                    },
                 )
                 human_logger.log_infrastructure_event(
                     "error_breakdown",
                     "test_framework",
                     "analyzed",
-                    f"Errors: {infrastructure_errors} infrastructure, {model_errors} model, {unknown_errors} unknown"
+                    f"Errors: {infrastructure_errors} infrastructure, {model_errors} model, {unknown_errors} unknown",
                 )
 
             human_logger.log_execution_summary(
@@ -381,7 +316,7 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
                 reason=reason,
                 total_tool_calls=total_tool_calls,
                 error_count=len(errors),
-                total_turns=len(questions)
+                total_turns=len(questions),
             )
 
             # Save output using MessageSerializer (BFCL pattern)
@@ -446,6 +381,7 @@ async def test_mcp_universe(
     # Save evaluation results to file
     eval_path = log_dir / f"{test_id}_evaluation.json"
     import json
+
     eval_path.write_text(json.dumps(evaluation, indent=2, default=str))
 
     # Log evaluation results to human-readable log
@@ -462,10 +398,13 @@ async def test_mcp_universe(
             if not result["passed"]:
                 failed_checks += 1
 
-            # Try to extract expected vs actual from evaluator data
+            # Try to extract expected value from evaluator data
             expected = None
-            actual = None
-            if "value" in evaluation.get("task_data", {}).get("evaluators", [{}])[idx - 1] if idx - 1 < len(evaluation.get("task_data", {}).get("evaluators", [])) else {}:
+            if (
+                "value" in evaluation.get("task_data", {}).get("evaluators", [{}])[idx - 1]
+                if idx - 1 < len(evaluation.get("task_data", {}).get("evaluators", []))
+                else {}
+            ):
                 expected = evaluation["task_data"]["evaluators"][idx - 1].get("value")
 
             human_logger.log_evaluation_check(
@@ -474,16 +413,18 @@ async def test_mcp_universe(
                 passed=result["passed"],
                 reason=result.get("reason", "") or result.get("error", ""),
                 expected=expected,
-                actual=None  # We don't have actual values in evaluation results
+                actual=None,  # We don't have actual values in evaluation results
             )
 
         human_logger.log_evaluation_summary(
-            passed=evaluation["passed"],
-            total_checks=len(evaluation["evaluation_results"]),
-            failed_checks=failed_checks
+            passed=evaluation["passed"], total_checks=len(evaluation["evaluation_results"]), failed_checks=failed_checks
         )
 
-        verdict = "TEST PASSED" if evaluation["passed"] else f"TEST FAILED ({failed_checks}/{len(evaluation['evaluation_results'])} checks failed)"
+        verdict = (
+            "TEST PASSED"
+            if evaluation["passed"]
+            else f"TEST FAILED ({failed_checks}/{len(evaluation['evaluation_results'])} checks failed)"
+        )
         human_logger.log_final_verdict(verdict)
 
     # Create detailed failure message if evaluation failed
