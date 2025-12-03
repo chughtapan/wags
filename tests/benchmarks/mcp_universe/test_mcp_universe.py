@@ -6,12 +6,50 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 from fast_agent import FastAgent
 from fast_agent.llm.request_params import RequestParams
 from mcpuniverse.common.context import Context
 
+# Load secrets from root-level fastagent.secrets.yaml and populate environment
+_SECRETS_LOADED = False
+
+
+def _load_secrets_once() -> None:
+    """Load secrets from fastagent.secrets.yaml into environment variables (once)."""
+    global _SECRETS_LOADED  # noqa: PLW0603
+    if _SECRETS_LOADED:
+        return
+
+    secrets_path = Path(__file__).parent.parent.parent.parent / "fastagent.secrets.yaml"
+    if secrets_path.exists():
+        with open(secrets_path) as f:
+            secrets = yaml.safe_load(f)
+
+        # Extract GitHub credentials from MCP server config
+        if "mcp" in secrets and "servers" in secrets["mcp"] and "github" in secrets["mcp"]["servers"]:
+            github_env = secrets["mcp"]["servers"]["github"].get("env", {})
+            if "GITHUB_PERSONAL_ACCESS_TOKEN" in github_env:
+                os.environ["GITHUB_PERSONAL_ACCESS_TOKEN"] = github_env["GITHUB_PERSONAL_ACCESS_TOKEN"]
+            if "GITHUB_PERSONAL_ACCOUNT_NAME" in github_env:
+                os.environ["GITHUB_PERSONAL_ACCOUNT_NAME"] = github_env["GITHUB_PERSONAL_ACCOUNT_NAME"]
+
+        # Extract OpenAI API key
+        if "openai" in secrets and "api_key" in secrets["openai"]:
+            os.environ["OPENAI_API_KEY"] = secrets["openai"]["api_key"]
+
+        # Extract Anthropic API key
+        if "anthropic" in secrets and "api_key" in secrets["anthropic"]:
+            os.environ["ANTHROPIC_API_KEY"] = secrets["anthropic"]["api_key"]
+
+    _SECRETS_LOADED = True
+
+
+# Load secrets FIRST, before anything else
+_load_secrets_once()
+
 # CRITICAL: Apply patch BEFORE importing evaluator to ensure it works
-from tests.benchmarks.mcp_universe.evaluator_patch import apply_patch
+from tests.benchmarks.mcp_universe.evaluator_patch import apply_patch  # noqa: E402
 
 apply_patch()
 
@@ -274,9 +312,14 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
             if total_tool_calls >= 500:
                 status = "max_iterations"
                 reason = f"Agent reached maximum iteration limit ({total_tool_calls} tool calls)"
-            elif errors:
+            elif errors and not final_assistant_msg:
+                # Only mark as error if there were errors AND no final response
+                # (agents can recover from errors - final completion message is what matters)
                 status = "error"
-                reason = f"Agent encountered {len(errors)} error(s) during execution"
+                reason = f"Agent encountered {len(errors)} error(s) and did not complete"
+            elif errors:
+                # Had errors but completed - note this in reason but don't fail
+                reason = f"Agent completed with {len(errors)} recoverable error(s) during execution"
 
             # Calculate error breakdown by classification
             infrastructure_errors = sum(1 for e in errors if e.get("classification") == "infrastructure")

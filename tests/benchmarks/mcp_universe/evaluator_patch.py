@@ -24,7 +24,6 @@ from typing import Literal
 
 import httpx
 import mcpuniverse.evaluator.github.functions as github_functions
-from mcpuniverse.evaluator.functions import compare_func
 from mcpuniverse.evaluator.github.functions import github__check_repository
 
 # GitHub REST API base URL
@@ -130,7 +129,6 @@ def apply_patch():
     # FIX 1: KeyError: 'owner' in github_check_file_content_and_issue_count
     # ============================================================================
 
-    @compare_func(name="github.check_file_content_and_issue_count")
     async def patched_github_check_file_content_and_issue_count(x: dict, *args, **kwargs) -> tuple[bool, str]:
         """
         PATCHED: Check if CSV files are valid and the number of rows matches the number of issues.
@@ -221,7 +219,6 @@ def apply_patch():
     # FIX 2: list_issues failures in github_check_repository_with_fewest_issues
     # ============================================================================
 
-    @compare_func(name="github.check_repository_with_fewest_issues")
     async def patched_github_check_repository_with_fewest_issues(x: dict, *args, **kwargs) -> tuple[bool, str]:
         """
         PATCHED: Check if file content is valid and the number of issues is the fewest.
@@ -272,7 +269,6 @@ def apply_patch():
     # FIX 3: list_issues failures in github_check_file_content_with_fewest_issues
     # ============================================================================
 
-    @compare_func(name="github.check_file_content_with_fewest_issues")
     async def patched_github_check_file_content_with_fewest_issues(x: dict, *args, **kwargs) -> tuple[bool, str]:
         """
         PATCHED: Check if file content is valid and the number of issues is the fewest.
@@ -334,7 +330,6 @@ def apply_patch():
     # FIX 4: fork:true search query parsing bug in github_check_repository
     # ============================================================================
 
-    @compare_func(name="github.check_repository")
     async def patched_github_check_repository(x: dict, *args, **kwargs) -> tuple[bool, str]:
         """
         PATCHED: Check whether a Github repository exists.
@@ -392,7 +387,6 @@ def apply_patch():
     # FIX 5: file_content_include needs to accept both old and new repo names in URLs
     # ============================================================================
 
-    @compare_func(name="github.file_content_include")
     async def patched_github_file_content_include(x: dict, *args, **kwargs) -> tuple[bool, str]:
         """
         PATCHED: Check if file content includes some strings.
@@ -439,7 +433,6 @@ def apply_patch():
     # FIX 6: list_issues failures in github_check_number_of_issues
     # ============================================================================
 
-    @compare_func(name="github.check_number_of_issues")
     async def patched_github_check_number_of_issues(x: dict, *args, **kwargs) -> tuple[bool, str]:
         """
         PATCHED: Check the github issues count.
