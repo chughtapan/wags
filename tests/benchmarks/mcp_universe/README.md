@@ -60,15 +60,24 @@ All repository management task JSON files are bundled inside the installed `mcpu
 
 ### Configuration
 
-Set the required environment variables:
+Environment variables are automatically loaded from `servers/github/.env`. Create this file with:
+
+```bash
+# servers/github/.env
+GITHUB_PERSONAL_ACCESS_TOKEN=your_github_token_here
+GITHUB_PERSONAL_ACCOUNT_NAME=your_github_username
+OPENAI_API_KEY=your_openai_key_here
+```
+
+**IMPORTANT**: Use a dedicated test GitHub account. The AI agent will perform real operations on GitHub repositories.
+
+Alternatively, you can manually export the environment variables:
 
 ```bash
 export GITHUB_PERSONAL_ACCESS_TOKEN="your_github_token_here"
 export GITHUB_PERSONAL_ACCOUNT_NAME="your_github_username"
 export OPENAI_API_KEY="your_openai_key_here"
 ```
-
-**IMPORTANT**: Use a dedicated test GitHub account. The AI agent will perform real operations on GitHub repositories.
 
 ### Running Tests
 

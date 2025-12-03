@@ -85,17 +85,23 @@ class HumanReadableLogger:
                     self._write_line(f"  {key}: {value}")
 
     def log_tool_result(self, turn_id: int, tool_name: str, result: Any, is_error: bool) -> None:
-        """Log tool result with NO truncation."""
+        """Log tool result with truncation for readability."""
+        MAX_RESULT_LENGTH = 250  # Truncate long results for readability
+
         if is_error:
             self._write_line(f"[ERROR] {tool_name}")
             # Show FULL error message
             error_msg = str(result)
             self._write_line(f"  {error_msg}")
         else:
-            # Show FULL result
+            # Truncate long results
             result_str = str(result)
             if result_str and result_str != "None":
-                self._write_line(f"[RESULT] {result_str}")
+                if len(result_str) > MAX_RESULT_LENGTH:
+                    truncated = result_str[:MAX_RESULT_LENGTH] + f"... (truncated, {len(result_str)} total chars)"
+                    self._write_line(f"[RESULT] {truncated}")
+                else:
+                    self._write_line(f"[RESULT] {result_str}")
         self._write_line("")
 
     def log_assistant_response(self, turn_id: int, text: str) -> None:
