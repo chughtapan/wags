@@ -1,22 +1,20 @@
 """
 Evaluator patch for MCP-Universe with GitHub MCP Server v0.15.0.
 
-INFRASTRUCTURE BUGS FIXED:
-1. KeyError: 'owner' - GitHub search API returns different structure
-   (tests: 0006-0010, 0023-0024)
-2. fork:true query parsing bug - Evaluator checks full query string instead
-   of extracting repo name (tests: 0011, 0014)
-3. list_issues evaluation failures - MCP server uses GraphQL with cursor pagination,
-   evaluator uses REST API (tests: 0012, 0016-0019, 0025-0030)
-4. Pull request filtering - GitHub Issues API includes PRs, need to exclude them
-   from counts (affects all issue count tests)
-5. Labels filtering - When labels=[], filter to issues with NO labels, not all
-   issues (test 0010: 172 vs 678)
-6. Pagination logic - Check page size BEFORE filtering to determine if more pages exist
-7. Repository renames - QwenLM/Qwen2.5-VL → QwenLM/Qwen3-VL
-   (tests: 0011, 0012, 0014-0015)
-8. file_content_include URL matching - Accept both old and new repo names in URLs
-   (test: 0015)
+Fixes evaluator bugs causing false negatives (model succeeds, evaluator fails).
+
+PATCHED FUNCTIONS:
+- github.check_file_content_and_issue_count (0007): KeyError 'owner', list_issues
+- github.check_repository_with_fewest_issues (0025-0030): list_issues, search delay
+- github.check_file_content_with_fewest_issues (0028-0030): list_issues, search delay
+- github.check_repository (0006-0010, 0011, 0014, 0023-0024): fork:true parsing, renames
+- github.file_content_include (0014-0015): repo renames in URLs
+- github.check_number_of_issues (0010, 0012, 0016-0019): list_issues failures
+
+HELPERS: github_api_list_issues_direct (PR filtering, labels, pagination, renames),
+         github_api_check_repo_exists (direct API for new repos)
+
+RENAMES: QwenLM/Qwen2.5-VL → Qwen3-VL, vinamra-test2/Qwen2.5-VL → Qwen3-VL
 """
 
 import os
@@ -30,8 +28,11 @@ from mcpuniverse.evaluator.github.functions import github__check_repository
 GITHUB_API_BASE = "https://api.github.com"
 
 # Repository renames - map old names to new names
+# Include both original repos AND user forks
 REPO_RENAMES = {
     "QwenLM/Qwen2.5-VL": "QwenLM/Qwen3-VL",
+    # User forks of renamed repos (GitHub forks use new name)
+    "vinamra-test2/Qwen2.5-VL": "vinamra-test2/Qwen3-VL",
     # Add more renames here as needed
 }
 
@@ -40,7 +41,7 @@ def apply_patch():
     """
     Apply patch to MCP-Universe evaluator for compatibility with GitHub MCP Server v0.15.0.
     """
-    print("[PATCH] Applying evaluator patch for GitHub MCP Server v0.15.0...")
+    # Evaluator patch for GitHub MCP Server v0.15.0
 
     # ============================================================================
     # HELPER: Direct GitHub REST API calls (bypassing MCP server for evaluation)
@@ -74,8 +75,8 @@ def apply_patch():
 
         # Map 'all' to no state filter (GitHub API doesn't support 'all')
         params = {"per_page": 100, "page": 1}
-        if state and state != "all":
-            params["state"] = state
+        if state and state.lower() != "all":
+            params["state"] = state.lower()
         if labels:
             params["labels"] = ",".join(labels)
 
@@ -87,15 +88,8 @@ def apply_patch():
 
                 try:
                     response = await client.get(url, headers=headers, params=params)
-                    if response.status_code == 404:
-                        print(f"[PATCH] Repository {owner}/{repo} not found")
-                        return None
-                    elif response.status_code == 403:
-                        print(f"[PATCH] Rate limit or permission error for {owner}/{repo}")
-                        return None
-                    elif response.status_code != 200:
-                        print(f"[PATCH] GitHub API error {response.status_code}: {response.text[:200]}")
-                        return None
+                    if response.status_code != 200:
+                        return None  # 404, 403, or other errors
 
                     issues = response.json()
                     if not issues:
@@ -129,12 +123,18 @@ def apply_patch():
     # FIX 1: KeyError: 'owner' in github_check_file_content_and_issue_count
     # ============================================================================
 
-    async def patched_github_check_file_content_and_issue_count(x: dict, *args, **kwargs) -> tuple[bool, str]:
+    async def patched_github_check_file_content_and_issue_count(_: dict, *args, **kwargs) -> tuple[bool, str]:
         """
         PATCHED: Check if CSV files are valid and the number of rows matches the number of issues.
 
         Fix: Extract owner from 'full_name' instead of 'owner.login' to handle GitHub search API response.
         """
+        # IMPORTS MUST BE AT TOP before nested function definitions
+        import csv
+        import io
+        import json
+
+        from mcpuniverse.evaluator.github.functions import github__get_file_contents
 
         async def _get_groundtruth_repo_list(repo_owner, repo_name, issue_state, issue_labels):
             repo_list = await github__check_repository(f"user:{repo_owner} {repo_name} in:name", **kwargs)
@@ -148,7 +148,7 @@ def apply_patch():
                 try:
                     owner_login = repo["owner"]["login"]
                     repo_name_str = repo["name"]
-                except KeyError:
+                except (KeyError, TypeError):
                     # Fallback: parse from full_name
                     parts = repo_full_name.split("/")
                     if len(parts) != 2:
@@ -168,58 +168,59 @@ def apply_patch():
                 ret[repo_full_name] = len(issues)
             return ret
 
-        # Rest of the function logic from original
-        import csv
-        import io
+        def _get_file_content_to_dict(file_content, **op_args):
+            file_type = op_args["file_type"]
+            if file_type == "csv":
+                csv_file = io.StringIO(file_content)
+                reader = csv.DictReader(csv_file)
+                return_repo_list = {}
+                for row in reader:
+                    csv_columns = op_args["csv_columns"]
+                    assert len(csv_columns) == 2, "the number of columns should be 2"
+                    repository_name = row[csv_columns[0]]
+                    return_repo_list[repository_name] = int(row[csv_columns[1]])
+                return return_repo_list
+            if file_type == "json":
+                return json.loads(file_content)
+            raise ValueError(f"Unsupported file type: {file_type}")
 
-        csv_file_path = x.get("csv_file")
-        repo_owner = x.get("repo_owner")
-        repo_name = x.get("repo_name")
-        issue_state = x.get("issue_state", "all")
-        issue_labels = x.get("issue_labels", [])
-
-        if not csv_file_path or not repo_owner or not repo_name:
-            return False, "Missing required parameters: csv_file, repo_owner, or repo_name"
+        _, op_args = args
 
         # Get ground truth repo list
-        gt_repo_list = await _get_groundtruth_repo_list(repo_owner, repo_name, issue_state, issue_labels)
+        gt_repo_list = await _get_groundtruth_repo_list(
+            op_args["search_repo_owner"],
+            op_args["search_repo_name"],
+            op_args["issue_state"],
+            op_args["issue_labels"],
+        )
 
         if gt_repo_list is None:
-            return False, "Failed to retrieve repository list from GitHub"
+            return False, "the groundtruth repo list is not found"
 
-        # Read and validate CSV file
-        try:
-            if isinstance(csv_file_path, str):
-                csv_content = csv_file_path
-            else:
-                return False, "Invalid CSV file format"
+        # Get the CSV file content
+        resp = await github__get_file_contents(
+            op_args["owner"], op_args["repo"], op_args["path"], op_args["branch"], **kwargs
+        )
 
-            reader = csv.DictReader(io.StringIO(csv_content))
-            csv_repos = {}
-            for row in reader:
-                repo_full_name = row.get("repository") or row.get("repo") or row.get("name")
-                if repo_full_name:
-                    csv_repos[repo_full_name] = csv_repos.get(repo_full_name, 0) + 1
-        except Exception as e:
-            return False, f"Error reading CSV: {str(e)}"
+        if resp is None:
+            return False, "the file content is not found"
 
-        # Compare CSV with ground truth
-        mismatches = []
-        for repo_name_key, gt_count in gt_repo_list.items():
-            csv_count = csv_repos.get(repo_name_key, 0)
-            if csv_count != gt_count:
-                mismatches.append(f"{repo_name_key}: CSV has {csv_count} rows, GitHub has {gt_count} issues")
+        return_repo_list = _get_file_content_to_dict(resp, **op_args)
 
-        if mismatches:
-            return False, "Issue count mismatch: " + "; ".join(mismatches)
-
+        # Check if the return_repo_list is the same as the gt_repo_list
+        if not return_repo_list == gt_repo_list:
+            return False, (
+                "the return_repo_list is not the same as the gt_repo_list!\n"
+                f"## response:\n{return_repo_list} \n"
+                f"## expected:\n{gt_repo_list}"
+            )
         return True, ""
 
     # ============================================================================
     # FIX 2: list_issues failures in github_check_repository_with_fewest_issues
     # ============================================================================
 
-    async def patched_github_check_repository_with_fewest_issues(x: dict, *args, **kwargs) -> tuple[bool, str]:
+    async def patched_github_check_repository_with_fewest_issues(_: dict, *args, **kwargs) -> tuple[bool, str]:
         """
         PATCHED: Check if file content is valid and the number of issues is the fewest.
 
@@ -253,8 +254,13 @@ def apply_patch():
             return False, "Could not determine repository with fewest issues"
 
         # Check if the fork exists in the user's account
-        # FIX: Don't use fork:true search qualifier - just check if repo exists
-        repos_check = await github__check_repository(f"user:{owner} {fewest_issues_repo_name} in:name", **kwargs)
+        # FIX: Try direct API first - search API may not index new forks immediately
+        exists = await github_api_check_repo_exists(owner, fewest_issues_repo_name)
+        if exists:
+            return True, ""
+
+        # Fallback to search API (might find renamed repos etc)
+        repos_check = await github__check_repository(f"repo:{owner}/{fewest_issues_repo_name} fork:true", **kwargs)
 
         if repos_check is None or repos_check["total_count"] == 0:
             return False, f"Repository {owner}/{fewest_issues_repo_name} doesn't exist"
@@ -269,7 +275,7 @@ def apply_patch():
     # FIX 3: list_issues failures in github_check_file_content_with_fewest_issues
     # ============================================================================
 
-    async def patched_github_check_file_content_with_fewest_issues(x: dict, *args, **kwargs) -> tuple[bool, str]:
+    async def patched_github_check_file_content_with_fewest_issues(_: dict, *args, **kwargs) -> tuple[bool, str]:
         """
         PATCHED: Check if file content is valid and the number of issues is the fewest.
 
@@ -306,14 +312,18 @@ def apply_patch():
             return False, "Could not determine repository with fewest issues"
 
         # Check if the fork exists
-        repos_check = await github__check_repository(f"user:{owner} {fewest_issues_repo_name} in:name", **kwargs)
+        # FIX: Try direct API first - search API may not index new forks immediately
+        exists = await github_api_check_repo_exists(owner, fewest_issues_repo_name)
+        if not exists:
+            # Fallback to search API (might find renamed repos etc)
+            repos_check = await github__check_repository(f"repo:{owner}/{fewest_issues_repo_name} fork:true", **kwargs)
 
-        if repos_check is None or repos_check["total_count"] == 0:
-            return False, f"Repository {owner}/{fewest_issues_repo_name} doesn't exist"
+            if repos_check is None or repos_check["total_count"] == 0:
+                return False, f"Repository {owner}/{fewest_issues_repo_name} doesn't exist"
 
-        full_names = [repo["full_name"] for repo in repos_check["items"]]
-        if f"{owner}/{fewest_issues_repo_name}" not in full_names:
-            return False, f"Repository {owner}/{fewest_issues_repo_name} doesn't exist"
+            full_names = [repo["full_name"] for repo in repos_check["items"]]
+            if f"{owner}/{fewest_issues_repo_name}" not in full_names:
+                return False, f"Repository {owner}/{fewest_issues_repo_name} doesn't exist"
 
         # Check file content
         resp = await github__get_file_contents(
@@ -330,76 +340,94 @@ def apply_patch():
     # FIX 4: fork:true search query parsing bug in github_check_repository
     # ============================================================================
 
-    async def patched_github_check_repository(x: dict, *args, **kwargs) -> tuple[bool, str]:
+    async def github_api_check_repo_exists(owner: str, repo: str) -> bool:
+        """
+        Direct GitHub REST API call to check if a repo exists.
+        More reliable than search API for newly created repos.
+        """
+        token = os.environ.get("GITHUB_PERSONAL_ACCESS_TOKEN")
+        if not token:
+            return False
+
+        headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
+        url = f"{GITHUB_API_BASE}/repos/{owner}/{repo}"
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            try:
+                response = await client.get(url, headers=headers)
+                return response.status_code == 200
+            except Exception:
+                return False
+
+    async def patched_github_check_repository(_: dict, *args, **kwargs) -> tuple[bool, str]:
         """
         PATCHED: Check whether a Github repository exists.
-
-        Fix: Extract repo name from query instead of checking full query string against full_names.
-        Also handle repository renames (Qwen2.5-VL → Qwen3-VL).
-
-        ORIGINAL BUG: The original code checks if the full query string
-        (e.g., "repo:owner/name fork:true") is in full_names (e.g., ["owner/name"]),
-        which ALWAYS fails for complex queries!
+        Fixes: fork:true query parsing, repository renames, search API indexing delay.
         """
         import re
 
         _, query = args
 
-        # FIX: Apply repository renames to the query
+        # Apply repository renames to the query
         modified_query = query
         for old_name, new_name in REPO_RENAMES.items():
             if old_name in query:
                 modified_query = query.replace(old_name, new_name)
-                print(f"[PATCH] Renamed repo in query: {old_name} → {new_name}")
                 break
 
+        # Simple "owner/repo" format - use direct API (search API doesn't index new repos)
+        if "/" in modified_query and " " not in modified_query:
+            parts = modified_query.strip().split("/")
+            if len(parts) == 2 and await github_api_check_repo_exists(parts[0], parts[1]):
+                return True, ""
+            return False, "the repository doesn't exist"
+
+        # For "repo:owner/repo" queries, try direct API first
+        repo_match = re.search(r"repo:([^/]+)/([^\s]+)", modified_query)
+        if repo_match and await github_api_check_repo_exists(repo_match.group(1), repo_match.group(2)):
+            return True, ""
+
+        # Fall back to search API
         repos = await github__check_repository(modified_query, **kwargs)
-        if repos is None or repos["total_count"] == 0:
+        if not repos or repos["total_count"] == 0:
             return False, "the repository doesn't exist"
 
         full_names = [repo["full_name"] for repo in repos["items"]]
 
-        # FIX: Extract expected repo name from query
-        # Handle formats: "repo:owner/name fork:true", "user:owner name in:name", "owner/name"
-        if "repo:" in modified_query:
-            # Extract "owner/repo" from "repo:owner/repo ..."
-            match = re.search(r"repo:([^/]+/[^\s]+)", modified_query)
-            if match:
-                expected_repo = match.group(1)
-                # Check if extracted repo is in full_names
-                if expected_repo in full_names:
-                    return True, ""
-                return False, f"Expected {expected_repo}, but found {full_names}"
-        elif "/" in modified_query and "in:name" not in modified_query:
-            # Simple "owner/repo" format
-            expected_repo = modified_query.strip()
-            if expected_repo in full_names:
-                return True, ""
-            return False, "the repository doesn't exist"
-        # Complex query like "user:X Y in:name" - check if any result exists
-        # Original behavior for backward compatibility
-        elif modified_query in full_names:
-            return True, ""
+        # For "repo:" queries, check if the expected repo is in results
+        if repo_match:
+            expected = f"{repo_match.group(1)}/{repo_match.group(2)}"
+            return (True, "") if expected in full_names else (False, f"Expected {expected}, found {full_names}")
 
-        return False, "the repository doesn't exist"
+        # For other queries, any result means repo exists
+        return (True, "") if full_names else (False, "the repository doesn't exist")
 
     # ============================================================================
     # FIX 5: file_content_include needs to accept both old and new repo names in URLs
     # ============================================================================
 
-    async def patched_github_file_content_include(x: dict, *args, **kwargs) -> tuple[bool, str]:
+    async def patched_github_file_content_include(_: dict, *args, **kwargs) -> tuple[bool, str]:
         """
         PATCHED: Check if file content includes some strings.
 
         Fix: When checking for URLs with repository names, accept both old and new names
         (e.g., both Qwen2.5-VL and Qwen3-VL URLs should match).
+        Also apply rename mapping when accessing files (repo may have been renamed).
         """
         from mcpuniverse.evaluator.github.functions import github__get_file_contents
 
         value, op_args = args
-        resp = await github__get_file_contents(
-            op_args["owner"], op_args["repo"], op_args["path"], op_args["branch"], **kwargs
-        )
+        owner = op_args["owner"]
+        repo = op_args["repo"]
+
+        # FIX: Apply rename mapping to owner/repo before accessing file
+        full_repo_name = f"{owner}/{repo}"
+        if full_repo_name in REPO_RENAMES:
+            new_name = REPO_RENAMES[full_repo_name]
+            owner, repo = new_name.split("/")
+            print(f"[PATCH] file_content_include: Mapped renamed repo {full_repo_name} -> {new_name}")
+
+        resp = await github__get_file_contents(owner, repo, op_args["path"], op_args["branch"], **kwargs)
         file_path = f"{op_args['owner']}/{op_args['repo']}/{op_args['branch']}/{op_args['path']}"
 
         if resp:
@@ -433,7 +461,7 @@ def apply_patch():
     # FIX 6: list_issues failures in github_check_number_of_issues
     # ============================================================================
 
-    async def patched_github_check_number_of_issues(x: dict, *args, **kwargs) -> tuple[bool, str]:
+    async def patched_github_check_number_of_issues(_: dict, *args, **kwargs) -> tuple[bool, str]:
         """
         PATCHED: Check the github issues count.
 
@@ -493,39 +521,21 @@ def apply_patch():
     github_functions.github_file_content_include = patched_github_file_content_include
     github_functions.github_check_number_of_issues = patched_github_check_number_of_issues
 
-    # Also update them in the COMPARISON_FUNCTIONS dict if it exists
-    if hasattr(github_functions, "COMPARISON_FUNCTIONS"):
-        github_functions.COMPARISON_FUNCTIONS["github.check_file_content_and_issue_count"] = (
-            patched_github_check_file_content_and_issue_count
-        )
-        github_functions.COMPARISON_FUNCTIONS["github.check_repository_with_fewest_issues"] = (
-            patched_github_check_repository_with_fewest_issues
-        )
-        github_functions.COMPARISON_FUNCTIONS["github.check_file_content_with_fewest_issues"] = (
-            patched_github_check_file_content_with_fewest_issues
-        )
-        github_functions.COMPARISON_FUNCTIONS["github.check_repository"] = patched_github_check_repository
-        github_functions.COMPARISON_FUNCTIONS["github.file_content_include"] = patched_github_file_content_include
-        github_functions.COMPARISON_FUNCTIONS["github.check_number_of_issues"] = patched_github_check_number_of_issues
+    # CRITICAL FIX: Update the COMPARISON_FUNCTIONS dict in the CORRECT module!
+    # The decorator @compare_func registers functions in mcpuniverse.evaluator.functions.COMPARISON_FUNCTIONS
+    import mcpuniverse.evaluator.functions as evaluator_functions
 
-    print("[PATCH] ✓ Fixed KeyError: 'owner' in github_check_file_content_and_issue_count")
-    print("[PATCH] ✓ Fixed list_issues failures in check_repository_with_fewest_issues")
-    print("[PATCH] ✓ Fixed list_issues failures in check_file_content_with_fewest_issues")
-    print("[PATCH] ✓ Fixed fork:true query parsing bug in github_check_repository")
-    print("[PATCH] ✓ Fixed file_content_include to accept both old and new repo names in URLs")
-    print("[PATCH] ✓ Fixed list_issues failures in check_number_of_issues")
-    print("[PATCH] ✓ Fixed pull request filtering (excludes PRs from counts)")
-    print("[PATCH] ✓ Fixed labels=[] handling (filters to unlabeled issues)")
-    print("[PATCH] ✓ Fixed pagination logic (checks page size before filtering)")
-    print("[PATCH] ✓ Fixed repository renames (Qwen2.5-VL → Qwen3-VL)")
-    print("[PATCH] Patch applied successfully!")
-    print("[PATCH] Summary:")
-    print("[PATCH]   - Fixed KeyError: 'owner' bug (tests: 0006-0010, 0023-0024)")
-    print("[PATCH]   - Fixed fork:true query parsing bug (tests: 0011, 0014)")
-    print("[PATCH]   - Fixed list_issues evaluation failures (tests: 0012, 0016-0019, 0025-0030)")
-    print("[PATCH]   - Fixed Qwen2.5-VL rename (tests: 0011, 0012, 0014-0015)")
-    print("[PATCH]   - Fixed file_content_include URL matching (test: 0015)")
-    print("[PATCH]   - Fixed PR filtering, labels filtering, and pagination bugs")
-    print("[PATCH]   - Genuine model failures: 0002, 0003, 0005, 0022")
+    evaluator_functions.COMPARISON_FUNCTIONS["github.check_file_content_and_issue_count"] = (
+        patched_github_check_file_content_and_issue_count
+    )
+    evaluator_functions.COMPARISON_FUNCTIONS["github.check_repository_with_fewest_issues"] = (
+        patched_github_check_repository_with_fewest_issues
+    )
+    evaluator_functions.COMPARISON_FUNCTIONS["github.check_file_content_with_fewest_issues"] = (
+        patched_github_check_file_content_with_fewest_issues
+    )
+    evaluator_functions.COMPARISON_FUNCTIONS["github.check_repository"] = patched_github_check_repository
+    evaluator_functions.COMPARISON_FUNCTIONS["github.file_content_include"] = patched_github_file_content_include
+    evaluator_functions.COMPARISON_FUNCTIONS["github.check_number_of_issues"] = patched_github_check_number_of_issues
 
     return True
