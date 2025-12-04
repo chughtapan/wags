@@ -90,7 +90,7 @@ UV_GIT_LFS=1 uv pip install -e ".[dev,evals]"
 # Run specific category
 .venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py -k "multi_turn_base"
 
-# Validate existing logs
+# Validate existing logs (auto-detects from outputs/raw/)
 .venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --validate-only
 ```
 
@@ -99,14 +99,14 @@ UV_GIT_LFS=1 uv pip install -e ".[dev,evals]"
 appworld install
 appworld download data
 
-# Run all train tasks
+# Run all train tasks (results automatically organized to results/{model}/{dataset}/)
 .venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --dataset train --model gpt-4o
 
 # Run specific task
 .venv/bin/pytest 'tests/benchmarks/appworld/test_appworld.py::test_appworld[train_001]'
 
-# Validate existing results
-.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --validate-only
+# Validate existing results (auto-detects from results/{model}/{dataset}/)
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-4o --dataset train
 ```
 
 ### 5. Smoke Tests (`smoke/`)
@@ -211,8 +211,13 @@ async def test_with_client():
 Global fixtures available to all tests:
 
 - `model`: Model name from `--model` CLI option (default: gpt-4o-mini)
-- `output_dir`: Output directory from `--output-dir` (default: outputs)
-- `fast_agent`: FastAgent instance (e2e tests only)
+- `temperature`: Temperature from `--temperature` CLI option (default: 0.001)
+
+Benchmark-specific fixtures:
+
+- `output_dir`: Output directory (benchmark-specific override)
+  - BFCL: Uses `--output-dir` (default: outputs)
+  - AppWorld: Automatically uses `results/{model}/{dataset}/outputs/`
 
 ### Custom Markers
 
@@ -222,16 +227,21 @@ Registered markers:
 
 ### CLI Options
 
+**Global options:**
 ```bash
 --model MODEL              # Model to use (default: gpt-4o-mini)
+--temperature FLOAT        # Temperature for sampling (default: 0.001)
 --output-dir DIR          # Output directory (default: outputs)
---validate-only           # Only validate existing logs (benchmarks)
---log-dir DIR             # Log directory for validation
---max-workers N           # Max concurrent tests (default: 4)
+--validate-only           # Only validate existing logs
+```
 
-# AppWorld-specific options
---dataset DATASET         # AppWorld dataset: train, dev, test_normal, test_challenge
+**AppWorld-specific options:**
+```bash
+--dataset DATASET         # Dataset: train, dev, test_normal, test_challenge (default: train)
 --limit N                 # Run only first N tasks from dataset
+--api-mode MODE           # API prediction mode (default: app_oracle)
+--experiment-dir DIR      # Custom experiment directory name
+--start-from TASK_ID      # Resume from specific task ID
 ```
 
 ## Common Commands

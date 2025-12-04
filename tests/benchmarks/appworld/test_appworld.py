@@ -2,17 +2,22 @@
 
 import asyncio
 import os
-from datetime import datetime
 from pathlib import Path
 
 import pytest
 from appworld import load_task_ids
-from appworld.common.path_store import path_store
 from appworld.evaluator import evaluate_task
 from appworld.task import Task
 from fast_agent import FastAgent
+from fast_agent.llm.request_params import RequestParams
 
 from tests.benchmarks.appworld import api_predictor, prompts
+from tests.benchmarks.appworld.reporting import (
+    find_evaluation_report,
+    generate_failure_report,
+    load_complete_json,
+    parse_evaluation_report,
+)
 from tests.utils.fastagent_helpers import MessageSerializer
 from tests.utils.logger import StructuredEventLogger
 
@@ -29,15 +34,45 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     validate_only = metafunc.config.getoption("--validate-only", False)
 
     if validate_only:
+        # Auto-detect log directory from model/dataset
+        model = metafunc.config.getoption("--model")
+        dataset = metafunc.config.getoption("--dataset", "train")
+        log_dir = Path("results") / model / dataset / "outputs" / "raw"
+
         # Find existing log files to validate
-        log_dir = Path(metafunc.config.getoption("--log-dir", "outputs/raw"))
-        log_files = list(log_dir.glob("**/*_complete.json")) if log_dir.exists() else []
+        log_files = list(log_dir.glob("*_complete.json")) if log_dir.exists() else []
         task_ids = [f.stem.replace("_complete", "") for f in log_files]
+
+        if not task_ids:
+            pytest.exit(
+                f"\nError: No test results found in {log_dir}\n"
+                f"Expected to find *_complete.json files for validation.\n"
+                f"Make sure you've run tests for --model {model} --dataset {dataset} first."
+            )
     else:
         # Load task IDs from AppWorld dataset
         dataset = metafunc.config.getoption("--dataset", "train")
-        limit = metafunc.config.getoption("--limit", None)
         task_ids = load_task_ids(dataset)
+
+        # Apply --start-from filter first (before --limit)
+        start_from = metafunc.config.getoption("--start-from", None)
+        if start_from:
+            try:
+                start_index = task_ids.index(start_from)
+                task_ids = task_ids[start_index:]
+                print(f"\nStarting from task '{start_from}' (index {start_index}, {len(task_ids)} tasks remaining)")
+            except ValueError:
+                # Task ID not found - provide helpful error
+                pytest.exit(
+                    f"\nError: Task ID '{start_from}' not found in {dataset} dataset.\n"
+                    f"Available task IDs (first 10): {', '.join(task_ids[:10])}\n"
+                    f"Total tasks in dataset: {len(task_ids)}\n"
+                    f"Use: pytest tests/benchmarks/appworld/test_appworld.py --dataset {dataset} "
+                    f"--collect-only to see all task IDs."
+                )
+
+        # Apply --limit filter (after --start-from)
+        limit = metafunc.config.getoption("--limit", None)
         if limit and limit > 0:
             task_ids = task_ids[:limit]
 
@@ -50,13 +85,13 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(900)
 async def test_appworld(
     task_id: str,
     model: str,
     temperature: float,
     output_dir: Path,
     api_mode: str,
+    experiment_name: str,
     request: pytest.FixtureRequest,
 ) -> None:
     """Run or validate an AppWorld test."""
@@ -64,25 +99,79 @@ async def test_appworld(
 
     # Run test if not in validate-only mode
     if not validate_only:
-        experiment_name = await _run_appworld_test(task_id, model, temperature, output_dir, api_mode)
-    else:
-        experiment_name = _get_latest_experiment_name()
+        await _run_appworld_test(task_id, model, temperature, output_dir, api_mode, experiment_name)
 
-    # Get log directory and complete.json path
-    log_dir = Path(request.config.getoption("--log-dir", "outputs/raw")) if validate_only else output_dir / "raw"
-    complete_path = log_dir / f"{task_id}_complete.json"
+    # Get complete.json path (always in output_dir/raw now)
+    complete_path = output_dir / "raw" / f"{task_id}_complete.json"
 
     # Skip if complete.json doesn't exist
     if not complete_path.exists():
         pytest.skip(f"Complete JSON not found: {complete_path}")
 
-    # Evaluate and assert success
-    test_tracker = evaluate_task(
+    # Check if database directory exists before evaluation
+    # If the agent didn't call complete_task, the database won't be saved and evaluate_task will fail
+    from appworld.apps.lib.models.db import get_db_home_path
+    from appworld.evaluator import TestTracker
+
+    db_path = get_db_home_path(
+        storage_type="disk",
+        type="task_output",
         task_id=task_id,
         experiment_name=experiment_name,
-        suppress_errors=False,
-        save_report=True,
     )
+
+    if not Path(db_path).exists():
+        # Database not saved - agent didn't complete the task
+        # Create a failed test tracker without calling evaluate_task
+        from appworld.evaluator import Failure
+
+        test_tracker = TestTracker()
+        failure: Failure = {
+            "requirement": "Agent must call complete_task to save results",
+            "trace": f"Database not found at {db_path}",
+            "label": None,
+        }
+        test_tracker.failures.append(failure)
+    else:
+        # Evaluate and assert success
+        # NOTE: Use suppress_errors=True to ensure evaluate_task() completes and saves the report
+        # even when the task fails. With suppress_errors=False, it raises an exception before
+        # saving the report or stopping the time_freezer, causing subsequent tests to hang.
+        #
+        # IMPORTANT: evaluate_task() can still raise exceptions during setup (e.g., missing database files)
+        # BEFORE stopping the time_freezer. We use try/finally to ensure cleanup always happens.
+        try:
+            test_tracker = evaluate_task(
+                task_id=task_id,
+                experiment_name=experiment_name,
+                suppress_errors=True,
+                save_report=True,
+            )
+        finally:
+            # Always ensure time is unfrozen, even if evaluate_task fails during setup
+            # This prevents subsequent tests from hanging
+            # Note: We manually restore datetime because we don't have access to the freezer instance
+            # created inside evaluate_task(). Just clearing tz_offsets isn't enough - we must also
+            # restore the real datetime module, otherwise datetime.now() crashes with IndexError.
+            try:
+                import datetime
+                import sys
+
+                from freezegun import api
+
+                api.tz_offsets.clear()
+                # Restore real datetime classes in both the datetime module and the global namespace
+                setattr(datetime, "datetime", api.real_datetime)
+                setattr(datetime, "date", api.real_date)
+                # Also restore in sys.modules to ensure all imports see the real datetime
+                sys.modules["datetime"].datetime = api.real_datetime  # type: ignore[attr-defined]
+                sys.modules["datetime"].date = api.real_date  # type: ignore[attr-defined]
+            except Exception:
+                pass  # If freeze_time cleanup fails, continue anyway
+
+        # Generate failure report if test failed validation
+        if not test_tracker.success:
+            _generate_failure_report_inline(task_id, output_dir, model, experiment_name, request)
 
     assert test_tracker.success, (
         f"Task {task_id} failed: {test_tracker.failures[0] if test_tracker.failures else 'Unknown'}"
@@ -100,11 +189,9 @@ async def _run_appworld_test(
     temperature: float,
     output_dir: Path,
     api_mode: str,
-) -> str:
-    """Run AppWorld test and return experiment name."""
-    # Generate unique experiment name
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    experiment_name = f"wags-appworld-benchmark-{timestamp}"
+    experiment_name: str,
+) -> None:
+    """Run AppWorld test using the provided experiment name."""
 
     # Load task
     task = Task.load(
@@ -133,23 +220,74 @@ async def _run_appworld_test(
         model=model,
         servers=["appworld"],
         instruction=system_instruction,
+        request_params=RequestParams(maxTokens=16000, max_iterations=500),
     )
     async def run_test() -> None:
         async with agent.run() as agent_app:
-            # Send task instruction
-            structured_logger.log_turn(1, "start", task.instruction)
-            await agent_app.send(task.instruction)
-            structured_logger.log_turn(1, "end")
-            await asyncio.sleep(0)
+            try:
+                # Send task instruction
+                structured_logger.log_turn(1, "start", task.instruction)
+                await agent_app.send(task.instruction)
+                structured_logger.log_turn(1, "end")
+                await asyncio.sleep(0)
 
-            # Save conversation
-            messages = agent_app._agent(None).message_history
-            structured_logger.log_message_summary(messages)
-            complete_json = MessageSerializer.serialize_complete(messages)
-            (log_dir / f"{task_id}_complete.json").write_text(complete_json)
+                # Save conversation
+                messages = agent_app._agent(None).message_history
+                structured_logger.log_message_summary(messages)
+                complete_json = MessageSerializer.serialize_complete(messages)
+                (log_dir / f"{task_id}_complete.json").write_text(complete_json)
+            finally:
+                # ALWAYS disconnect MCP servers before exiting, even on failure
+                # FastAgent's cleanup doesn't disconnect servers, causing them to hang
+                connection_manager = getattr(agent.context, "_connection_manager", None)
+                if connection_manager is None:
+                    raise RuntimeError("MCP connection manager not found - cannot disconnect servers")
+                await connection_manager.disconnect_all()
 
     await run_test()
-    return experiment_name
+
+
+def _generate_failure_report_inline(
+    task_id: str,
+    output_dir: Path,
+    model: str,
+    experiment_name: str,
+    request: pytest.FixtureRequest,
+) -> None:
+    """Generate failure report immediately after test fails validation."""
+    # Find evaluation report using precise path
+    report_path = find_evaluation_report(task_id, experiment_name)
+    if not report_path:
+        print(f"⚠️  {task_id}: No evaluation report found, skipping failure report generation")
+        return
+
+    # Parse evaluation data
+    eval_data = parse_evaluation_report(report_path)
+
+    # Only generate report if test actually failed validation
+    if eval_data["success"]:
+        return
+
+    # Load task with ground truth
+    task = Task.load(
+        task_id=task_id,
+        storage_type="memory",
+        load_ground_truth=True,
+        ground_truth_mode="full",
+    )
+
+    # Load complete.json
+    complete_data = load_complete_json(output_dir, task_id)
+
+    # Determine output path
+    dataset = request.config.getoption("--dataset", "train")
+    failure_report_dir = Path("results") / model / dataset / "failure_reports"
+    failure_report_dir.mkdir(parents=True, exist_ok=True)
+
+    # Generate failure report
+    output_path = failure_report_dir / f"failure_report_{task_id}.md"
+    generate_failure_report(task_id, task, eval_data, complete_data, output_path)
+    print(f"📝 Generated failure report: {output_path}")
 
 
 def _setup_mcp_environment(
@@ -179,13 +317,3 @@ def _setup_mcp_environment(
             "ALLOWED_APIS": ",".join(predicted_apis),
         }
     )
-
-
-def _get_latest_experiment_name() -> str:
-    """Find the most recent experiment directory."""
-    experiment_dirs = sorted(
-        Path(path_store.experiment_outputs).glob("wags-appworld-benchmark-*"),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True,
-    )
-    return experiment_dirs[0].name if experiment_dirs else "wags-appworld-benchmark"
