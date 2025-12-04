@@ -12,8 +12,8 @@ def output_dir(request: pytest.FixtureRequest) -> Path:
     Overrides the global output_dir fixture to write directly to
     results/{model}/{dataset}/outputs/ for organized storage.
     """
-    model = request.config.getoption("--model")
-    dataset = request.config.getoption("--dataset")
+    model = str(request.config.getoption("--model"))
+    dataset = str(request.config.getoption("--dataset"))
 
     # Write directly to results directory
     path = Path("results") / model / dataset / "outputs"
@@ -107,10 +107,10 @@ def experiment_name(request: pytest.FixtureRequest) -> str:
 
     if experiment_dir:
         # Use specified experiment directory
-        return experiment_dir
+        return str(experiment_dir)
     else:
         # Use model/dataset pattern for organized experiment tracking
         # This works for both normal runs and validation
-        model = request.config.getoption("--model")
-        dataset = request.config.getoption("--dataset")
+        model = str(request.config.getoption("--model"))
+        dataset = str(request.config.getoption("--dataset"))
         return f"{model}/{dataset}"

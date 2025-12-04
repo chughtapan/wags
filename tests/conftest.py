@@ -1,6 +1,5 @@
 """Pytest configuration and fixtures for evaluation tests."""
 
-import asyncio
 from collections.abc import Generator
 from typing import Any, Protocol, cast
 
@@ -14,12 +13,6 @@ class _ItemWithFuncargs(Protocol):
     funcargs: dict[str, Any]
 
     def get_closest_marker(self, name: str) -> pytest.Mark | None: ...
-
-
-@pytest.fixture(scope="session")
-def event_loop_policy() -> asyncio.AbstractEventLoopPolicy:
-    """Configure asyncio for limited concurrency."""
-    return asyncio.DefaultEventLoopPolicy()
 
 
 @pytest.fixture

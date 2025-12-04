@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Any
 
 from appworld.common.path_store import path_store
 from appworld.task import Task
@@ -14,7 +15,7 @@ def find_evaluation_report(task_id: str, experiment_name: str) -> Path | None:
     return report_path if report_path.exists() else None
 
 
-def parse_evaluation_report(report_path: Path) -> dict:
+def parse_evaluation_report(report_path: Path) -> dict[str, Any]:
     """Parse evaluation report to determine pass/fail status."""
     content = report_path.read_text()
     lines = content.split("\n")
@@ -36,25 +37,23 @@ def parse_evaluation_report(report_path: Path) -> dict:
     }
 
 
-def load_complete_json(output_dir: Path, task_id: str) -> dict | None:
+def load_complete_json(output_dir: Path, task_id: str) -> dict[str, Any] | None:
     """Load the complete.json file for a task."""
     complete_path = output_dir / "raw" / f"{task_id}_complete.json"
     if not complete_path.exists():
         return None
-    return json.loads(complete_path.read_text())
+    result: dict[str, Any] = json.loads(complete_path.read_text())
+    return result
 
 
-def format_tool_call(tool_call_data: dict) -> str:
+def format_tool_call(tool_call_data: dict[str, Any]) -> str:
     """Format a tool call for display."""
     func_name = tool_call_data.get("name", "unknown")
     args = tool_call_data.get("arguments", {})
 
     # Format arguments
     if isinstance(args, str):
-        try:
-            args = json.loads(args)
-        except:
-            pass
+        args = json.loads(args)
 
     if isinstance(args, dict) and args:
         arg_strs = [f"{k}={repr(v)}" for k, v in args.items()]
@@ -66,8 +65,8 @@ def format_tool_call(tool_call_data: dict) -> str:
 def generate_failure_report(
     task_id: str,
     task: Task,
-    eval_data: dict,
-    complete_data: dict | None,
+    eval_data: dict[str, Any],
+    complete_data: dict[str, Any] | None,
     output_path: Path,
 ) -> None:
     """Generate a detailed failure report markdown file."""
@@ -76,10 +75,16 @@ def generate_failure_report(
     report.append(f"# {task_id}\n")
     report.append("## Task\n")
     report.append(f"> {task.instruction}\n")
-    metadata = task.ground_truth.metadata
-    report.append(
-        f"**Difficulty:** {metadata.get('difficulty', '?')}/5 | **Apps:** {metadata.get('num_apps', '?')} | **APIs:** {metadata.get('num_apis', '?')} | **Expected API calls:** {metadata.get('num_api_calls', '?')}\n"
-    )
+    if task.ground_truth is not None:
+        metadata = task.ground_truth.metadata
+        difficulty = metadata.get("difficulty", "?")
+        num_apps = metadata.get("num_apps", "?")
+        num_apis = metadata.get("num_apis", "?")
+        num_api_calls = metadata.get("num_api_calls", "?")
+        report.append(
+            f"**Difficulty:** {difficulty}/5 | **Apps:** {num_apps} | "
+            f"**APIs:** {num_apis} | **Expected API calls:** {num_api_calls}\n"
+        )
     report.append("---\n")
 
     # Evaluation Results
@@ -87,9 +92,9 @@ def generate_failure_report(
     if eval_data["success"]:
         report.append("**Status:** ✅ PASSED\n")
     else:
-        report.append(
-            f"**Status:** ❌ FAILED ({eval_data['failed']}/{eval_data['passed'] + eval_data['failed']} requirements failed)\n"
-        )
+        total = eval_data["passed"] + eval_data["failed"]
+        failed = eval_data["failed"]
+        report.append(f"**Status:** ❌ FAILED ({failed}/{total} requirements failed)\n")
     report.append("\n```\n")
     report.append(eval_data["report_content"])
     report.append("\n```\n")
@@ -99,7 +104,8 @@ def generate_failure_report(
     report.append("## Ground Truth Solution Code\n")
     report.append("\nAppWorld's reference solution:\n")
     report.append("\n```python\n")
-    report.append(task.ground_truth.solution_code)
+    if task.ground_truth is not None:
+        report.append(task.ground_truth.solution_code)
     report.append("\n```\n")
     report.append("---\n")
 
