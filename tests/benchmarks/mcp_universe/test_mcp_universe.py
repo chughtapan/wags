@@ -55,8 +55,9 @@ apply_patch()
 
 # Now import evaluator and loader AFTER patch is applied
 from tests.benchmarks.mcp_universe import evaluator, loader  # noqa: E402
+from tests.benchmarks.mcp_universe.reporting import HumanReadableLogger  # noqa: E402
 from tests.utils.fastagent_helpers import MessageSerializer  # noqa: E402
-from tests.utils.logger import HumanReadableLogger, StructuredEventLogger  # noqa: E402
+from tests.utils.logger import StructuredEventLogger  # noqa: E402
 
 
 def _parse_question(question: Any) -> str:

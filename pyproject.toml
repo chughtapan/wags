@@ -33,18 +33,6 @@ dev = [
     "mypy",
 ]
 
-bfcl = [
-    "bfcl-eval",
-    "jinja2>=3.0.0",
-    "python-dotenv>=1.0.0",
-]
-
-mcpuniverse-eval = [
-    "mcpuniverse",
-    "jinja2>=3.0.0",
-    "python-dotenv>=1.0.0",
-]
-
 evals = [
     "bfcl-eval",
     "mcpuniverse",
@@ -101,7 +89,9 @@ ignore = ["PERF203", "PLC0415", "PLR0402"]
 "tests/benchmarks/mcp_universe/evaluator_patch.py" = ["C901", "PLR0915", "PLR0911", "PERF401"]
 # MCP-Universe test has complex logging and evaluation logic
 "tests/benchmarks/mcp_universe/test_mcp_universe.py" = ["C901", "PLR0912", "PLR0915", "PERF401"]
-# Logger has methods with many parameters for comprehensive logging
+# MCP-Universe reporting has many logger methods with parameters
+"tests/benchmarks/mcp_universe/reporting.py" = ["PLR0913"]
+# Shared logger has evaluation methods with many parameters
 "tests/utils/logger.py" = ["PLR0913"]
 
 [tool.ruff.lint.pylint]

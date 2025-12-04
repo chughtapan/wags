@@ -39,10 +39,7 @@ git clone https://github.com/chughtapan/wags.git
 cd wags
 
 # Install dependencies (pulls the forked MCP-Universe package via eval extras)
-uv sync --extra evals
-
-# (optional) Install dev tooling alongside eval extras
-uv sync --extra dev --extra evals
+UV_GIT_LFS=1 uv pip install -e ".[dev,evals]"
 
 # Verify Docker is working
 docker run --rm hello-world
@@ -51,7 +48,7 @@ docker run --rm hello-world
 docker pull ghcr.io/github/github-mcp-server:v0.15.0
 ```
 
-**Note**: The `--extra evals` flag installs:
+**Note**: The `.[dev,evals]` extras install:
 - `mcpuniverse` from the fork [`vinamra57/MCP-Universe@72389d8`](https://github.com/vinamra57/MCP-Universe/tree/72389d8a04044dceb855f733a938d0344ac58813), which removes heavy 3D dependencies while keeping the repository-management configs
 - `bfcl-eval` for Berkeley Function Call Leaderboard evaluation
 - Other shared evaluation dependencies
