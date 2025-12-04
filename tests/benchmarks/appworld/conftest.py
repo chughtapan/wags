@@ -1,6 +1,24 @@
 """Pytest configuration and fixtures for AppWorld benchmark."""
 
+from pathlib import Path
+
 import pytest
+
+
+@pytest.fixture
+def output_dir(request: pytest.FixtureRequest) -> Path:
+    """AppWorld-specific output directory.
+
+    Overrides the global output_dir fixture to write directly to
+    results/{model}/{dataset}/outputs/ for organized storage.
+    """
+    model = request.config.getoption("--model")
+    dataset = request.config.getoption("--dataset")
+
+    # Write directly to results directory
+    path = Path("results") / model / dataset / "outputs"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -19,11 +37,30 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
     parser.addoption(
         "--api-mode",
-        default="ground_truth",
+        default="app_oracle",
         choices=["predicted", "ground_truth", "app_oracle", "all"],
         help=(
             "API prediction mode: predicted (LLM), ground_truth (API-level oracle), "
             "app_oracle (app-level oracle), all (default: ground_truth)"
+        ),
+    )
+    parser.addoption(
+        "--experiment-dir",
+        default=None,
+        type=str,
+        help=(
+            "Experiment directory name (e.g., 'gpt-5/train' or 'claude-sonnet-4-5/dev'). "
+            "If not specified, auto-generates timestamp-based name. "
+            "Results will be saved to experiments/outputs/{experiment-dir}/"
+        ),
+    )
+    parser.addoption(
+        "--start-from",
+        default=None,
+        type=str,
+        help=(
+            "Start from specified task_id (skip all tests before it). "
+            "Example: --start-from 692c77d_1. Useful for resuming interrupted benchmark runs."
         ),
     )
 
@@ -53,3 +90,27 @@ def api_mode(request: pytest.FixtureRequest) -> str:
         "all": Use all available APIs (no limit)
     """
     return str(request.config.getoption("--api-mode"))
+
+
+@pytest.fixture(scope="session")
+def experiment_name(request: pytest.FixtureRequest) -> str:
+    """
+    Get or generate experiment directory name for the test session.
+
+    All tests in this session will write to the same experiment directory,
+    organized by task_id in subdirectories: experiments/outputs/{experiment_name}/tasks/{task_id}/
+
+    Automatically uses {model}/{dataset} pattern for organized experiment tracking.
+    """
+
+    experiment_dir = request.config.getoption("--experiment-dir", None)
+
+    if experiment_dir:
+        # Use specified experiment directory
+        return experiment_dir
+    else:
+        # Use model/dataset pattern for organized experiment tracking
+        # This works for both normal runs and validation
+        model = request.config.getoption("--model")
+        dataset = request.config.getoption("--dataset")
+        return f"{model}/{dataset}"

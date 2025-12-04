@@ -2,7 +2,6 @@
 
 import asyncio
 from collections.abc import Generator
-from pathlib import Path
 from typing import Any, Protocol, cast
 
 import pytest
@@ -35,21 +34,12 @@ def temperature(request: pytest.FixtureRequest) -> float:
     return cast(float, request.config.getoption("--temperature"))
 
 
-@pytest.fixture
-def output_dir(request: pytest.FixtureRequest) -> Path:
-    """Output directory for test results."""
-    path = Path(request.config.getoption("--output-dir"))
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Add custom CLI options."""
     parser.addoption("--model", default="gpt-4o-mini", help="Model to use")
     parser.addoption("--temperature", default=0.001, type=float, help="Temperature for LLM (default: 0.001)")
     parser.addoption("--output-dir", default="outputs", help="Output directory for results")
     parser.addoption("--validate-only", action="store_true", help="Only validate existing logs")
-    parser.addoption("--log-dir", default="outputs/raw", help="Directory with logs (for validate mode)")
 
 
 def pytest_configure(config: pytest.Config) -> None:
