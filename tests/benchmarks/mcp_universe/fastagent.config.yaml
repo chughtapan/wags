@@ -1,20 +1,3 @@
-# MCP-Universe Repository Management Benchmark Configuration
-
-openai:
-  api_key: ${OPENAI_API_KEY}
-  temperature: ${TEMPERATURE}
-
-anthropic:
-  api_key: ${ANTHROPIC_API_KEY}
-
-generic:
-  api_key: ${GENERIC_API_KEY}
-  base_url: ${GENERIC_BASE_URL}
-
-aliyun:
-  api_key: ${ALIYUN_API_KEY}
-  base_url: ${ALIYUN_BASE_URL}
-
 mcp:
   servers:
     # GitHub MCP Server for repository management tasks
