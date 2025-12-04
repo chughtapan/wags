@@ -112,8 +112,10 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
         validate_only = metafunc.config.getoption("--validate-only")
 
         if validate_only:
-            # Find existing log files to validate
-            log_dir = Path(metafunc.config.getoption("--log-dir"))
+            # Auto-detect log directory from output-dir
+            output_dir = Path(metafunc.config.getoption("--output-dir"))
+            log_dir = output_dir / "raw"
+
             if log_dir.exists():
                 log_files = list(log_dir.glob("**/*_fastagent.jsonl"))
                 test_ids = [f.stem.replace("_fastagent", "") for f in log_files]
@@ -135,12 +137,10 @@ async def test_bfcl(
     test_id: str, model: str, temperature: float, output_dir: Path, request: pytest.FixtureRequest
 ) -> None:
     """Run or validate a BFCL test based on mode."""
-    if request.config.getoption("--validate-only"):
-        log_dir = Path(request.config.getoption("--log-dir"))
-    else:
+    if not request.config.getoption("--validate-only"):
         await _run_bfcl_test(test_id, model, temperature, output_dir)
-        log_dir = output_dir / "raw"
 
+    log_dir = output_dir / "raw"
     complete_path = log_dir / f"{test_id}_complete.json"
     evaluation = _validate_from_complete_json(test_id, complete_path)
     assert evaluation["validation"]["valid"], f"Validation failed for {test_id}"

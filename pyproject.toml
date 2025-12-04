@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "wags"
 version = "0.0.0.dev0"
 description = "WAGS - Middleware orchestration for MCP servers with FastMCP"
-requires-python = ">=3.13.5"
+requires-python = "~=3.13.5"
 
 dependencies = [
     "mcp @ git+https://github.com/chughtapan/python-sdk.git@wags-dev",
@@ -74,6 +74,8 @@ ignore = ["PERF203", "PLC0415", "PLR0402"]
 "src/wags/cli/main.py" = ["PLR0913"]
 # Pytest fixtures require many parameters
 "tests/benchmarks/appworld/test_appworld.py" = ["PLR0913"]
+# Reporting functions naturally have high complexity due to formatting logic
+"tests/benchmarks/appworld/reporting.py" = ["C901", "PLR0912", "PLR0915"]
 
 [tool.ruff.lint.pylint]
 allow-magic-value-types = ["bytes", "float", "int", "str"]

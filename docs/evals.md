@@ -79,12 +79,43 @@ appworld download data
 
 Validate existing logs without running new tests:
 
+**BFCL:**
 ```bash
-# Validate logs from default directory
+# Validate logs (auto-detects from outputs/raw/)
 .venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --validate-only
 
-# Validate logs from specific directory
-.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --validate-only --log-dir outputs/experiment1/raw
+# Or specify custom output directory
+.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --validate-only --output-dir outputs/experiment1
+```
+
+**AppWorld:**
+```bash
+# Validate logs (auto-detects from results/{model}/{dataset}/)
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-4o --dataset train
+```
+
+### AppWorld Results Organization
+
+AppWorld tests automatically organize results during execution:
+
+```bash
+# Run tests - results automatically organized
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --dataset train --model gpt-4o
+
+# Results automatically written to:
+# - results/gpt-4o/train/outputs/raw/ (conversation logs)
+# - results/gpt-4o/train/failure_reports/ (auto-generated for failed tests)
+# - experiments/outputs/gpt-4o/train/ (AppWorld evaluation data)
+
+# Clean up large experiment directories after tests
+rm -rf experiments/outputs/gpt-4o/  # Frees ~15GB
+```
+
+**AppWorld-specific options:**
+```bash
+--dataset DATASET         # Dataset: train, dev, test_normal, test_challenge (default: train)
+--limit N                 # Run only first N tasks from dataset
+--start-from TASK_ID      # Resume from specific task ID
 ```
 
 ### Parallel Execution

@@ -16,11 +16,11 @@ appworld download data
 ## Run Tests
 
 ```bash
-# Run first task from train dataset
+# Run first task from train dataset (automatically organized to results/gpt-4o/train/)
 pytest tests/benchmarks/appworld/test_appworld.py --dataset train --limit 1 --model gpt-4o
 
 # Run first 5 train tasks
-pytest tests/benchmarks/appworld/test_appworld.py --dataset train --limit 5
+pytest tests/benchmarks/appworld/test_appworld.py --dataset train --limit 5 --model gpt-4o
 
 # Run all dev tasks
 pytest tests/benchmarks/appworld/test_appworld.py --dataset dev --model gpt-4o
@@ -28,8 +28,8 @@ pytest tests/benchmarks/appworld/test_appworld.py --dataset dev --model gpt-4o
 # Run specific task (use actual task IDs like 82e2fac_1, not train_001)
 pytest 'tests/benchmarks/appworld/test_appworld.py::test_appworld[82e2fac_1]'
 
-# Validate existing results without re-running
-pytest tests/benchmarks/appworld/test_appworld.py --validate-only
+# Validate existing results (auto-detects from results/gpt-4o/train/)
+pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-4o --dataset train
 ```
 
 ## CLI Options
@@ -84,13 +84,44 @@ tests/benchmarks/appworld/
 4. **Validation**: AppWorld evaluator compares DB state to ground truth
 5. **Result**: Pass/fail based on whether task requirements were met
 
+## Results Organization
+
+AppWorld tests automatically organize results during execution:
+
+```
+results/{model}/{dataset}/
+├── outputs/
+│   └── raw/
+│       ├── {task_id}_complete.json      # Conversation logs
+│       └── {task_id}_structured.jsonl   # Turn-by-turn events
+└── failure_reports/
+    └── failure_report_{task_id}.md      # Auto-generated for failed tests
+
+experiments/outputs/{model}/{dataset}/    # AppWorld evaluation data (~15GB)
+└── tasks/{task_id}/
+    ├── dbs/                              # Database snapshots
+    └── evaluation/
+        └── report.md                     # Evaluation results
+```
+
+### Cleanup
+
+After tests complete, clean up large experiment directories:
+
+```bash
+rm -rf experiments/outputs/gpt-4o/  # Frees ~15GB
+```
+
 ## Debugging
 
 ### Inspect Test Output
 ```bash
 # Structured logs
-cat outputs/raw/<task_id>_structured.jsonl
+cat results/gpt-4o/train/outputs/raw/<task_id>_structured.jsonl
 
 # Complete message history
-cat outputs/raw/<task_id>_complete.json
+cat results/gpt-4o/train/outputs/raw/<task_id>_complete.json
+
+# Failure report (auto-generated for failed tests)
+cat results/gpt-4o/train/failure_reports/failure_report_<task_id>.md
 ```
