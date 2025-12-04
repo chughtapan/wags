@@ -15,17 +15,17 @@ from wags.middleware.roots import RootsMiddleware, requires_root
 class TestHandlers:
     """Test handlers with root-protected methods."""
 
-    @requires_root("file:///github.com/{owner}/{repo}")
+    @requires_root("https://github.com/{owner}/{repo}")
     async def create_issue(self, owner: str, repo: str, title: str) -> dict[str, Any]:
         """Create an issue in a GitHub repository."""
         return {"created": f"issue '{title}' in {owner}/{repo}"}
 
-    @requires_root("file:///github.com/{owner}/{repo}")
+    @requires_root("https://github.com/{owner}/{repo}")
     async def delete_repo(self, owner: str, repo: str) -> dict[str, Any]:
         """Delete a GitHub repository."""
         return {"deleted": f"{owner}/{repo}"}
 
-    @requires_root("file:///api.example.com/{endpoint}")
+    @requires_root("https://api.example.com/{endpoint}")
     async def call_api(self, endpoint: str, data: str) -> dict[str, Any]:
         """Call an API endpoint."""
         return {"called": endpoint, "data": data}
@@ -50,7 +50,7 @@ class TestRootsMiddlewareIntegration:
         mcp.tool(handlers.create_issue)
 
         # Test with client
-        async with Client(mcp, roots=["file:///github.com/myorg/"]) as client:
+        async with Client(mcp, roots=["https://github.com/myorg/"]) as client:
             # Should allow resources under myorg
             result = await client.call_tool(
                 "create_issue", {"owner": "myorg", "repo": "test-repo", "title": "Test Issue"}
@@ -73,7 +73,7 @@ class TestRootsMiddlewareIntegration:
             return await handlers.create_issue(owner, repo, title)
 
         # Use concrete prefix for myorg
-        async with Client(mcp, roots=["file:///github.com/myorg/"]) as client:
+        async with Client(mcp, roots=["https://github.com/myorg/"]) as client:
             # Should allow any repo in myorg
             result = await client.call_tool("create_issue", {"owner": "myorg", "repo": "repo1", "title": "Test"})
             assert "myorg/repo1" in result.data["created"]
@@ -102,7 +102,7 @@ class TestRootsMiddlewareIntegration:
         mcp.add_middleware(RootsMiddleware(handlers=handlers))
 
         # Use a dynamic roots handler that can be changed
-        current_roots = ["file:///github.com/org1/"]
+        current_roots = ["https://github.com/org1/"]
 
         async def dynamic_roots_handler(context: RequestContext[ClientSession, Any]) -> list[str]:
             """Return current roots dynamically."""
@@ -120,7 +120,7 @@ class TestRootsMiddlewareIntegration:
 
             # Change roots to org2
             current_roots.clear()
-            current_roots.append("file:///github.com/org2/")
+            current_roots.append("https://github.com/org2/")
             await client.send_roots_list_changed()
 
             # Now org1 should fail
@@ -181,7 +181,7 @@ class TestRootsMiddlewareIntegration:
             return await handlers.call_api(endpoint, data)
 
         # Multiple roots for different services
-        roots = ["file:///github.com/allowed-org/", "file:///api.example.com/v1/", "file:///api.example.com/v2/"]
+        roots = ["https://github.com/allowed-org/", "https://api.example.com/v1/", "https://api.example.com/v2/"]
 
         async with Client(mcp, roots=roots) as client:
             # GitHub root works
@@ -215,7 +215,7 @@ class TestRootsMiddlewareIntegration:
             return await handlers.delete_repo(owner, repo)
 
         # Root for specific repo only
-        async with Client(mcp, roots=["file:///github.com/myorg/specific-repo"]) as client:
+        async with Client(mcp, roots=["https://github.com/myorg/specific-repo"]) as client:
             # Should allow operations on specific-repo
             result = await client.call_tool(
                 "create_issue", {"owner": "myorg", "repo": "specific-repo", "title": "Test"}
@@ -242,8 +242,8 @@ class TestRootsMiddlewareIntegration:
 
         # Multiple concrete org prefixes
         roots = [
-            "file:///github.com/public/",  # All public org repos
-            "file:///github.com/partner/",  # All partner org repos
+            "https://github.com/public/",  # All public org repos
+            "https://github.com/partner/",  # All partner org repos
         ]
 
         async with Client(mcp, roots=roots) as client:
