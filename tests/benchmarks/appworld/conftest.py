@@ -4,19 +4,24 @@ from pathlib import Path
 
 import pytest
 
+VALID_DATASETS = {"train", "dev", "test_normal", "test_challenge"}
+
 
 @pytest.fixture
 def output_dir(request: pytest.FixtureRequest) -> Path:
     """AppWorld-specific output directory.
 
     Overrides the global output_dir fixture to write directly to
-    results/{model}/{dataset}/outputs/ for organized storage.
+    results/{model}/{datasets}/outputs/ for organized storage.
     """
     model = str(request.config.getoption("--model"))
-    dataset = str(request.config.getoption("--dataset"))
+    datasets_str = str(request.config.getoption("--datasets"))
+    # Use underscore-joined datasets for directory name (e.g., "train_dev")
+    datasets = parse_datasets(datasets_str)
+    datasets_dir = "_".join(datasets)
 
     # Write directly to results directory
-    path = Path("results") / model / dataset / "outputs"
+    path = Path("results") / model / datasets_dir / "outputs"
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -24,10 +29,9 @@ def output_dir(request: pytest.FixtureRequest) -> Path:
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Add AppWorld-specific CLI options."""
     parser.addoption(
-        "--dataset",
-        default="train",
-        choices=["train", "dev", "test_normal", "test_challenge"],
-        help="AppWorld dataset to use (default: train)",
+        "--datasets",
+        default="train,dev",
+        help="Comma-separated AppWorld datasets: train,dev,test_normal,test_challenge (default: train,dev)",
     )
     parser.addoption(
         "--limit",
@@ -63,12 +67,28 @@ def pytest_addoption(parser: pytest.Parser) -> None:
             "Example: --start-from 692c77d_1. Useful for resuming interrupted benchmark runs."
         ),
     )
+    parser.addoption(
+        "--default-few-shot",
+        action="store_true",
+        default=False,
+        help="Include few-shot examples in system prompt (default: zero-shot, no examples)",
+    )
+
+
+def parse_datasets(datasets_str: str) -> list[str]:
+    """Parse comma-separated datasets string and validate."""
+    datasets = [d.strip() for d in datasets_str.split(",") if d.strip()]
+    invalid = set(datasets) - VALID_DATASETS
+    if invalid:
+        raise ValueError(f"Invalid datasets: {invalid}. Valid options: {VALID_DATASETS}")
+    return datasets
 
 
 @pytest.fixture
-def appworld_dataset(request: pytest.FixtureRequest) -> str:
-    """Get the AppWorld dataset name from CLI."""
-    return str(request.config.getoption("--dataset"))
+def appworld_datasets(request: pytest.FixtureRequest) -> list[str]:
+    """Get the AppWorld dataset names from CLI."""
+    datasets_str = str(request.config.getoption("--datasets"))
+    return parse_datasets(datasets_str)
 
 
 @pytest.fixture
@@ -92,6 +112,18 @@ def api_mode(request: pytest.FixtureRequest) -> str:
     return str(request.config.getoption("--api-mode"))
 
 
+@pytest.fixture
+def use_few_shot(request: pytest.FixtureRequest) -> bool:
+    """
+    Get few-shot mode from CLI.
+
+    Returns:
+        True if --default-few-shot flag is set (include examples in prompt)
+        False by default (zero-shot, no examples)
+    """
+    return bool(request.config.getoption("--default-few-shot"))
+
+
 @pytest.fixture(scope="session")
 def experiment_name(request: pytest.FixtureRequest) -> str:
     """
@@ -100,7 +132,7 @@ def experiment_name(request: pytest.FixtureRequest) -> str:
     All tests in this session will write to the same experiment directory,
     organized by task_id in subdirectories: experiments/outputs/{experiment_name}/tasks/{task_id}/
 
-    Automatically uses {model}/{dataset} pattern for organized experiment tracking.
+    Automatically uses {model}/{datasets} pattern for organized experiment tracking.
     """
 
     experiment_dir = request.config.getoption("--experiment-dir", None)
@@ -109,8 +141,10 @@ def experiment_name(request: pytest.FixtureRequest) -> str:
         # Use specified experiment directory
         return str(experiment_dir)
     else:
-        # Use model/dataset pattern for organized experiment tracking
+        # Use model/datasets pattern for organized experiment tracking
         # This works for both normal runs and validation
         model = str(request.config.getoption("--model"))
-        dataset = str(request.config.getoption("--dataset"))
-        return f"{model}/{dataset}"
+        datasets_str = str(request.config.getoption("--datasets"))
+        datasets = parse_datasets(datasets_str)
+        datasets_dir = "_".join(datasets)
+        return f"{model}/{datasets_dir}"

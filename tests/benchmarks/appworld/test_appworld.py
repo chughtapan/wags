@@ -27,7 +27,7 @@ from tests.utils.logger import StructuredEventLogger
 
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
-    """Dynamically generate test cases from AppWorld dataset."""
+    """Dynamically generate test cases from AppWorld dataset(s)."""
     if "task_id" not in metafunc.fixturenames:
         return
 
@@ -50,9 +50,16 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
                 f"Make sure you've run tests for --model {model} --dataset {dataset} first."
             )
     else:
-        # Load task IDs from AppWorld dataset
-        dataset = metafunc.config.getoption("--dataset", "train")
-        task_ids = load_task_ids(dataset)
+        # Load task IDs from AppWorld dataset(s)
+        from tests.benchmarks.appworld.conftest import parse_datasets
+
+        datasets_str = metafunc.config.getoption("--datasets", "train,dev")
+        datasets = parse_datasets(datasets_str)
+
+        # Collect task IDs from all specified datasets
+        task_ids = []
+        for dataset in datasets:
+            task_ids.extend(load_task_ids(dataset))
 
         # Apply --start-from filter first (before --limit)
         start_from = metafunc.config.getoption("--start-from", None)
@@ -64,10 +71,10 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
             except ValueError:
                 # Task ID not found - provide helpful error
                 pytest.exit(
-                    f"\nError: Task ID '{start_from}' not found in {dataset} dataset.\n"
+                    f"\nError: Task ID '{start_from}' not found in datasets {datasets}.\n"
                     f"Available task IDs (first 10): {', '.join(task_ids[:10])}\n"
-                    f"Total tasks in dataset: {len(task_ids)}\n"
-                    f"Use: pytest tests/benchmarks/appworld/test_appworld.py --dataset {dataset} "
+                    f"Total tasks: {len(task_ids)}\n"
+                    f"Use: pytest tests/benchmarks/appworld/test_appworld.py --datasets {datasets_str} "
                     f"--collect-only to see all task IDs."
                 )
 
@@ -92,6 +99,7 @@ async def test_appworld(
     output_dir: Path,
     api_mode: str,
     experiment_name: str,
+    use_few_shot: bool,
     request: pytest.FixtureRequest,
 ) -> None:
     """Run or validate an AppWorld test."""
@@ -99,7 +107,7 @@ async def test_appworld(
 
     # Run test if not in validate-only mode
     if not validate_only:
-        await _run_appworld_test(task_id, model, temperature, output_dir, api_mode, experiment_name)
+        await _run_appworld_test(task_id, model, temperature, output_dir, api_mode, experiment_name, use_few_shot)
 
     # Get complete.json path (always in output_dir/raw now)
     complete_path = output_dir / "raw" / f"{task_id}_complete.json"
@@ -190,6 +198,7 @@ async def _run_appworld_test(
     output_dir: Path,
     api_mode: str,
     experiment_name: str,
+    use_few_shot: bool,
 ) -> None:
     """Run AppWorld test using the provided experiment name."""
 
@@ -213,7 +222,7 @@ async def _run_appworld_test(
     # Create and run FastAgent
     config_path = Path(__file__).parent / "fastagent.config.yaml"
     agent = FastAgent("AppWorld Test", config_path=str(config_path), ignore_unknown_args=True)
-    system_instruction = prompts.load_system_instruction(task)
+    system_instruction = prompts.load_system_instruction(task, use_few_shot=use_few_shot)
 
     @agent.agent(
         name="test_agent",

@@ -14,15 +14,17 @@ from fast_agent.mcp.common import create_namespaced_name
 EXPERIMENTS_PATH = Path(appworld_experiments.__file__).parent
 
 
-def load_system_instruction(task: Task) -> str:
+def load_system_instruction(task: Task, use_few_shot: bool = False) -> str:
     """
-    Load and render system instruction from AppWorld's template with demo examples.
+    Load and render system instruction from AppWorld's template.
 
     Args:
         task: AppWorld Task object
+        use_few_shot: If True, include demo examples in prompt. Default is False (zero-shot).
 
     Returns:
-        Rendered system instruction with supervisor info, rules, and demos
+        Rendered system instruction with supervisor info and rules.
+        If use_few_shot=True, also includes worked-out demo examples.
     """
     # Load and render base system instruction template
     template_path = Path(__file__).parent / "system_instruction.txt"
@@ -42,7 +44,17 @@ def load_system_instruction(task: Task) -> str:
         app_descriptions=app_descriptions_yaml,
     )
 
-    # Load demo messages and format them
+    # In zero-shot mode, remove the line about showing examples
+    if not use_few_shot:
+        # Remove the line that references upcoming examples
+        examples_line = (
+            "\nNext, I will show you some worked-out examples "
+            "as a tutorial before we proceed with the real task instruction.\n"
+        )
+        base_instruction = base_instruction.replace(examples_line, "\n")
+        return base_instruction
+
+    # Few-shot mode: Load demo messages and format them
     demos_path = EXPERIMENTS_PATH / "prompts/function_calling_agent/demos.json"
     demo_messages = read_json(str(demos_path))
 

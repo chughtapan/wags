@@ -99,14 +99,17 @@ UV_GIT_LFS=1 uv pip install -e ".[dev,evals]"
 appworld install
 appworld download data
 
-# Run all train tasks (results automatically organized to results/{model}/{dataset}/)
-.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --dataset train --model gpt-4o
+# Run default datasets (train,dev) - results organized to results/{model}/{datasets}/
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --model gpt-4o
+
+# Run specific dataset
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --datasets train --model gpt-4o
 
 # Run specific task
 .venv/bin/pytest 'tests/benchmarks/appworld/test_appworld.py::test_appworld[train_001]'
 
-# Validate existing results (auto-detects from results/{model}/{dataset}/)
-.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-4o --dataset train
+# Validate existing results (auto-detects from results/{model}/{datasets}/)
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-4o --datasets train
 ```
 
 ### 5. Smoke Tests (`smoke/`)
@@ -237,11 +240,12 @@ Registered markers:
 
 **AppWorld-specific options:**
 ```bash
---dataset DATASET         # Dataset: train, dev, test_normal, test_challenge (default: train)
+--datasets DATASETS       # Comma-separated datasets (default: train,dev)
 --limit N                 # Run only first N tasks from dataset
 --api-mode MODE           # API prediction mode (default: app_oracle)
 --experiment-dir DIR      # Custom experiment directory name
 --start-from TASK_ID      # Resume from specific task ID
+--default-few-shot        # Include few-shot examples (default: zero-shot)
 ```
 
 ## Common Commands
