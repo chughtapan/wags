@@ -1,6 +1,5 @@
 """MCP-Universe repository management evaluation tests using pytest."""
 
-import asyncio
 import json
 import os
 from dataclasses import dataclass
@@ -208,7 +207,6 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
 
                 structured_logger.log_turn(turn_idx, "end")
                 human_logger.log_turn_end(turn_idx)
-                await asyncio.sleep(0)
 
             # Get messages for output
             messages = agent_app._agent(None).message_history
@@ -239,17 +237,66 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
     return await run_test()
 
 
-async def _validate_from_output(test_id: str, complete_path: Path) -> dict[str, Any]:
-    """Validate test from complete.json file."""
+async def _validate_test(test_id: str, log_dir: Path) -> dict[str, Any]:
+    """Validate test results and log to human-readable file."""
+    complete_path = log_dir / f"{test_id}_complete.json"
     if not complete_path.exists():
         pytest.skip(f"Complete JSON file not found: {complete_path}")
 
-    # Create context with environment variables
+    # Run evaluation
     context = Context()
     context.env = dict(os.environ)
+    evaluation = await evaluator.run_evaluation(test_id, context=context)
 
-    # Run evaluation
-    return await evaluator.run_evaluation(test_id, context=context)
+    # Save evaluation results
+    eval_path = log_dir / f"{test_id}_evaluation.json"
+    eval_path.write_text(json.dumps(evaluation, indent=2, default=str))
+
+    # Log to human-readable file if it exists
+    human_log_path = log_dir / f"{test_id}_readable.log"
+    if human_log_path.exists():
+        _log_evaluation_results(human_log_path, evaluation)
+
+    return evaluation
+
+
+def _log_evaluation_results(log_path: Path, evaluation: dict[str, Any]) -> None:
+    """Log evaluation results to human-readable log."""
+    human_logger = HumanReadableLogger(log_path)
+    human_logger.log_evaluation_start()
+
+    failed_checks = 0
+    for idx, result in enumerate(evaluation["evaluation_results"], 1):
+        if not result["passed"]:
+            failed_checks += 1
+
+        expected = None
+        evaluators = evaluation.get("task_data", {}).get("evaluators", [])
+        if idx - 1 < len(evaluators) and "value" in evaluators[idx - 1]:
+            expected = evaluators[idx - 1].get("value")
+
+        human_logger.log_evaluation_check(
+            EvaluationCheck(
+                check_num=idx,
+                operation=result["op"],
+                passed=result["passed"],
+                reason=result.get("reason", "") or result.get("error", ""),
+                expected=expected,
+            )
+        )
+
+    human_logger.log_evaluation_summary(
+        passed=evaluation["passed"],
+        total_checks=len(evaluation["evaluation_results"]),
+        failed_checks=failed_checks,
+    )
+
+    verdict = (
+        "TEST PASSED"
+        if evaluation["passed"]
+        else f"TEST FAILED ({failed_checks}/{len(evaluation['evaluation_results'])} checks failed)"
+    )
+    human_logger.log_final_verdict(verdict)
 
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
@@ -273,78 +320,31 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
                 if e.is_file() and e.name.startswith("github_task_") and e.name.endswith(".json")
             )
 
-        if test_ids:
-            metafunc.parametrize("test_id", test_ids)
-        else:
-            metafunc.parametrize("test_id", [], ids=[])
+        metafunc.parametrize("test_id", test_ids)
 
 
 @pytest.mark.asyncio
 async def test_mcp_universe(
     test_id: str, model: str, temperature: float, output_dir: Path, request: pytest.FixtureRequest
 ) -> None:
-    """Run or validate a MCP-Universe repository management test based on mode."""
-    if request.config.getoption("--validate-only"):
-        log_dir = Path(request.config.getoption("--log-dir"))
-    else:
+    """Run or validate a MCP-Universe repository management test."""
+    validate_only = request.config.getoption("--validate-only")
+
+    # Run test if not in validate-only mode
+    if not validate_only:
         await _run_mcp_universe_test(test_id, model, temperature, output_dir)
-        log_dir = output_dir / "raw"
 
-    complete_path = log_dir / f"{test_id}_complete.json"
-    evaluation = await _validate_from_output(test_id, complete_path)
+    # Determine log directory
+    log_dir = Path(request.config.getoption("--log-dir")) if validate_only else output_dir / "raw"
 
-    # Save evaluation results to file
-    eval_path = log_dir / f"{test_id}_evaluation.json"
-    eval_path.write_text(json.dumps(evaluation, indent=2, default=str))
+    # Validate and get results
+    evaluation = await _validate_test(test_id, log_dir)
 
-    # Log evaluation results to human-readable log
-    human_log_path = log_dir / f"{test_id}_readable.log"
-    if human_log_path.exists():
-        human_logger = HumanReadableLogger(human_log_path)
-
-        human_logger.log_evaluation_start()
-
-        # Log each evaluation check
-        failed_checks = 0
-        for idx, result in enumerate(evaluation["evaluation_results"], 1):
-            if not result["passed"]:
-                failed_checks += 1
-
-            # Try to extract expected value from evaluator data
-            expected = None
-            evaluators = evaluation.get("task_data", {}).get("evaluators", [])
-            if idx - 1 < len(evaluators) and "value" in evaluators[idx - 1]:
-                expected = evaluators[idx - 1].get("value")
-
-            human_logger.log_evaluation_check(
-                EvaluationCheck(
-                    check_num=idx,
-                    operation=result["op"],
-                    passed=result["passed"],
-                    reason=result.get("reason", "") or result.get("error", ""),
-                    expected=expected,
-                )
-            )
-
-        human_logger.log_evaluation_summary(
-            passed=evaluation["passed"], total_checks=len(evaluation["evaluation_results"]), failed_checks=failed_checks
-        )
-
-        verdict = (
-            "TEST PASSED"
-            if evaluation["passed"]
-            else f"TEST FAILED ({failed_checks}/{len(evaluation['evaluation_results'])} checks failed)"
-        )
-        human_logger.log_final_verdict(verdict)
-
-    # Create detailed failure message if evaluation failed
+    # Fail test with detailed message if evaluation failed
     if not evaluation["passed"]:
-        failure_details = [
-            f"  - {result['func']} {result['op']}: {result['reason'] or result['error']}"
-            for result in evaluation["evaluation_results"]
-            if not result["passed"]
+        failures = [
+            f"  - {r['func']} {r['op']}: {r.get('reason') or r.get('error')}"
+            for r in evaluation["evaluation_results"]
+            if not r["passed"]
         ]
-        failure_msg = f"Evaluation failed for {test_id}:\n" + "\n".join(failure_details)
-        assert evaluation["passed"], failure_msg
-    else:
-        assert evaluation["passed"], f"Validation failed for {test_id}"
+        pytest.fail(f"Evaluation failed for {test_id}:\n" + "\n".join(failures))
