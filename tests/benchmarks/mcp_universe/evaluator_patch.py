@@ -22,7 +22,7 @@ import json
 import os
 import re
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal, cast
 
 import httpx
 import mcpuniverse.evaluator.functions as evaluator_functions
@@ -71,14 +71,14 @@ async def _github_api_list_issues(
     repo: str,
     state: Literal["open", "closed", "all"] | None = "all",
     labels: list[str] | None = None,
-) -> list[dict] | None:
+) -> list[dict[str, Any]] | None:
     """List issues via direct GitHub REST API (bypasses MCP server rate limits)."""
     headers = _get_github_headers()
     if not headers:
         print("[PATCH] Warning: GITHUB_PERSONAL_ACCESS_TOKEN not set")
         return None
 
-    params: dict = {"per_page": GITHUB_API_PAGE_SIZE}
+    params: dict[str, Any] = {"per_page": GITHUB_API_PAGE_SIZE}
     if state:
         params["state"] = state.lower()
     if labels:
@@ -119,7 +119,7 @@ async def _github_api_list_issues(
     return all_issues
 
 
-async def _check_repo_exists_with_fallback(owner: str, repo: str, **kwargs) -> bool:
+async def _check_repo_exists_with_fallback(owner: str, repo: str, **kwargs: Any) -> bool:
     """Check if repo exists via direct API, fallback to search API."""
     if await _github_api_check_repo_exists(owner, repo):
         return True
@@ -130,7 +130,7 @@ async def _check_repo_exists_with_fallback(owner: str, repo: str, **kwargs) -> b
     return f"{owner}/{repo}" in [r["full_name"] for r in result["items"]]
 
 
-def _parse_file_content(file_content: str, file_type: str, csv_columns: list[str] | None = None) -> dict:
+def _parse_file_content(file_content: str, file_type: str, csv_columns: list[str] | None = None) -> dict[str, Any]:
     """Parse file content (CSV or JSON) into a dict."""
     if file_type == "csv":
         if not csv_columns or len(csv_columns) != 2:
@@ -141,7 +141,7 @@ def _parse_file_content(file_content: str, file_type: str, csv_columns: list[str
             result[row[csv_columns[0]]] = int(row[csv_columns[1]])
         return result
     if file_type == "json":
-        return json.loads(file_content)
+        return cast(dict[str, Any], json.loads(file_content))
     raise ValueError(f"Unsupported file type: {file_type}")
 
 
@@ -154,7 +154,9 @@ class IssueFilter:
     comments: str | None = None
 
 
-async def _filter_issue(issue: dict, filter_opts: IssueFilter, owner: str, repo: str, **kwargs) -> bool:
+async def _filter_issue(
+    issue: dict[str, Any], filter_opts: IssueFilter, owner: str, repo: str, **kwargs: Any
+) -> bool:
     """Filter an issue by title, labels, and comments."""
     if filter_opts.title is not None and issue["title"] != filter_opts.title:
         return False
@@ -174,7 +176,9 @@ async def _filter_issue(issue: dict, filter_opts: IssueFilter, owner: str, repo:
 # =============================================================================
 
 
-async def _patched_check_file_content_and_issue_count(_: dict, *args, **kwargs) -> tuple[bool, str]:
+async def _patched_check_file_content_and_issue_count(
+    _: dict[str, Any], *args: Any, **kwargs: Any
+) -> tuple[bool, str]:
     """Check if CSV/JSON file content matches issue counts across repos."""
     _, op_args = args
 
@@ -219,7 +223,9 @@ async def _patched_check_file_content_and_issue_count(_: dict, *args, **kwargs) 
     return True, ""
 
 
-async def _find_repo_with_fewest_issues(repos: list[str], issue_state: str) -> tuple[str | None, int | None]:
+async def _find_repo_with_fewest_issues(
+    repos: list[str], issue_state: Literal["open", "closed", "all"]
+) -> tuple[str | None, int | None]:
     """Find repo with fewest issues, returning (repo_name, index)."""
     fewest_repo, fewest_count, fewest_idx = None, float("inf"), None
     for idx, repo_full in enumerate(repos):
@@ -232,13 +238,15 @@ async def _find_repo_with_fewest_issues(repos: list[str], issue_state: str) -> t
     return fewest_repo, fewest_idx
 
 
-async def _patched_check_repository_with_fewest_issues(_: dict, *args, **kwargs) -> tuple[bool, str]:
+async def _patched_check_repository_with_fewest_issues(
+    _: dict[str, Any], *args: Any, **kwargs: Any
+) -> tuple[bool, str]:
     """Check if user forked the repo with fewest issues."""
-    _, op_args = args
+    __, op_args = args
     owner = op_args["owner"]
-    issue_state = op_args.get("issue_state", "all")
+    issue_state: Literal["open", "closed", "all"] = op_args.get("issue_state", "all")
 
-    fewest_repo, _ = await _find_repo_with_fewest_issues(op_args["repos"], issue_state)
+    fewest_repo, _idx = await _find_repo_with_fewest_issues(op_args["repos"], issue_state)
     if fewest_repo is None:
         return False, "Could not determine repository with fewest issues"
 
@@ -247,11 +255,13 @@ async def _patched_check_repository_with_fewest_issues(_: dict, *args, **kwargs)
     return False, f"Repository {owner}/{fewest_repo} doesn't exist"
 
 
-async def _patched_check_file_content_with_fewest_issues(_: dict, *args, **kwargs) -> tuple[bool, str]:
+async def _patched_check_file_content_with_fewest_issues(
+    _: dict[str, Any], *args: Any, **kwargs: Any
+) -> tuple[bool, str]:
     """Check if file content matches expected for repo with fewest issues."""
     _, op_args = args
     owner = op_args["owner"]
-    issue_state = op_args.get("issue_state", "all")
+    issue_state: Literal["open", "closed", "all"] = op_args.get("issue_state", "all")
 
     fewest_repo, fewest_idx = await _find_repo_with_fewest_issues(op_args["repos"], issue_state)
     if fewest_repo is None:
@@ -267,7 +277,7 @@ async def _patched_check_file_content_with_fewest_issues(_: dict, *args, **kwarg
     return False, f"Content '{expected}' is not found in the file"
 
 
-async def _patched_check_repository(_: dict, *args, **kwargs) -> tuple[bool, str]:
+async def _patched_check_repository(_: dict[str, Any], *args: Any, **kwargs: Any) -> tuple[bool, str]:
     """Check whether a GitHub repository exists."""
     _, query = args
 
@@ -296,7 +306,7 @@ async def _patched_check_repository(_: dict, *args, **kwargs) -> tuple[bool, str
     return (True, "") if full_names else (False, "the repository doesn't exist")
 
 
-async def _patched_file_content_include(_: dict, *args, **kwargs) -> tuple[bool, str]:
+async def _patched_file_content_include(_: dict[str, Any], *args: Any, **kwargs: Any) -> tuple[bool, str]:
     """Check if file content includes expected strings."""
     value, op_args = args
     owner, repo = op_args["owner"], op_args["repo"]
@@ -314,7 +324,7 @@ async def _patched_file_content_include(_: dict, *args, **kwargs) -> tuple[bool,
     return True, ""
 
 
-async def _patched_check_number_of_issues(_: dict, *args, **kwargs) -> tuple[bool, str]:
+async def _patched_check_number_of_issues(_: dict[str, Any], *args: Any, **kwargs: Any) -> tuple[bool, str]:
     """Check the GitHub issues count matches expected."""
     value, op_args = args
     owner, repo = op_args["owner"], op_args["repo"]

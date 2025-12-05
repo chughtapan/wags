@@ -7,47 +7,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-import yaml
 from fast_agent import FastAgent
 from fast_agent.llm.request_params import RequestParams
 from mcpuniverse.common.context import Context
-
-# Load secrets from root-level fastagent.secrets.yaml and populate environment
-_SECRETS_LOADED = False
-
-
-def _load_secrets_once() -> None:
-    """Load secrets from fastagent.secrets.yaml into environment variables (once)."""
-    global _SECRETS_LOADED  # noqa: PLW0603
-    if _SECRETS_LOADED:
-        return
-
-    secrets_path = Path(__file__).parent.parent.parent.parent / "fastagent.secrets.yaml"
-    if secrets_path.exists():
-        with open(secrets_path) as f:
-            secrets = yaml.safe_load(f)
-
-        # Extract GitHub credentials from MCP server config
-        if "mcp" in secrets and "servers" in secrets["mcp"] and "github" in secrets["mcp"]["servers"]:
-            github_env = secrets["mcp"]["servers"]["github"].get("env", {})
-            if "GITHUB_PERSONAL_ACCESS_TOKEN" in github_env:
-                os.environ["GITHUB_PERSONAL_ACCESS_TOKEN"] = github_env["GITHUB_PERSONAL_ACCESS_TOKEN"]
-            if "GITHUB_PERSONAL_ACCOUNT_NAME" in github_env:
-                os.environ["GITHUB_PERSONAL_ACCOUNT_NAME"] = github_env["GITHUB_PERSONAL_ACCOUNT_NAME"]
-
-        # Extract OpenAI API key
-        if "openai" in secrets and "api_key" in secrets["openai"]:
-            os.environ["OPENAI_API_KEY"] = secrets["openai"]["api_key"]
-
-        # Extract Anthropic API key
-        if "anthropic" in secrets and "api_key" in secrets["anthropic"]:
-            os.environ["ANTHROPIC_API_KEY"] = secrets["anthropic"]["api_key"]
-
-    _SECRETS_LOADED = True
-
-
-# Load secrets FIRST, before anything else
-_load_secrets_once()
 
 # CRITICAL: Apply patch BEFORE importing evaluator to ensure it works
 from tests.benchmarks.mcp_universe.evaluator_patch import apply_patch  # noqa: E402
@@ -150,13 +112,13 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
             errors = []
 
             for turn_idx, question in enumerate(questions, 1):
-                msg = _parse_question(question)
-                if not msg:
+                user_msg = _parse_question(question)
+                if not user_msg:
                     continue
 
-                structured_logger.log_turn(turn_idx, "start", msg)
-                human_logger.log_turn_start(turn_idx, msg)
-                await agent_app.send(msg)
+                structured_logger.log_turn(turn_idx, "start", user_msg)
+                human_logger.log_turn_start(turn_idx, user_msg)
+                await agent_app.send(user_msg)
 
                 # Extract messages added in this turn for detailed logging
                 messages = agent_app._agent(None).message_history
@@ -169,8 +131,9 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
                     if hasattr(msg_obj, "tool_calls") and msg_obj.tool_calls:
                         for tool_id, call in msg_obj.tool_calls.items():
                             total_tool_calls += 1
-                            structured_logger.log_tool_call(turn_idx, call.params.name, call.params.arguments, tool_id)
-                            human_logger.log_tool_call(turn_idx, call.params.name, call.params.arguments)
+                            args = call.params.arguments or {}
+                            structured_logger.log_tool_call(turn_idx, call.params.name, args, tool_id)
+                            human_logger.log_tool_call(turn_idx, call.params.name, args)
 
                     # Log tool results
                     if hasattr(msg_obj, "tool_results") and msg_obj.tool_results:
@@ -234,7 +197,7 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
                 human_logger.log_errors(errors)
 
             # Determine completion status
-            final_assistant_msg = None
+            final_assistant_msg: str | None = None
             for msg in reversed(messages):
                 if hasattr(msg, "role") and msg.role == "assistant":
                     if hasattr(msg, "content"):

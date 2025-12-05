@@ -5,7 +5,7 @@ from contextlib import suppress
 from importlib import resources
 from importlib.abc import Traversable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 _PACKAGE_SUBPATH = ("benchmark", "configs", "test", "repository_management")
 _LOCAL_DATA_DIR = (
@@ -62,14 +62,14 @@ def load_task(task_id: str) -> dict[str, Any]:
         task_resource = package_root.joinpath(task_filename)
         if task_resource.is_file():
             with task_resource.open("r", encoding="utf-8") as fh:
-                return json.load(fh)
+                return cast(dict[str, Any], json.load(fh))
 
     local_root = _local_data_root()
     if local_root:
         task_path = local_root / task_filename
         if task_path.is_file():
             with open(task_path, encoding="utf-8") as fh:
-                return json.load(fh)
+                return cast(dict[str, Any], json.load(fh))
 
     raise FileNotFoundError(
         f"Task file not found for {task_id!r}. Install the eval extras with 'uv sync --extra evals' "

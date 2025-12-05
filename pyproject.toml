@@ -91,8 +91,6 @@ ignore = ["PERF203", "PLC0415", "PLR0402"]
 "tests/benchmarks/mcp_universe/test_mcp_universe.py" = ["C901", "PLR0912", "PLR0915", "PERF401"]
 # MCP-Universe reporting has many logger methods with parameters
 "tests/benchmarks/mcp_universe/reporting.py" = ["PLR0913"]
-# Shared logger has evaluation methods with many parameters
-"tests/utils/logger.py" = ["PLR0913"]
 
 [tool.ruff.lint.pylint]
 allow-magic-value-types = ["bytes", "float", "int", "str"]
@@ -111,9 +109,6 @@ timeout = 0
 timeout_method = "thread"  # Use thread-based timeout for better async compatibility
 
 [tool.mypy]
-exclude = [
-    "tests/benchmarks/bfcl/data/",
-]
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -142,15 +137,6 @@ module = [
 ]
 follow_untyped_imports = true
 ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "tests.benchmarks.mcp_universe.*"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "tests.benchmarks.bfcl.data.*"
-ignore_errors = true
-follow_imports = "skip"
 
 [[tool.mypy.overrides]]
 module = "tests.benchmarks.appworld.mcp_server"
