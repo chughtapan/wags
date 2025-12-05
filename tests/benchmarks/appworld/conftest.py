@@ -23,8 +23,7 @@ def output_dir(request: pytest.FixtureRequest) -> Path:
         # Auto-infer from model/datasets
         model = str(request.config.getoption("--model"))
         datasets_str = str(request.config.getoption("--datasets"))
-        datasets = parse_datasets(datasets_str)
-        datasets_dir = "_".join(datasets)
+        datasets_dir = get_datasets_dir(datasets_str)
         path = Path("results") / model / datasets_dir / "outputs"
 
     path.mkdir(parents=True, exist_ok=True)
@@ -85,6 +84,12 @@ def parse_datasets(datasets_str: str) -> list[str]:
     return datasets
 
 
+def get_datasets_dir(datasets_str: str) -> str:
+    """Parse datasets and return underscore-joined directory name."""
+    datasets = parse_datasets(datasets_str)
+    return "_".join(datasets)
+
+
 @pytest.fixture
 def appworld_datasets(request: pytest.FixtureRequest) -> list[str]:
     """Get the AppWorld dataset names from CLI."""
@@ -140,6 +145,5 @@ def experiment_name(request: pytest.FixtureRequest) -> str:
     # Auto-infer from model/datasets
     model = str(request.config.getoption("--model"))
     datasets_str = str(request.config.getoption("--datasets"))
-    datasets = parse_datasets(datasets_str)
-    datasets_dir = "_".join(datasets)
+    datasets_dir = get_datasets_dir(datasets_str)
     return f"{model}/{datasets_dir}"
