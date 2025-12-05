@@ -87,19 +87,8 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
     structured_logger = StructuredEventLogger(structured_log_path)
     human_logger = HumanReadableLogger(human_log_path)
 
-    # Log infrastructure setup phase
-    structured_logger.log_infrastructure_event(
-        "test_initialization",
-        "test_framework",
-        "started",
-        {"test_id": test_id, "model": model, "temperature": temperature},
-    )
-
     # Validate GitHub token is available
     if not os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN"):
-        structured_logger.log_infrastructure_event(
-            "github_auth", "github-api", "failed", {"error": "GITHUB_PERSONAL_ACCESS_TOKEN not set"}
-        )
         raise ValueError(
             "GITHUB_PERSONAL_ACCESS_TOKEN environment variable not set. Please set it before running tests."
         )
@@ -118,18 +107,8 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
         }
     )
 
-    # Log GitHub authentication success
-    structured_logger.log_infrastructure_event("github_auth", "github-api", "success", {"account": github_account_name})
-
     # Load task
-    structured_logger.log_infrastructure_event("task_loading", "test_framework", "started", {"test_id": test_id})
     task = loader.load_task(test_id)
-    structured_logger.log_infrastructure_event(
-        "task_loading",
-        "test_framework",
-        "success",
-        {"test_id": test_id, "evaluator_count": len(task.get("evaluators", []))},
-    )
 
     instruction_path = Path(__file__).parent / "instruction.txt"
 
@@ -142,20 +121,12 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
     output_path = output_dir / "raw" / f"{test_id}_complete.json"
 
     # Create FastAgent
-    structured_logger.log_infrastructure_event(
-        "fastagent_init", "fast-agent", "started", {"config_path": str(Path(__file__).parent / "fastagent.config.yaml")}
-    )
-
     test_dir = Path(__file__).parent
     config_path = test_dir / "fastagent.config.yaml"
     agent = FastAgent("MCP-Universe Test", config_path=str(config_path), ignore_unknown_args=True)
 
-    structured_logger.log_infrastructure_event("fastagent_init", "fast-agent", "success", {})
-
     # Determine which servers to use (currently only github for repository management)
     server_names = ["github"]
-
-    structured_logger.log_infrastructure_event("mcp_servers", "mcp", "configuring", {"servers": server_names})
 
     @agent.agent(
         name="test_agent",
@@ -165,12 +136,7 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
         request_params=RequestParams(maxTokens=MAX_TOKENS, max_iterations=MAX_ITERATIONS),
     )
     async def run_test() -> Path:
-        structured_logger.log_infrastructure_event(
-            "agent_execution", "fast-agent", "starting", {"max_tokens": MAX_TOKENS, "max_iterations": MAX_ITERATIONS}
-        )
-
         async with agent.run() as agent_app:
-            structured_logger.log_infrastructure_event("agent_execution", "fast-agent", "running", {})
             questions = task.get("question", [])
 
             # Handle both single string and list formats
@@ -265,7 +231,6 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
 
             # Log error summary if any errors occurred
             if errors:
-                structured_logger.log_error_summary(errors)
                 human_logger.log_errors(errors)
 
             # Determine completion status
@@ -296,23 +261,6 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
             elif errors:
                 # Had errors but completed - note this in reason but don't fail
                 reason = f"Agent completed with {len(errors)} recoverable error(s) during execution"
-
-            structured_logger.log_completion_status(
-                status=status,
-                reason=reason,
-                total_tool_calls=total_tool_calls,
-                error_count=len(errors),
-                final_message=final_assistant_msg,
-            )
-
-            # Log error summary if there were errors
-            if errors:
-                structured_logger.log_infrastructure_event(
-                    "error_breakdown",
-                    "test_framework",
-                    "analyzed",
-                    {"total_errors": len(errors)},
-                )
 
             human_logger.log_execution_summary(
                 status=status,

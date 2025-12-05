@@ -219,9 +219,7 @@ async def _patched_check_file_content_and_issue_count(_: dict, *args, **kwargs) 
     return True, ""
 
 
-async def _find_repo_with_fewest_issues(
-    repos: list[str], issue_state: str
-) -> tuple[str | None, int | None]:
+async def _find_repo_with_fewest_issues(repos: list[str], issue_state: str) -> tuple[str | None, int | None]:
     """Find repo with fewest issues, returning (repo_name, index)."""
     fewest_repo, fewest_count, fewest_idx = None, float("inf"), None
     for idx, repo_full in enumerate(repos):

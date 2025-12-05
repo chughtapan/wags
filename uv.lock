@@ -6,7 +6,7 @@ requires-python = ">=3.13.5, <3.14"
 overrides = [
     { name = "anthropic", specifier = ">=0.68.0" },
     { name = "google-genai", specifier = ">=1.33.0" },
-    { name = "mcp", specifier = ">=1.19.0" },
+    { name = "mcp", git = "https://github.com/chughtapan/python-sdk.git?rev=wags-dev" },
     { name = "mistralai", specifier = ">=1.7.0" },
     { name = "openai", extras = ["aiohttp"], specifier = ">=1.108.0" },
     { name = "python-dotenv", specifier = ">=1.1.0" },
@@ -1920,8 +1920,8 @@ wheels = [
 
 [[package]]
 name = "mcp"
-version = "1.23.1"
-source = { registry = "https://pypi.org/simple" }
+version = "0.0.1.dev649+7ad8253"
+source = { git = "https://github.com/chughtapan/python-sdk.git?rev=wags-dev#7ad825381b7847e08df8e4e3646cf72af2e487e0" }
 dependencies = [
     { name = "anyio" },
     { name = "httpx" },
@@ -1934,13 +1934,7 @@ dependencies = [
     { name = "pywin32", marker = "sys_platform == 'win32'" },
     { name = "sse-starlette" },
     { name = "starlette" },
-    { name = "typing-extensions" },
-    { name = "typing-inspection" },
     { name = "uvicorn", marker = "sys_platform != 'emscripten'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/12/42/10c0c09ca27aceacd8c428956cfabdd67e3d328fe55c4abc16589285d294/mcp-1.23.1.tar.gz", hash = "sha256:7403e053e8e2283b1e6ae631423cb54736933fea70b32422152e6064556cd298", size = 596519, upload-time = "2025-12-02T18:41:12.807Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9f/9e/26e1d2d2c6afe15dfba5ca6799eeeea7656dce625c22766e4c57305e9cc2/mcp-1.23.1-py3-none-any.whl", hash = "sha256:3ce897fcc20a41bd50b4c58d3aa88085f11f505dcc0eaed48930012d34c731d8", size = 231433, upload-time = "2025-12-02T18:41:11.195Z" },
 ]
 
 [[package]]
@@ -4074,11 +4068,6 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-bfcl = [
-    { name = "bfcl-eval" },
-    { name = "jinja2" },
-    { name = "python-dotenv" },
-]
 dev = [
     { name = "mypy" },
     { name = "pytest" },
@@ -4095,40 +4084,29 @@ evals = [
     { name = "mcpuniverse" },
     { name = "python-dotenv" },
 ]
-mcpuniverse-eval = [
-    { name = "jinja2" },
-    { name = "mcpuniverse" },
-    { name = "python-dotenv" },
-]
 
 [package.metadata]
 requires-dist = [
     { name = "appworld", marker = "extra == 'evals'", git = "https://github.com/StonyBrookNLP/appworld.git?rev=f31e671ea7e5acc5eb093c0d2761aee3b7a6567b" },
     { name = "appworld-experiments", extras = ["simplified"], marker = "extra == 'evals'", git = "https://github.com/StonyBrookNLP/appworld.git?subdirectory=experiments&rev=f31e671ea7e5acc5eb093c0d2761aee3b7a6567b" },
-    { name = "bfcl-eval", marker = "extra == 'bfcl'", git = "https://github.com/chughtapan/gorilla.git?subdirectory=berkeley-function-call-leaderboard&branch=wags-dev" },
     { name = "bfcl-eval", marker = "extra == 'evals'", git = "https://github.com/chughtapan/gorilla.git?subdirectory=berkeley-function-call-leaderboard&branch=wags-dev" },
     { name = "cyclopts", specifier = ">=2.0.0" },
     { name = "fast-agent-mcp", git = "https://github.com/chughtapan/fast-agent.git?rev=wags-dev" },
     { name = "fastmcp", git = "https://github.com/chughtapan/fastmcp.git?rev=wags-dev" },
     { name = "jinja2", specifier = ">=3.0.0" },
-    { name = "jinja2", marker = "extra == 'bfcl'", specifier = ">=3.0.0" },
     { name = "jinja2", marker = "extra == 'evals'", specifier = ">=3.0.0" },
-    { name = "jinja2", marker = "extra == 'mcpuniverse-eval'", specifier = ">=3.0.0" },
     { name = "mcp", git = "https://github.com/chughtapan/python-sdk.git?rev=wags-dev" },
     { name = "mcpuniverse", marker = "extra == 'evals'", git = "https://github.com/vinamra57/MCP-Universe.git?branch=wags-dev" },
-    { name = "mcpuniverse", marker = "extra == 'mcpuniverse-eval'", git = "https://github.com/vinamra57/MCP-Universe.git?branch=wags-dev" },
     { name = "mypy", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21" },
     { name = "pytest-timeout", marker = "extra == 'dev'", specifier = ">=2.0" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.0" },
-    { name = "python-dotenv", marker = "extra == 'bfcl'", specifier = ">=1.0.0" },
     { name = "python-dotenv", marker = "extra == 'evals'", specifier = ">=1.0.0" },
-    { name = "python-dotenv", marker = "extra == 'mcpuniverse-eval'", specifier = ">=1.0.0" },
     { name = "rich", specifier = ">=13.0.0" },
     { name = "ruff", marker = "extra == 'dev'" },
 ]
-provides-extras = ["dev", "bfcl", "mcpuniverse-eval", "evals"]
+provides-extras = ["dev", "evals"]
 
 [[package]]
 name = "watchfiles"
