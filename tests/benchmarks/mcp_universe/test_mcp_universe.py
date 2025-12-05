@@ -4,8 +4,9 @@ import asyncio
 import json
 import os
 from dataclasses import dataclass
+from importlib import resources
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from fast_agent import FastAgent
@@ -14,10 +15,13 @@ from mcpuniverse.common.context import Context
 
 # Import evaluator_patch first to apply patches before evaluator imports mcpuniverse functions
 import tests.benchmarks.mcp_universe.evaluator_patch  # noqa: F401
-from tests.benchmarks.mcp_universe import evaluator, loader
+from tests.benchmarks.mcp_universe import evaluator
 from tests.benchmarks.mcp_universe.reporting import EvaluationCheck, HumanReadableLogger
 from tests.utils.fastagent_helpers import MessageSerializer
 from tests.utils.logger import StructuredEventLogger
+
+# MCP-Universe data directory
+_DATA_DIR = resources.files("mcpuniverse").joinpath("benchmark/configs/test/repository_management")
 
 # Agent execution limits
 MAX_ITERATIONS = 500
@@ -153,7 +157,9 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
     human_logger = HumanReadableLogger(raw_dir / f"{test_id}_readable.log")
 
     _setup_environment(model, temperature)
-    task = loader.load_task(test_id)
+    task_file = _DATA_DIR.joinpath(f"{test_id}.json")
+    with task_file.open("r", encoding="utf-8") as f:
+        task = cast(dict[str, Any], json.load(f))
     human_logger.log_test_start(test_id, model, _get_task_description(task))
 
     output_path = raw_dir / f"{test_id}_complete.json"
@@ -261,7 +267,11 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
                 test_ids = []
         else:
             # Generate test IDs for repository management tasks
-            test_ids = loader.find_all_task_ids()
+            test_ids = sorted(
+                e.name.removesuffix(".json")
+                for e in _DATA_DIR.iterdir()
+                if e.is_file() and e.name.startswith("github_task_") and e.name.endswith(".json")
+            )
 
         if test_ids:
             metafunc.parametrize("test_id", test_ids)
