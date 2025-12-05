@@ -9,19 +9,24 @@ VALID_DATASETS = {"train", "dev", "test_normal", "test_challenge"}
 
 @pytest.fixture
 def output_dir(request: pytest.FixtureRequest) -> Path:
-    """AppWorld-specific output directory.
+    """AppWorld output directory.
 
-    Overrides the global output_dir fixture to write directly to
-    results/{model}/{datasets}/outputs/ for organized storage.
+    Uses --output-dir if specified, otherwise auto-infers as
+    results/{model}/{datasets}/outputs/
     """
-    model = str(request.config.getoption("--model"))
-    datasets_str = str(request.config.getoption("--datasets"))
-    # Use underscore-joined datasets for directory name (e.g., "train_dev")
-    datasets = parse_datasets(datasets_str)
-    datasets_dir = "_".join(datasets)
+    output_dir_opt = str(request.config.getoption("--output-dir"))
 
-    # Write directly to results directory
-    path = Path("results") / model / datasets_dir / "outputs"
+    # If not default "outputs", use the specified path directly
+    if output_dir_opt != "outputs":
+        path = Path(output_dir_opt)
+    else:
+        # Auto-infer from model/datasets
+        model = str(request.config.getoption("--model"))
+        datasets_str = str(request.config.getoption("--datasets"))
+        datasets = parse_datasets(datasets_str)
+        datasets_dir = "_".join(datasets)
+        path = Path("results") / model / datasets_dir / "outputs"
+
     path.mkdir(parents=True, exist_ok=True)
     return path
 
