@@ -1,12 +1,14 @@
 """Evaluation logic for MCP-Universe test results."""
 
+import json
+from importlib import resources
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from mcpuniverse.common.context import Context
 from mcpuniverse.evaluator.evaluator import EvaluationResult, Evaluator
 
-from .loader import load_task
+_DATA_DIR = resources.files("mcpuniverse").joinpath("benchmark/configs/test/repository_management")
 
 
 async def run_evaluation(
@@ -24,7 +26,9 @@ async def run_evaluation(
         Dictionary with evaluation results
     """
     # Load task data
-    task = load_task(task_id)
+    task_file = _DATA_DIR.joinpath(f"{task_id}.json")
+    with task_file.open("r", encoding="utf-8") as f:
+        task = cast(dict[str, Any], json.load(f))
 
     # Set MCP server config path for the evaluator
     # This tells MCPManager where to find the GitHub MCP server configuration
