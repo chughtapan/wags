@@ -1,6 +1,7 @@
 """MCP-Universe repository management evaluation tests using pytest."""
 
 import asyncio
+import json
 import os
 from pathlib import Path
 from typing import Any
@@ -59,6 +60,10 @@ from tests.benchmarks.mcp_universe.reporting import HumanReadableLogger  # noqa:
 from tests.utils.fastagent_helpers import MessageSerializer  # noqa: E402
 from tests.utils.logger import StructuredEventLogger  # noqa: E402
 
+# Agent execution limits
+MAX_ITERATIONS = 500
+MAX_TOKENS = 16000
+
 
 def _parse_question(question: Any) -> str:
     """Parse question from various formats into a string."""
@@ -89,20 +94,11 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
         "started",
         {"test_id": test_id, "model": model, "temperature": temperature},
     )
-    human_logger.log_infrastructure_event(
-        "test_initialization",
-        "test_framework",
-        "started",
-        f"Starting test {test_id} with model {model} (temp={temperature})",
-    )
 
     # Validate GitHub token is available
     if not os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN"):
         structured_logger.log_infrastructure_event(
             "github_auth", "github-api", "failed", {"error": "GITHUB_PERSONAL_ACCESS_TOKEN not set"}
-        )
-        human_logger.log_infrastructure_event(
-            "github_auth", "github-api", "failed", "GITHUB_PERSONAL_ACCESS_TOKEN environment variable not set"
         )
         raise ValueError(
             "GITHUB_PERSONAL_ACCESS_TOKEN environment variable not set. Please set it before running tests."
@@ -124,9 +120,6 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
 
     # Log GitHub authentication success
     structured_logger.log_infrastructure_event("github_auth", "github-api", "success", {"account": github_account_name})
-    human_logger.log_infrastructure_event(
-        "github_auth", "github-api", "success", f"GitHub authenticated as {github_account_name}"
-    )
 
     # Load task
     structured_logger.log_infrastructure_event("task_loading", "test_framework", "started", {"test_id": test_id})
@@ -152,50 +145,32 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
     structured_logger.log_infrastructure_event(
         "fastagent_init", "fast-agent", "started", {"config_path": str(Path(__file__).parent / "fastagent.config.yaml")}
     )
-    human_logger.log_infrastructure_event(
-        "fastagent_init", "fast-agent", "started", "Initializing FastAgent with MCP server configuration"
-    )
 
     test_dir = Path(__file__).parent
     config_path = test_dir / "fastagent.config.yaml"
     agent = FastAgent("MCP-Universe Test", config_path=str(config_path), ignore_unknown_args=True)
 
     structured_logger.log_infrastructure_event("fastagent_init", "fast-agent", "success", {})
-    human_logger.log_infrastructure_event(
-        "fastagent_init", "fast-agent", "success", "FastAgent initialized successfully"
-    )
 
     # Determine which servers to use (currently only github for repository management)
     server_names = ["github"]
 
     structured_logger.log_infrastructure_event("mcp_servers", "mcp", "configuring", {"servers": server_names})
-    human_logger.log_infrastructure_event(
-        "mcp_servers", "mcp", "configuring", f"Configuring MCP servers: {', '.join(server_names)}"
-    )
 
     @agent.agent(
         name="test_agent",
         model=model,
         servers=server_names,
         instruction=instruction_path,
-        request_params=RequestParams(maxTokens=16000, max_iterations=500),
+        request_params=RequestParams(maxTokens=MAX_TOKENS, max_iterations=MAX_ITERATIONS),
     )
     async def run_test() -> Path:
         structured_logger.log_infrastructure_event(
-            "agent_execution", "fast-agent", "starting", {"max_tokens": 16000, "max_iterations": 500}
-        )
-        human_logger.log_infrastructure_event(
-            "agent_execution",
-            "fast-agent",
-            "starting",
-            "Agent execution starting (max_tokens=16000, max_iterations=500)",
+            "agent_execution", "fast-agent", "starting", {"max_tokens": MAX_TOKENS, "max_iterations": MAX_ITERATIONS}
         )
 
         async with agent.run() as agent_app:
             structured_logger.log_infrastructure_event("agent_execution", "fast-agent", "running", {})
-            human_logger.log_infrastructure_event(
-                "agent_execution", "fast-agent", "running", "Agent is now running and ready to process requests"
-            )
             questions = task.get("question", [])
 
             # Handle both single string and list formats
@@ -310,7 +285,7 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
             reason = "Agent completed all requested tasks"
 
             # Look for max_iterations warning in logs (FastAgent behavior)
-            if total_tool_calls >= 500:
+            if total_tool_calls >= MAX_ITERATIONS:
                 status = "max_iterations"
                 reason = f"Agent reached maximum iteration limit ({total_tool_calls} tool calls)"
             elif errors and not final_assistant_msg:
@@ -322,11 +297,6 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
                 # Had errors but completed - note this in reason but don't fail
                 reason = f"Agent completed with {len(errors)} recoverable error(s) during execution"
 
-            # Calculate error breakdown by classification
-            infrastructure_errors = sum(1 for e in errors if e.get("classification") == "infrastructure")
-            model_errors = sum(1 for e in errors if e.get("classification") == "model_failure")
-            unknown_errors = sum(1 for e in errors if e.get("classification") == "unknown")
-
             structured_logger.log_completion_status(
                 status=status,
                 reason=reason,
@@ -335,24 +305,13 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
                 final_message=final_assistant_msg,
             )
 
-            # Log detailed error breakdown
+            # Log error summary if there were errors
             if errors:
                 structured_logger.log_infrastructure_event(
                     "error_breakdown",
                     "test_framework",
                     "analyzed",
-                    {
-                        "total_errors": len(errors),
-                        "infrastructure_errors": infrastructure_errors,
-                        "model_errors": model_errors,
-                        "unknown_errors": unknown_errors,
-                    },
-                )
-                human_logger.log_infrastructure_event(
-                    "error_breakdown",
-                    "test_framework",
-                    "analyzed",
-                    f"Errors: {infrastructure_errors} infrastructure, {model_errors} model, {unknown_errors} unknown",
+                    {"total_errors": len(errors)},
                 )
 
             human_logger.log_execution_summary(
@@ -424,15 +383,12 @@ async def test_mcp_universe(
 
     # Save evaluation results to file
     eval_path = log_dir / f"{test_id}_evaluation.json"
-    import json
-
     eval_path.write_text(json.dumps(evaluation, indent=2, default=str))
 
     # Log evaluation results to human-readable log
     human_log_path = log_dir / f"{test_id}_readable.log"
     if human_log_path.exists():
-        human_logger = HumanReadableLogger.__new__(HumanReadableLogger)
-        human_logger.log_path = human_log_path
+        human_logger = HumanReadableLogger(human_log_path)
 
         human_logger.log_evaluation_start()
 
@@ -444,12 +400,9 @@ async def test_mcp_universe(
 
             # Try to extract expected value from evaluator data
             expected = None
-            if (
-                "value" in evaluation.get("task_data", {}).get("evaluators", [{}])[idx - 1]
-                if idx - 1 < len(evaluation.get("task_data", {}).get("evaluators", []))
-                else {}
-            ):
-                expected = evaluation["task_data"]["evaluators"][idx - 1].get("value")
+            evaluators = evaluation.get("task_data", {}).get("evaluators", [])
+            if idx - 1 < len(evaluators) and "value" in evaluators[idx - 1]:
+                expected = evaluators[idx - 1].get("value")
 
             human_logger.log_evaluation_check(
                 check_num=idx,

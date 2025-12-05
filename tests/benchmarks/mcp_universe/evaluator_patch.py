@@ -34,6 +34,9 @@ from mcpuniverse.evaluator.github.functions import (
 )
 
 GITHUB_API_BASE = "https://api.github.com"
+GITHUB_API_TIMEOUT = 30.0
+GITHUB_API_PAGE_SIZE = 100
+GITHUB_API_MAX_PAGES = 40
 
 
 # =============================================================================
@@ -55,11 +58,11 @@ async def _github_api_check_repo_exists(owner: str, repo: str) -> bool:
     if not headers:
         return False
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=GITHUB_API_TIMEOUT) as client:
         try:
             response = await client.get(f"{GITHUB_API_BASE}/repos/{owner}/{repo}", headers=headers)
             return response.status_code == 200
-        except Exception:
+        except (httpx.HTTPError, TimeoutError):
             return False
 
 
@@ -75,15 +78,15 @@ async def _github_api_list_issues(
         print("[PATCH] Warning: GITHUB_PERSONAL_ACCESS_TOKEN not set")
         return None
 
-    params: dict = {"per_page": 100}
+    params: dict = {"per_page": GITHUB_API_PAGE_SIZE}
     if state:
         params["state"] = state.lower()
     if labels:
         params["labels"] = ",".join(labels)
 
     all_issues = []
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        for page in range(1, 40):
+    async with httpx.AsyncClient(timeout=GITHUB_API_TIMEOUT) as client:
+        for page in range(1, GITHUB_API_MAX_PAGES):
             params["page"] = page
             try:
                 response = await client.get(
@@ -96,7 +99,7 @@ async def _github_api_list_issues(
                 if not issues:
                     break
 
-                is_last_page = len(issues) < 100
+                is_last_page = len(issues) < GITHUB_API_PAGE_SIZE
 
                 # Filter out PRs (GitHub issues API returns both)
                 issues = [i for i in issues if "pull_request" not in i]
@@ -109,7 +112,7 @@ async def _github_api_list_issues(
 
                 if is_last_page:
                     break
-            except Exception as e:
+            except (httpx.HTTPError, TimeoutError, json.JSONDecodeError) as e:
                 print(f"[PATCH] Error fetching issues for {owner}/{repo}: {e}")
                 return None
 
@@ -130,10 +133,11 @@ async def _check_repo_exists_with_fallback(owner: str, repo: str, **kwargs) -> b
 def _parse_file_content(file_content: str, file_type: str, csv_columns: list[str] | None = None) -> dict:
     """Parse file content (CSV or JSON) into a dict."""
     if file_type == "csv":
+        if not csv_columns or len(csv_columns) != 2:
+            raise ValueError("CSV requires exactly 2 columns")
         reader = csv.DictReader(io.StringIO(file_content))
         result = {}
         for row in reader:
-            assert csv_columns and len(csv_columns) == 2, "CSV requires exactly 2 columns"
             result[row[csv_columns[0]]] = int(row[csv_columns[1]])
         return result
     if file_type == "json":
@@ -215,21 +219,28 @@ async def _patched_check_file_content_and_issue_count(_: dict, *args, **kwargs) 
     return True, ""
 
 
+async def _find_repo_with_fewest_issues(
+    repos: list[str], issue_state: str
+) -> tuple[str | None, int | None]:
+    """Find repo with fewest issues, returning (repo_name, index)."""
+    fewest_repo, fewest_count, fewest_idx = None, float("inf"), None
+    for idx, repo_full in enumerate(repos):
+        repo_owner, repo_name = repo_full.split("/")
+        issues = await _github_api_list_issues(repo_owner, repo_name, state=issue_state)
+        if issues is not None and len(issues) < fewest_count:
+            fewest_count = len(issues)
+            fewest_repo = repo_name
+            fewest_idx = idx
+    return fewest_repo, fewest_idx
+
+
 async def _patched_check_repository_with_fewest_issues(_: dict, *args, **kwargs) -> tuple[bool, str]:
     """Check if user forked the repo with fewest issues."""
     _, op_args = args
     owner = op_args["owner"]
     issue_state = op_args.get("issue_state", "all")
 
-    # Find repo with fewest issues
-    fewest_repo, fewest_count = None, float("inf")
-    for repo_full in op_args["repos"]:
-        repo_owner, repo_name = repo_full.split("/")
-        issues = await _github_api_list_issues(repo_owner, repo_name, state=issue_state)
-        if issues is not None and len(issues) < fewest_count:
-            fewest_count = len(issues)
-            fewest_repo = repo_name
-
+    fewest_repo, _ = await _find_repo_with_fewest_issues(op_args["repos"], issue_state)
     if fewest_repo is None:
         return False, "Could not determine repository with fewest issues"
 
@@ -244,16 +255,7 @@ async def _patched_check_file_content_with_fewest_issues(_: dict, *args, **kwarg
     owner = op_args["owner"]
     issue_state = op_args.get("issue_state", "all")
 
-    # Find repo with fewest issues
-    fewest_repo, fewest_count, fewest_idx = None, float("inf"), None
-    for idx, repo_full in enumerate(op_args["repos"]):
-        repo_owner, repo_name = repo_full.split("/")
-        issues = await _github_api_list_issues(repo_owner, repo_name, state=issue_state)
-        if issues is not None and len(issues) < fewest_count:
-            fewest_count = len(issues)
-            fewest_repo = repo_name
-            fewest_idx = idx
-
+    fewest_repo, fewest_idx = await _find_repo_with_fewest_issues(op_args["repos"], issue_state)
     if fewest_repo is None:
         return False, "Could not determine repository with fewest issues"
 
@@ -346,27 +348,20 @@ async def _patched_check_number_of_issues(_: dict, *args, **kwargs) -> tuple[boo
 # =============================================================================
 
 
-def apply_patch():
+def apply_patch() -> bool:
     """Apply patches to MCP-Universe evaluator for GitHub MCP Server v0.15.0 compatibility."""
     patches = {
-        "github.check_file_content_and_issue_count": _patched_check_file_content_and_issue_count,
-        "github.check_repository_with_fewest_issues": _patched_check_repository_with_fewest_issues,
-        "github.check_file_content_with_fewest_issues": _patched_check_file_content_with_fewest_issues,
-        "github.check_repository": _patched_check_repository,
-        "github.file_content_include": _patched_file_content_include,
-        "github.check_number_of_issues": _patched_check_number_of_issues,
+        "check_file_content_and_issue_count": _patched_check_file_content_and_issue_count,
+        "check_repository_with_fewest_issues": _patched_check_repository_with_fewest_issues,
+        "check_file_content_with_fewest_issues": _patched_check_file_content_with_fewest_issues,
+        "check_repository": _patched_check_repository,
+        "file_content_include": _patched_file_content_include,
+        "check_number_of_issues": _patched_check_number_of_issues,
     }
 
-    # Patch the module functions
-    github_functions.github_check_file_content_and_issue_count = _patched_check_file_content_and_issue_count
-    github_functions.github_check_repository_with_fewest_issues = _patched_check_repository_with_fewest_issues
-    github_functions.github_check_file_content_with_fewest_issues = _patched_check_file_content_with_fewest_issues
-    github_functions.github_check_repository = _patched_check_repository
-    github_functions.github_file_content_include = _patched_file_content_include
-    github_functions.github_check_number_of_issues = _patched_check_number_of_issues
-
-    # Update the COMPARISON_FUNCTIONS registry
+    # Patch both the module functions and the COMPARISON_FUNCTIONS registry
     for name, func in patches.items():
-        evaluator_functions.COMPARISON_FUNCTIONS[name] = func
+        setattr(github_functions, f"github_{name}", func)
+        evaluator_functions.COMPARISON_FUNCTIONS[f"github.{name}"] = func
 
     return True

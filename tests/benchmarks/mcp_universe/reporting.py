@@ -208,15 +208,3 @@ class HumanReadableLogger:
         self._write_line(f"FINAL VERDICT: {verdict.upper()}")
         self._write_line("")
         self._write_separator("=")
-
-    def log_infrastructure_event(
-        self, event_type: str, component: str, status: str, details: str | None = None
-    ) -> None:
-        """Skip infrastructure events for annotation logs."""
-        pass  # Don't log infrastructure noise
-
-    def log_error_classification(
-        self, error_message: str, classification: str, confidence: str, reasoning: str
-    ) -> None:
-        """Skip error classification for annotation logs."""
-        pass  # Don't log this either
