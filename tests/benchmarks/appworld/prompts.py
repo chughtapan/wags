@@ -44,17 +44,18 @@ def load_system_instruction(task: Task, use_few_shot: bool = False) -> str:
         app_descriptions=app_descriptions_yaml,
     )
 
-    # In zero-shot mode, remove the line about showing examples
+    # Zero-shot mode: return base instruction as-is
     if not use_few_shot:
-        # Remove the line that references upcoming examples
-        examples_line = (
-            "\nNext, I will show you some worked-out examples "
-            "as a tutorial before we proceed with the real task instruction.\n"
-        )
-        base_instruction = base_instruction.replace(examples_line, "\n")
         return base_instruction
 
-    # Few-shot mode: Load demo messages and format them
+    # Few-shot mode: Add intro line and demo examples
+    examples_intro = (
+        "\n\nNext, I will show you some worked-out examples "
+        "as a tutorial before we proceed with the real task instruction."
+    )
+    base_instruction += examples_intro
+
+    # Load demo messages and format them
     demos_path = EXPERIMENTS_PATH / "prompts/function_calling_agent/demos.json"
     demo_messages = read_json(str(demos_path))
 
