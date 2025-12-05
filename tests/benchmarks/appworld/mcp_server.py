@@ -201,7 +201,7 @@ async def serve_task_mcp(task_id: str, experiment_name: str = "wags-benchmark") 
     server = Server(server_name)
 
     # Register list_tools handler
-    @server.list_tools()  # type: ignore[untyped-decorator]
+    @server.list_tools()
     async def list_tools() -> list[Tool]:
         """List available tools with AppWorld's MCP schemas."""
         tools: list[Tool] = []
@@ -216,7 +216,7 @@ async def serve_task_mcp(task_id: str, experiment_name: str = "wags-benchmark") 
         return tools
 
     # Register call_tool handler
-    @server.call_tool()  # type: ignore[untyped-decorator]
+    @server.call_tool()
     async def call_tool(name: str, arguments: dict[str, Any]) -> Any:
         """Call AppWorld API and save databases on task completion."""
         app_name = api_name = name
