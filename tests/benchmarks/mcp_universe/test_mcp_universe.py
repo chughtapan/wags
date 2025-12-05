@@ -83,9 +83,7 @@ class LoggingContext:
     errors: list[dict[str, Any]]
 
 
-def _process_message_logs(
-    msg_obj: Any, turn_idx: int, new_messages: list[Any], ctx: LoggingContext
-) -> int:
+def _process_message_logs(msg_obj: Any, turn_idx: int, new_messages: list[Any], ctx: LoggingContext) -> int:
     """Process and log tool calls, results, and assistant responses. Returns tool call count."""
     tool_call_count = 0
 
@@ -109,12 +107,14 @@ def _process_message_logs(
             ctx.human.log_tool_result(turn_idx, tool_name, result_data, is_error)
 
             if is_error:
-                ctx.errors.append({
-                    "turn_id": turn_idx,
-                    "tool_id": tool_id,
-                    "tool_name": tool_name,
-                    "error_message": str(result_data),
-                })
+                ctx.errors.append(
+                    {
+                        "turn_id": turn_idx,
+                        "tool_id": tool_id,
+                        "tool_name": tool_name,
+                        "error_message": str(result_data),
+                    }
+                )
 
     # Log assistant text responses
     if hasattr(msg_obj, "role") and msg_obj.role == "assistant" and hasattr(msg_obj, "content"):
@@ -132,11 +132,13 @@ def _setup_environment(model: str, temperature: float) -> None:
             "GITHUB_PERSONAL_ACCESS_TOKEN environment variable not set. Please set it before running tests."
         )
     github_account_name = os.getenv("GITHUB_PERSONAL_ACCOUNT_NAME", "vinamra-test")
-    os.environ.update({
-        "DEFAULT_MODEL": model,
-        "TEMPERATURE": str(temperature),
-        "GITHUB_PERSONAL_ACCOUNT_NAME": github_account_name,
-    })
+    os.environ.update(
+        {
+            "DEFAULT_MODEL": model,
+            "TEMPERATURE": str(temperature),
+            "GITHUB_PERSONAL_ACCOUNT_NAME": github_account_name,
+        }
+    )
 
 
 def _get_task_description(task: dict[str, Any]) -> str:
