@@ -240,12 +240,12 @@ Registered markers:
 
 **AppWorld-specific options:**
 ```bash
---datasets DATASETS       # Comma-separated datasets (default: train,dev)
---limit N                 # Run only first N tasks from dataset
---api-mode MODE           # API prediction mode (default: app_oracle)
---experiment-dir DIR      # Custom experiment directory name
---start-from TASK_ID      # Resume from specific task ID
---default-few-shot        # Include few-shot examples (default: zero-shot)
+--datasets DATASETS               # Comma-separated datasets (default: train,dev)
+--limit N                         # Run only first N tasks from dataset
+--api-mode MODE                   # API prediction mode (default: app_oracle)
+--start-from TASK_ID              # Resume from specific task ID
+--default-few-shot                # Include few-shot examples (default: zero-shot)
+--appworld-experiment-name NAME   # Custom experiment name (default: {model}/{datasets})
 ```
 
 ## Common Commands

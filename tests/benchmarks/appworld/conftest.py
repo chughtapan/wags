@@ -49,16 +49,6 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         ),
     )
     parser.addoption(
-        "--experiment-dir",
-        default=None,
-        type=str,
-        help=(
-            "Experiment directory name (e.g., 'gpt-5/train' or 'claude-sonnet-4-5/dev'). "
-            "If not specified, auto-generates timestamp-based name. "
-            "Results will be saved to experiments/outputs/{experiment-dir}/"
-        ),
-    )
-    parser.addoption(
         "--start-from",
         default=None,
         type=str,
@@ -72,6 +62,12 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         action="store_true",
         default=False,
         help="Include few-shot examples in system prompt (default: zero-shot, no examples)",
+    )
+    parser.addoption(
+        "--appworld-experiment-name",
+        default=None,
+        type=str,
+        help="Experiment name for AppWorld data (default: auto-inferred as {model}/{datasets})",
     )
 
 
@@ -127,24 +123,18 @@ def use_few_shot(request: pytest.FixtureRequest) -> bool:
 @pytest.fixture(scope="session")
 def experiment_name(request: pytest.FixtureRequest) -> str:
     """
-    Get or generate experiment directory name for the test session.
+    Experiment name for AppWorld evaluation data.
 
-    All tests in this session will write to the same experiment directory,
-    organized by task_id in subdirectories: experiments/outputs/{experiment_name}/tasks/{task_id}/
-
-    Automatically uses {model}/{datasets} pattern for organized experiment tracking.
+    AppWorld saves to: experiments/outputs/{experiment_name}/tasks/{task_id}/
+    Can be specified via --appworld-experiment-name or auto-inferred as {model}/{datasets}.
     """
+    name = request.config.getoption("--appworld-experiment-name", None)
+    if name:
+        return str(name)
 
-    experiment_dir = request.config.getoption("--experiment-dir", None)
-
-    if experiment_dir:
-        # Use specified experiment directory
-        return str(experiment_dir)
-    else:
-        # Use model/datasets pattern for organized experiment tracking
-        # This works for both normal runs and validation
-        model = str(request.config.getoption("--model"))
-        datasets_str = str(request.config.getoption("--datasets"))
-        datasets = parse_datasets(datasets_str)
-        datasets_dir = "_".join(datasets)
-        return f"{model}/{datasets_dir}"
+    # Auto-infer from model/datasets
+    model = str(request.config.getoption("--model"))
+    datasets_str = str(request.config.getoption("--datasets"))
+    datasets = parse_datasets(datasets_str)
+    datasets_dir = "_".join(datasets)
+    return f"{model}/{datasets_dir}"
