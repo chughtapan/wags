@@ -154,9 +154,7 @@ class IssueFilter:
     comments: str | None = None
 
 
-async def _filter_issue(
-    issue: dict[str, Any], filter_opts: IssueFilter, owner: str, repo: str, **kwargs: Any
-) -> bool:
+async def _filter_issue(issue: dict[str, Any], filter_opts: IssueFilter, owner: str, repo: str, **kwargs: Any) -> bool:
     """Filter an issue by title, labels, and comments."""
     if filter_opts.title is not None and issue["title"] != filter_opts.title:
         return False
@@ -176,9 +174,7 @@ async def _filter_issue(
 # =============================================================================
 
 
-async def _patched_check_file_content_and_issue_count(
-    _: dict[str, Any], *args: Any, **kwargs: Any
-) -> tuple[bool, str]:
+async def _patched_check_file_content_and_issue_count(_: dict[str, Any], *args: Any, **kwargs: Any) -> tuple[bool, str]:
     """Check if CSV/JSON file content matches issue counts across repos."""
     _, op_args = args
 
