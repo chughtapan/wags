@@ -4,19 +4,26 @@ from pathlib import Path
 
 import pytest
 
+VALID_DATASETS = {"train", "dev", "test_normal", "test_challenge"}
+
 
 @pytest.fixture
 def output_dir(request: pytest.FixtureRequest) -> Path:
-    """AppWorld-specific output directory.
+    """AppWorld output directory.
 
-    Overrides the global output_dir fixture to write directly to
-    results/{model}/{dataset}/outputs/ for organized storage.
+    Uses --output-dir if specified, otherwise auto-infers as
+    results/{experiment_name}/outputs/
     """
-    model = str(request.config.getoption("--model"))
-    dataset = str(request.config.getoption("--dataset"))
+    output_dir_opt = str(request.config.getoption("--output-dir"))
 
-    # Write directly to results directory
-    path = Path("results") / model / dataset / "outputs"
+    # If not default "outputs", use the specified path directly
+    if output_dir_opt != "outputs":
+        path = Path(output_dir_opt)
+    else:
+        # Use experiment_name for consistent directory structure
+        exp_name = get_experiment_name(request.config)
+        path = Path("results") / exp_name / "outputs"
+
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -24,10 +31,9 @@ def output_dir(request: pytest.FixtureRequest) -> Path:
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Add AppWorld-specific CLI options."""
     parser.addoption(
-        "--dataset",
-        default="train",
-        choices=["train", "dev", "test_normal", "test_challenge"],
-        help="AppWorld dataset to use (default: train)",
+        "--datasets",
+        default="train,dev",
+        help="Comma-separated AppWorld datasets: train,dev,test_normal,test_challenge (default: train,dev)",
     )
     parser.addoption(
         "--limit",
@@ -45,16 +51,6 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         ),
     )
     parser.addoption(
-        "--experiment-dir",
-        default=None,
-        type=str,
-        help=(
-            "Experiment directory name (e.g., 'gpt-5/train' or 'claude-sonnet-4-5/dev'). "
-            "If not specified, auto-generates timestamp-based name. "
-            "Results will be saved to experiments/outputs/{experiment-dir}/"
-        ),
-    )
-    parser.addoption(
         "--start-from",
         default=None,
         type=str,
@@ -63,12 +59,53 @@ def pytest_addoption(parser: pytest.Parser) -> None:
             "Example: --start-from 692c77d_1. Useful for resuming interrupted benchmark runs."
         ),
     )
+    parser.addoption(
+        "--default-few-shot",
+        action="store_true",
+        default=False,
+        help="Include few-shot examples in system prompt (default: zero-shot, no examples)",
+    )
+    parser.addoption(
+        "--appworld-experiment-name",
+        default=None,
+        type=str,
+        help="Experiment name for AppWorld data (default: auto-inferred as {model}/{datasets})",
+    )
+
+
+def parse_datasets(datasets_str: str) -> list[str]:
+    """Parse comma-separated datasets string and validate."""
+    datasets = [d.strip() for d in datasets_str.split(",") if d.strip()]
+    invalid = set(datasets) - VALID_DATASETS
+    if invalid:
+        raise ValueError(f"Invalid datasets: {invalid}. Valid options: {VALID_DATASETS}")
+    return datasets
+
+
+def get_datasets_dir(datasets_str: str) -> str:
+    """Parse datasets and return underscore-joined directory name."""
+    datasets = parse_datasets(datasets_str)
+    return "_".join(datasets)
+
+
+def get_experiment_name(config: pytest.Config) -> str:
+    """Get experiment name from config (helper for use outside fixtures)."""
+    name = config.getoption("--appworld-experiment-name", None)
+    if name:
+        return str(name)
+
+    # Auto-infer from model/datasets
+    model = str(config.getoption("--model"))
+    datasets_str = str(config.getoption("--datasets"))
+    datasets_dir = get_datasets_dir(datasets_str)
+    return f"{model}/{datasets_dir}"
 
 
 @pytest.fixture
-def appworld_dataset(request: pytest.FixtureRequest) -> str:
-    """Get the AppWorld dataset name from CLI."""
-    return str(request.config.getoption("--dataset"))
+def appworld_datasets(request: pytest.FixtureRequest) -> list[str]:
+    """Get the AppWorld dataset names from CLI."""
+    datasets_str = str(request.config.getoption("--datasets"))
+    return parse_datasets(datasets_str)
 
 
 @pytest.fixture
@@ -92,25 +129,25 @@ def api_mode(request: pytest.FixtureRequest) -> str:
     return str(request.config.getoption("--api-mode"))
 
 
+@pytest.fixture
+def use_few_shot(request: pytest.FixtureRequest) -> bool:
+    """
+    Get few-shot mode from CLI.
+
+    Returns:
+        True if --default-few-shot flag is set (include examples in prompt)
+        False by default (zero-shot, no examples)
+    """
+    return bool(request.config.getoption("--default-few-shot"))
+
+
 @pytest.fixture(scope="session")
 def experiment_name(request: pytest.FixtureRequest) -> str:
     """
-    Get or generate experiment directory name for the test session.
+    Experiment name for AppWorld evaluation data.
 
-    All tests in this session will write to the same experiment directory,
-    organized by task_id in subdirectories: experiments/outputs/{experiment_name}/tasks/{task_id}/
-
-    Automatically uses {model}/{dataset} pattern for organized experiment tracking.
+    AppWorld saves to: experiments/outputs/{experiment_name}/tasks/{task_id}/
+    Results saved to: results/{experiment_name}/outputs/
+    Can be specified via --appworld-experiment-name or auto-inferred as {model}/{datasets}.
     """
-
-    experiment_dir = request.config.getoption("--experiment-dir", None)
-
-    if experiment_dir:
-        # Use specified experiment directory
-        return str(experiment_dir)
-    else:
-        # Use model/dataset pattern for organized experiment tracking
-        # This works for both normal runs and validation
-        model = str(request.config.getoption("--model"))
-        dataset = str(request.config.getoption("--dataset"))
-        return f"{model}/{dataset}"
+    return get_experiment_name(request.config)

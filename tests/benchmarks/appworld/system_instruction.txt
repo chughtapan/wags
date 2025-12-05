@@ -45,5 +45,3 @@ When the answer is given:
   E.g., for the song title of the current playing track, return just the title.
 - Numbers must be numeric and not in words.
   E.g., for the number of songs in the queue, return "10", not "ten".
-
-Next, I will show you some worked-out examples as a tutorial before we proceed with the real task instruction.

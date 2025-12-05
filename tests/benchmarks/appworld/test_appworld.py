@@ -12,6 +12,7 @@ from fast_agent import FastAgent
 from fast_agent.llm.request_params import RequestParams
 
 from tests.benchmarks.appworld import api_predictor, prompts
+from tests.benchmarks.appworld.conftest import get_experiment_name, parse_datasets
 from tests.benchmarks.appworld.reporting import (
     find_evaluation_report,
     generate_failure_report,
@@ -27,17 +28,16 @@ from tests.utils.logger import StructuredEventLogger
 
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
-    """Dynamically generate test cases from AppWorld dataset."""
+    """Dynamically generate test cases from AppWorld dataset(s)."""
     if "task_id" not in metafunc.fixturenames:
         return
 
     validate_only = metafunc.config.getoption("--validate-only", False)
 
     if validate_only:
-        # Auto-detect log directory from model/dataset
-        model = metafunc.config.getoption("--model")
-        dataset = metafunc.config.getoption("--dataset", "train")
-        log_dir = Path("results") / model / dataset / "outputs" / "raw"
+        # Auto-detect log directory from experiment_name
+        exp_name = get_experiment_name(metafunc.config)
+        log_dir = Path("results") / exp_name / "outputs" / "raw"
 
         # Find existing log files to validate
         log_files = list(log_dir.glob("*_complete.json")) if log_dir.exists() else []
@@ -47,12 +47,17 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
             pytest.exit(
                 f"\nError: No test results found in {log_dir}\n"
                 f"Expected to find *_complete.json files for validation.\n"
-                f"Make sure you've run tests for --model {model} --dataset {dataset} first."
+                f"Run tests first or check --appworld-experiment-name."
             )
     else:
-        # Load task IDs from AppWorld dataset
-        dataset = metafunc.config.getoption("--dataset", "train")
-        task_ids = load_task_ids(dataset)
+        # Load task IDs from AppWorld dataset(s)
+        datasets_str = metafunc.config.getoption("--datasets", "train,dev")
+        datasets = parse_datasets(datasets_str)
+
+        # Collect task IDs from all specified datasets
+        task_ids = []
+        for dataset in datasets:
+            task_ids.extend(load_task_ids(dataset))
 
         # Apply --start-from filter first (before --limit)
         start_from = metafunc.config.getoption("--start-from", None)
@@ -64,10 +69,10 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
             except ValueError:
                 # Task ID not found - provide helpful error
                 pytest.exit(
-                    f"\nError: Task ID '{start_from}' not found in {dataset} dataset.\n"
+                    f"\nError: Task ID '{start_from}' not found in datasets {datasets}.\n"
                     f"Available task IDs (first 10): {', '.join(task_ids[:10])}\n"
-                    f"Total tasks in dataset: {len(task_ids)}\n"
-                    f"Use: pytest tests/benchmarks/appworld/test_appworld.py --dataset {dataset} "
+                    f"Total tasks: {len(task_ids)}\n"
+                    f"Use: pytest tests/benchmarks/appworld/test_appworld.py --datasets {datasets_str} "
                     f"--collect-only to see all task IDs."
                 )
 
@@ -92,6 +97,7 @@ async def test_appworld(
     output_dir: Path,
     api_mode: str,
     experiment_name: str,
+    use_few_shot: bool,
     request: pytest.FixtureRequest,
 ) -> None:
     """Run or validate an AppWorld test."""
@@ -99,7 +105,7 @@ async def test_appworld(
 
     # Run test if not in validate-only mode
     if not validate_only:
-        await _run_appworld_test(task_id, model, temperature, output_dir, api_mode, experiment_name)
+        await _run_appworld_test(task_id, model, temperature, output_dir, api_mode, experiment_name, use_few_shot)
 
     # Get complete.json path (always in output_dir/raw now)
     complete_path = output_dir / "raw" / f"{task_id}_complete.json"
@@ -190,6 +196,7 @@ async def _run_appworld_test(
     output_dir: Path,
     api_mode: str,
     experiment_name: str,
+    use_few_shot: bool,
 ) -> None:
     """Run AppWorld test using the provided experiment name."""
 
@@ -213,7 +220,7 @@ async def _run_appworld_test(
     # Create and run FastAgent
     config_path = Path(__file__).parent / "fastagent.config.yaml"
     agent = FastAgent("AppWorld Test", config_path=str(config_path), ignore_unknown_args=True)
-    system_instruction = prompts.load_system_instruction(task)
+    system_instruction = prompts.load_system_instruction(task, use_few_shot=use_few_shot)
 
     @agent.agent(
         name="test_agent",
@@ -279,9 +286,10 @@ def _generate_failure_report_inline(
     # Load complete.json
     complete_data = load_complete_json(output_dir, task_id)
 
-    # Determine output path
-    dataset = request.config.getoption("--dataset", "train")
-    failure_report_dir = Path("results") / model / dataset / "failure_reports"
+    # Derive failure_report_dir from output_dir (same parent directory)
+    # output_dir: results/{model}/{datasets}/outputs
+    # failure_report_dir: results/{model}/{datasets}/failure_reports
+    failure_report_dir = output_dir.parent / "failure_reports"
     failure_report_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate failure report
