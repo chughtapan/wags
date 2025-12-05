@@ -12,7 +12,7 @@ from fast_agent import FastAgent
 from fast_agent.llm.request_params import RequestParams
 
 from tests.benchmarks.appworld import api_predictor, prompts
-from tests.benchmarks.appworld.conftest import get_datasets_dir, parse_datasets
+from tests.benchmarks.appworld.conftest import get_experiment_name, parse_datasets
 from tests.benchmarks.appworld.reporting import (
     find_evaluation_report,
     generate_failure_report,
@@ -35,11 +35,9 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     validate_only = metafunc.config.getoption("--validate-only", False)
 
     if validate_only:
-        # Auto-detect log directory from model/datasets
-        model = metafunc.config.getoption("--model")
-        datasets_str = metafunc.config.getoption("--datasets", "train,dev")
-        datasets_dir = get_datasets_dir(datasets_str)
-        log_dir = Path("results") / model / datasets_dir / "outputs" / "raw"
+        # Auto-detect log directory from experiment_name
+        exp_name = get_experiment_name(metafunc.config)
+        log_dir = Path("results") / exp_name / "outputs" / "raw"
 
         # Find existing log files to validate
         log_files = list(log_dir.glob("*_complete.json")) if log_dir.exists() else []
@@ -49,7 +47,7 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
             pytest.exit(
                 f"\nError: No test results found in {log_dir}\n"
                 f"Expected to find *_complete.json files for validation.\n"
-                f"Make sure you've run tests for --model {model} --datasets {datasets_str} first."
+                f"Run tests first or check --appworld-experiment-name."
             )
     else:
         # Load task IDs from AppWorld dataset(s)

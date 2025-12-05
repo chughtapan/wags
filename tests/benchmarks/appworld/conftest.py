@@ -12,7 +12,7 @@ def output_dir(request: pytest.FixtureRequest) -> Path:
     """AppWorld output directory.
 
     Uses --output-dir if specified, otherwise auto-infers as
-    results/{model}/{datasets}/outputs/
+    results/{experiment_name}/outputs/
     """
     output_dir_opt = str(request.config.getoption("--output-dir"))
 
@@ -20,11 +20,9 @@ def output_dir(request: pytest.FixtureRequest) -> Path:
     if output_dir_opt != "outputs":
         path = Path(output_dir_opt)
     else:
-        # Auto-infer from model/datasets
-        model = str(request.config.getoption("--model"))
-        datasets_str = str(request.config.getoption("--datasets"))
-        datasets_dir = get_datasets_dir(datasets_str)
-        path = Path("results") / model / datasets_dir / "outputs"
+        # Use experiment_name for consistent directory structure
+        exp_name = get_experiment_name(request.config)
+        path = Path("results") / exp_name / "outputs"
 
     path.mkdir(parents=True, exist_ok=True)
     return path
@@ -90,6 +88,19 @@ def get_datasets_dir(datasets_str: str) -> str:
     return "_".join(datasets)
 
 
+def get_experiment_name(config: pytest.Config) -> str:
+    """Get experiment name from config (helper for use outside fixtures)."""
+    name = config.getoption("--appworld-experiment-name", None)
+    if name:
+        return str(name)
+
+    # Auto-infer from model/datasets
+    model = str(config.getoption("--model"))
+    datasets_str = str(config.getoption("--datasets"))
+    datasets_dir = get_datasets_dir(datasets_str)
+    return f"{model}/{datasets_dir}"
+
+
 @pytest.fixture
 def appworld_datasets(request: pytest.FixtureRequest) -> list[str]:
     """Get the AppWorld dataset names from CLI."""
@@ -136,14 +147,7 @@ def experiment_name(request: pytest.FixtureRequest) -> str:
     Experiment name for AppWorld evaluation data.
 
     AppWorld saves to: experiments/outputs/{experiment_name}/tasks/{task_id}/
+    Results saved to: results/{experiment_name}/outputs/
     Can be specified via --appworld-experiment-name or auto-inferred as {model}/{datasets}.
     """
-    name = request.config.getoption("--appworld-experiment-name", None)
-    if name:
-        return str(name)
-
-    # Auto-infer from model/datasets
-    model = str(request.config.getoption("--model"))
-    datasets_str = str(request.config.getoption("--datasets"))
-    datasets_dir = get_datasets_dir(datasets_str)
-    return f"{model}/{datasets_dir}"
+    return get_experiment_name(request.config)
