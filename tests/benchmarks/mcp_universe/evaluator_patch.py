@@ -352,7 +352,7 @@ async def _patched_check_number_of_issues(_: dict[str, Any], *args: Any, **kwarg
 # =============================================================================
 
 
-def apply_patch() -> bool:
+def _apply_patch() -> None:
     """Apply patches to MCP-Universe evaluator for GitHub MCP Server v0.15.0 compatibility."""
     patches = {
         "check_file_content_and_issue_count": _patched_check_file_content_and_issue_count,
@@ -368,4 +368,6 @@ def apply_patch() -> bool:
         setattr(github_functions, f"github_{name}", func)
         evaluator_functions.COMPARISON_FUNCTIONS[f"github.{name}"] = func
 
-    return True
+
+# Auto-apply patches on module import
+_apply_patch()

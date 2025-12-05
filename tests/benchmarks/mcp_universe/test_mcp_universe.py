@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -11,16 +12,12 @@ from fast_agent import FastAgent
 from fast_agent.llm.request_params import RequestParams
 from mcpuniverse.common.context import Context
 
-# CRITICAL: Apply patch BEFORE importing evaluator to ensure it works
-from tests.benchmarks.mcp_universe.evaluator_patch import apply_patch  # noqa: E402
-
-apply_patch()
-
-# Now import evaluator and loader AFTER patch is applied
-from tests.benchmarks.mcp_universe import evaluator, loader  # noqa: E402
-from tests.benchmarks.mcp_universe.reporting import HumanReadableLogger  # noqa: E402
-from tests.utils.fastagent_helpers import MessageSerializer  # noqa: E402
-from tests.utils.logger import StructuredEventLogger  # noqa: E402
+# Import evaluator_patch first to apply patches before evaluator imports mcpuniverse functions
+import tests.benchmarks.mcp_universe.evaluator_patch  # noqa: F401
+from tests.benchmarks.mcp_universe import evaluator, loader
+from tests.benchmarks.mcp_universe.reporting import EvaluationCheck, HumanReadableLogger
+from tests.utils.fastagent_helpers import MessageSerializer
+from tests.utils.logger import StructuredEventLogger
 
 # Agent execution limits
 MAX_ITERATIONS = 500
@@ -38,63 +35,137 @@ def _parse_question(question: Any) -> str:
     return ""
 
 
-async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, output_dir: Path) -> Path:
-    """Run MCP-Universe test and return path to results."""
+def _extract_text_content(content_items: Any) -> list[str]:
+    """Extract text from content items that have a text attribute."""
+    return [item.text for item in content_items if hasattr(item, "text")]
 
-    # Initialize loggers FIRST to capture all events
-    structured_log_path = output_dir / "raw" / f"{test_id}_structured.jsonl"
-    human_log_path = output_dir / "raw" / f"{test_id}_readable.log"
-    structured_log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    structured_logger = StructuredEventLogger(structured_log_path)
-    human_logger = HumanReadableLogger(human_log_path)
+def _find_tool_name(messages: list[Any], tool_id: str) -> str:
+    """Find tool name from messages by tool_id."""
+    for msg in messages:
+        if hasattr(msg, "tool_calls") and msg.tool_calls and tool_id in msg.tool_calls:
+            return str(msg.tool_calls[tool_id].params.name)
+    return "unknown"
 
-    # Validate GitHub token is available
+
+def _get_final_assistant_message(messages: list[Any]) -> str | None:
+    """Extract the final assistant text message from message history."""
+    for msg in reversed(messages):
+        if hasattr(msg, "role") and msg.role == "assistant" and hasattr(msg, "content"):
+            for content_item in msg.content:
+                if hasattr(content_item, "text") and content_item.text:
+                    return str(content_item.text)
+    return None
+
+
+def _determine_completion_status(
+    total_tool_calls: int, errors: list[dict[str, Any]], final_msg: str | None
+) -> tuple[str, str]:
+    """Determine completion status and reason based on execution results."""
+    if total_tool_calls >= MAX_ITERATIONS:
+        return "max_iterations", f"Agent reached maximum iteration limit ({total_tool_calls} tool calls)"
+    if errors and not final_msg:
+        return "error", f"Agent encountered {len(errors)} error(s) and did not complete"
+    if errors:
+        return "completed", f"Agent completed with {len(errors)} recoverable error(s) during execution"
+    return "completed", "Agent completed all requested tasks"
+
+
+@dataclass
+class LoggingContext:
+    """Context for logging during test execution."""
+
+    structured: StructuredEventLogger
+    human: HumanReadableLogger
+    errors: list[dict[str, Any]]
+
+
+def _process_message_logs(
+    msg_obj: Any, turn_idx: int, new_messages: list[Any], ctx: LoggingContext
+) -> int:
+    """Process and log tool calls, results, and assistant responses. Returns tool call count."""
+    tool_call_count = 0
+
+    # Log tool calls
+    if hasattr(msg_obj, "tool_calls") and msg_obj.tool_calls:
+        for tool_id, call in msg_obj.tool_calls.items():
+            tool_call_count += 1
+            args = call.params.arguments or {}
+            ctx.structured.log_tool_call(turn_idx, call.params.name, args, tool_id)
+            ctx.human.log_tool_call(turn_idx, call.params.name, args)
+
+    # Log tool results
+    if hasattr(msg_obj, "tool_results") and msg_obj.tool_results:
+        for tool_id, result in msg_obj.tool_results.items():
+            result_content = _extract_text_content(result.content) if hasattr(result, "content") else []
+            is_error = result.isError if hasattr(result, "isError") else False
+            tool_name = _find_tool_name(new_messages, tool_id)
+            result_data = result_content if result_content else str(result)
+
+            ctx.structured.log_tool_result(turn_idx, tool_id, result_data, is_error)
+            ctx.human.log_tool_result(turn_idx, tool_name, result_data, is_error)
+
+            if is_error:
+                ctx.errors.append({
+                    "turn_id": turn_idx,
+                    "tool_id": tool_id,
+                    "tool_name": tool_name,
+                    "error_message": str(result_data),
+                })
+
+    # Log assistant text responses
+    if hasattr(msg_obj, "role") and msg_obj.role == "assistant" and hasattr(msg_obj, "content"):
+        for text in _extract_text_content(msg_obj.content):
+            ctx.structured.log_assistant_response(turn_idx, text)
+            ctx.human.log_assistant_response(turn_idx, text)
+
+    return tool_call_count
+
+
+def _setup_environment(model: str, temperature: float) -> None:
+    """Validate and set up environment variables for test execution."""
     if not os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN"):
         raise ValueError(
             "GITHUB_PERSONAL_ACCESS_TOKEN environment variable not set. Please set it before running tests."
         )
-
-    # Set GitHub account name (required for evaluators)
-    # Evaluators use {{GITHUB_PERSONAL_ACCOUNT_NAME}} placeholder
     github_account_name = os.getenv("GITHUB_PERSONAL_ACCOUNT_NAME", "vinamra-test")
+    os.environ.update({
+        "DEFAULT_MODEL": model,
+        "TEMPERATURE": str(temperature),
+        "GITHUB_PERSONAL_ACCOUNT_NAME": github_account_name,
+    })
 
-    # Set environment variables FIRST, before any FastAgent initialization
-    os.environ.update(
-        {
-            "DEFAULT_MODEL": model,
-            "TEMPERATURE": str(temperature),
-            "GITHUB_PERSONAL_ACCOUNT_NAME": github_account_name,
-            # GITHUB_PERSONAL_ACCESS_TOKEN should already be in environment
-        }
-    )
 
-    # Load task
-    task = loader.load_task(test_id)
-
-    instruction_path = Path(__file__).parent / "instruction.txt"
-
-    # Log test initialization
+def _get_task_description(task: dict[str, Any]) -> str:
+    """Extract task description from task data."""
     task_description = task.get("question", "")
     if isinstance(task_description, list):
-        task_description = "\n".join(str(q) for q in task_description)
-    human_logger.log_test_start(test_id, model, str(task_description))
+        return "\n".join(str(q) for q in task_description)
+    return str(task_description)
 
-    output_path = output_dir / "raw" / f"{test_id}_complete.json"
 
-    # Create FastAgent
+async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, output_dir: Path) -> Path:
+    """Run MCP-Universe test and return path to results."""
+    # Initialize loggers
+    raw_dir = output_dir / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    structured_logger = StructuredEventLogger(raw_dir / f"{test_id}_structured.jsonl")
+    human_logger = HumanReadableLogger(raw_dir / f"{test_id}_readable.log")
+
+    _setup_environment(model, temperature)
+    task = loader.load_task(test_id)
+    human_logger.log_test_start(test_id, model, _get_task_description(task))
+
+    output_path = raw_dir / f"{test_id}_complete.json"
     test_dir = Path(__file__).parent
-    config_path = test_dir / "fastagent.config.yaml"
-    agent = FastAgent("MCP-Universe Test", config_path=str(config_path), ignore_unknown_args=True)
-
-    # Determine which servers to use (currently only github for repository management)
-    server_names = ["github"]
+    config_path = str(test_dir / "fastagent.config.yaml")
+    agent = FastAgent("MCP-Universe Test", config_path=config_path, ignore_unknown_args=True)
 
     @agent.agent(
         name="test_agent",
         model=model,
-        servers=server_names,
-        instruction=instruction_path,
+        servers=["github"],
+        instruction=test_dir / "instruction.txt",
         request_params=RequestParams(maxTokens=MAX_TOKENS, max_iterations=MAX_ITERATIONS),
     )
     async def run_test() -> Path:
@@ -109,7 +180,7 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
 
             prev_message_count = 0
             total_tool_calls = 0
-            errors = []
+            log_ctx = LoggingContext(structured=structured_logger, human=human_logger, errors=[])
 
             for turn_idx, question in enumerate(questions, 1):
                 user_msg = _parse_question(question)
@@ -125,64 +196,9 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
                 new_messages = messages[prev_message_count:]
                 prev_message_count = len(messages)
 
-                # Log tool calls and results from this turn
+                # Log tool calls, results, and assistant responses
                 for msg_obj in new_messages:
-                    # Log tool calls
-                    if hasattr(msg_obj, "tool_calls") and msg_obj.tool_calls:
-                        for tool_id, call in msg_obj.tool_calls.items():
-                            total_tool_calls += 1
-                            args = call.params.arguments or {}
-                            structured_logger.log_tool_call(turn_idx, call.params.name, args, tool_id)
-                            human_logger.log_tool_call(turn_idx, call.params.name, args)
-
-                    # Log tool results
-                    if hasattr(msg_obj, "tool_results") and msg_obj.tool_results:
-                        for tool_id, result in msg_obj.tool_results.items():
-                            # Extract result content
-                            result_content = []
-                            if hasattr(result, "content"):
-                                for item in result.content:
-                                    if hasattr(item, "text"):
-                                        result_content.append(item.text)
-
-                            is_error = result.isError if hasattr(result, "isError") else False
-
-                            # Find the corresponding tool call to get tool name
-                            tool_name = "unknown"
-                            for msg_check in new_messages:
-                                if hasattr(msg_check, "tool_calls") and msg_check.tool_calls:
-                                    if tool_id in msg_check.tool_calls:
-                                        tool_name = msg_check.tool_calls[tool_id].params.name
-                                        break
-
-                            structured_logger.log_tool_result(
-                                turn_idx, tool_id, result_content if result_content else str(result), is_error
-                            )
-
-                            human_logger.log_tool_result(
-                                turn_idx, tool_name, result_content if result_content else str(result), is_error
-                            )
-
-                            # Track errors for summary
-                            if is_error:
-                                error_msg = str(result_content) if result_content else str(result)
-
-                                errors.append(
-                                    {
-                                        "turn_id": turn_idx,
-                                        "tool_id": tool_id,
-                                        "tool_name": tool_name,
-                                        "error_message": error_msg,
-                                    }
-                                )
-
-                    # Log assistant text responses
-                    if hasattr(msg_obj, "role") and msg_obj.role == "assistant":
-                        if hasattr(msg_obj, "content"):
-                            for content_item in msg_obj.content:
-                                if hasattr(content_item, "text") and content_item.text:
-                                    structured_logger.log_assistant_response(turn_idx, content_item.text)
-                                    human_logger.log_assistant_response(turn_idx, content_item.text)
+                    total_tool_calls += _process_message_logs(msg_obj, turn_idx, new_messages, log_ctx)
 
                 structured_logger.log_turn(turn_idx, "end")
                 human_logger.log_turn_end(turn_idx)
@@ -193,43 +209,18 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
             structured_logger.log_message_summary(messages)
 
             # Log error summary if any errors occurred
-            if errors:
-                human_logger.log_errors(errors)
+            if log_ctx.errors:
+                human_logger.log_errors(log_ctx.errors)
 
             # Determine completion status
-            final_assistant_msg: str | None = None
-            for msg in reversed(messages):
-                if hasattr(msg, "role") and msg.role == "assistant":
-                    if hasattr(msg, "content"):
-                        for content_item in msg.content:
-                            if hasattr(content_item, "text") and content_item.text:
-                                final_assistant_msg = content_item.text
-                                break
-                    if final_assistant_msg:
-                        break
-
-            # Check if agent hit max_iterations or completed normally
-            status = "completed"
-            reason = "Agent completed all requested tasks"
-
-            # Look for max_iterations warning in logs (FastAgent behavior)
-            if total_tool_calls >= MAX_ITERATIONS:
-                status = "max_iterations"
-                reason = f"Agent reached maximum iteration limit ({total_tool_calls} tool calls)"
-            elif errors and not final_assistant_msg:
-                # Only mark as error if there were errors AND no final response
-                # (agents can recover from errors - final completion message is what matters)
-                status = "error"
-                reason = f"Agent encountered {len(errors)} error(s) and did not complete"
-            elif errors:
-                # Had errors but completed - note this in reason but don't fail
-                reason = f"Agent completed with {len(errors)} recoverable error(s) during execution"
+            final_assistant_msg = _get_final_assistant_message(messages)
+            status, reason = _determine_completion_status(total_tool_calls, log_ctx.errors, final_assistant_msg)
 
             human_logger.log_execution_summary(
                 status=status,
                 reason=reason,
                 total_tool_calls=total_tool_calls,
-                error_count=len(errors),
+                error_count=len(log_ctx.errors),
                 total_turns=len(questions),
             )
 
@@ -316,12 +307,13 @@ async def test_mcp_universe(
                 expected = evaluators[idx - 1].get("value")
 
             human_logger.log_evaluation_check(
-                check_num=idx,
-                operation=result["op"],
-                passed=result["passed"],
-                reason=result.get("reason", "") or result.get("error", ""),
-                expected=expected,
-                actual=None,  # We don't have actual values in evaluation results
+                EvaluationCheck(
+                    check_num=idx,
+                    operation=result["op"],
+                    passed=result["passed"],
+                    reason=result.get("reason", "") or result.get("error", ""),
+                    expected=expected,
+                )
             )
 
         human_logger.log_evaluation_summary(

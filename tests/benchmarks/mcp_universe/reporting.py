@@ -2,9 +2,22 @@
 
 import json
 import time
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+
+@dataclass
+class EvaluationCheck:
+    """Result of a single evaluation check."""
+
+    check_num: int
+    operation: str
+    passed: bool
+    reason: str = ""
+    expected: Any = None
+    actual: Any = None
 
 
 class HumanReadableLogger:
@@ -149,33 +162,25 @@ class HumanReadableLogger:
         self._write_separator("=")
         self._write_line("")
 
-    def log_evaluation_check(
-        self,
-        check_num: int,
-        operation: str,
-        passed: bool,
-        reason: str = "",
-        expected: Any = None,
-        actual: Any = None,
-    ) -> None:
+    def log_evaluation_check(self, check: EvaluationCheck) -> None:
         """Log a single evaluation check with FULL details."""
-        status_symbol = "✓" if passed else "✗"
-        status_text = "PASS" if passed else "FAIL"
+        status_symbol = "✓" if check.passed else "✗"
+        status_text = "PASS" if check.passed else "FAIL"
 
-        self._write_line(f"{check_num}. [{status_symbol}] {operation} - {status_text}")
+        self._write_line(f"{check.check_num}. [{status_symbol}] {check.operation} - {status_text}")
 
-        if not passed and reason:
-            self._write_line(f"   WHY IT FAILED: {reason}")  # Key for annotation!
+        if not check.passed and check.reason:
+            self._write_line(f"   WHY IT FAILED: {check.reason}")  # Key for annotation!
 
-        if expected is not None:
-            expected_str = self._format_value_full(expected)
+        if check.expected is not None:
+            expected_str = self._format_value_full(check.expected)
             self._write_line(f"   EXPECTED: {expected_str}")
 
-        if actual is not None:
-            actual_str = self._format_value_full(actual)
+        if check.actual is not None:
+            actual_str = self._format_value_full(check.actual)
             self._write_line(f"   ACTUAL: {actual_str}")
 
-        if not passed and not reason:
+        if not check.passed and not check.reason:
             self._write_line("   (No failure reason provided)")
 
         self._write_line("")
