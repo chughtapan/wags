@@ -1,0 +1,6 @@
+logger:
+  level: error
+  type: console
+  show_chat: false
+  show_tools: false
+  progress_display: false
