@@ -99,9 +99,7 @@ class HumanReadableLogger:
 
                 event_type = event["type"]
                 if event_type == "turn":
-                    total_turns += self._replay_turn_event(
-                        event, timestamp, first_timestamp, turn_timestamps
-                    )
+                    total_turns += self._replay_turn_event(event, timestamp, first_timestamp, turn_timestamps)
                 elif event_type == "tool_call":
                     total_tool_calls += 1
                     tool_names[event["tool_id"]] = event["tool_name"]
@@ -140,12 +138,14 @@ class HumanReadableLogger:
         tool_name = tool_names.get(event["tool_id"], "unknown")
         self.log_tool_result(event["turn_id"], tool_name, event["result"], event["is_error"])
         if event["is_error"]:
-            errors.append({
-                "turn_id": event["turn_id"],
-                "tool_id": event["tool_id"],
-                "tool_name": tool_name,
-                "error_message": str(event["result"]),
-            })
+            errors.append(
+                {
+                    "turn_id": event["turn_id"],
+                    "tool_id": event["tool_id"],
+                    "tool_name": tool_name,
+                    "error_message": str(event["result"]),
+                }
+            )
 
     def _log_turn_start_with_elapsed(self, turn_id: int, user_message: str, elapsed: float) -> None:
         """Log turn start with pre-calculated elapsed time (for replay)."""
