@@ -7,6 +7,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+MAX_ITERATIONS = 500  # Must match test_mcp_universe.py
+
+
+def _determine_completion_status(total_tool_calls: int, errors: list[dict[str, Any]]) -> tuple[str, str]:
+    """Determine completion status and reason based on execution results."""
+    if total_tool_calls >= MAX_ITERATIONS:
+        return "max_iterations", f"Agent reached maximum iteration limit ({total_tool_calls} tool calls)"
+    if errors:
+        return "completed", f"Agent completed with {len(errors)} recoverable error(s) during execution"
+    return "completed", "Agent completed all requested tasks"
+
 
 @dataclass
 class EvaluationCheck:
@@ -31,15 +42,123 @@ class HumanReadableLogger:
     - Easy to identify failure reasons
     """
 
-    def __init__(self, log_path: Path):
+    def __init__(self, log_path: Path, *, append: bool = False):
         """Initialize the human-readable logger."""
         self.log_path = log_path
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
-        if self.log_path.exists():
+        if not append and self.log_path.exists():
             self.log_path.unlink()
 
         self.start_time = time.time()
         self.turn_start_times: dict[int, float] = {}
+
+    @classmethod
+    def from_structured_log(
+        cls,
+        output_path: Path,
+        structured_path: Path,
+        test_id: str,
+        model: str,
+        task_description: str,
+    ) -> "HumanReadableLogger":
+        """Generate human-readable log by replaying structured events."""
+        logger = cls(output_path)
+        logger.log_test_start(test_id, model, task_description)
+
+        stats = logger._replay_events(structured_path)
+
+        if stats["errors"]:
+            logger.log_errors(stats["errors"])
+
+        status, reason = _determine_completion_status(stats["total_tool_calls"], stats["errors"])
+        logger.log_execution_summary(
+            status=status,
+            reason=reason,
+            total_tool_calls=stats["total_tool_calls"],
+            error_count=len(stats["errors"]),
+            total_turns=stats["total_turns"],
+        )
+
+        return logger
+
+    def _replay_events(self, structured_path: Path) -> dict[str, Any]:
+        """Replay structured events and return execution stats."""
+        tool_names: dict[str, str] = {}
+        errors: list[dict[str, Any]] = []
+        turn_timestamps: dict[int, datetime] = {}
+        first_timestamp: datetime | None = None
+        total_tool_calls = 0
+        total_turns = 0
+
+        with open(structured_path, encoding="utf-8") as f:
+            for line in f:
+                event = json.loads(line)
+                timestamp = datetime.fromisoformat(event["timestamp"])
+                if first_timestamp is None:
+                    first_timestamp = timestamp
+
+                event_type = event["type"]
+                if event_type == "turn":
+                    total_turns += self._replay_turn_event(
+                        event, timestamp, first_timestamp, turn_timestamps
+                    )
+                elif event_type == "tool_call":
+                    total_tool_calls += 1
+                    tool_names[event["tool_id"]] = event["tool_name"]
+                    self.log_tool_call(event["turn_id"], event["tool_name"], event["arguments"])
+                elif event_type == "tool_result":
+                    self._replay_tool_result(event, tool_names, errors)
+                elif event_type == "assistant_text":
+                    self.log_assistant_response(event["turn_id"], event["text"])
+
+        return {"errors": errors, "total_tool_calls": total_tool_calls, "total_turns": total_turns}
+
+    def _replay_turn_event(
+        self,
+        event: dict[str, Any],
+        timestamp: datetime,
+        first_timestamp: datetime,
+        turn_timestamps: dict[int, datetime],
+    ) -> int:
+        """Replay a turn event. Returns 1 if turn start, 0 otherwise."""
+        turn_id = event["turn_id"]
+        if event["phase"] == "start":
+            turn_timestamps[turn_id] = timestamp
+            elapsed = (timestamp - first_timestamp).total_seconds()
+            self._log_turn_start_with_elapsed(turn_id, event.get("user_message", ""), elapsed)
+            return 1
+        else:
+            start_ts = turn_timestamps.get(turn_id)
+            duration = (timestamp - start_ts).total_seconds() if start_ts else 0
+            self._log_turn_end_with_duration(turn_id, duration)
+            return 0
+
+    def _replay_tool_result(
+        self, event: dict[str, Any], tool_names: dict[str, str], errors: list[dict[str, Any]]
+    ) -> None:
+        """Replay a tool result event, tracking errors."""
+        tool_name = tool_names.get(event["tool_id"], "unknown")
+        self.log_tool_result(event["turn_id"], tool_name, event["result"], event["is_error"])
+        if event["is_error"]:
+            errors.append({
+                "turn_id": event["turn_id"],
+                "tool_id": event["tool_id"],
+                "tool_name": tool_name,
+                "error_message": str(event["result"]),
+            })
+
+    def _log_turn_start_with_elapsed(self, turn_id: int, user_message: str, elapsed: float) -> None:
+        """Log turn start with pre-calculated elapsed time (for replay)."""
+        self._write_separator("-")
+        self._write_line(f"TURN {turn_id} (t={elapsed:.1f}s)")
+        self._write_separator("-")
+        self._write_line(user_message)
+        self._write_line("")
+
+    def _log_turn_end_with_duration(self, turn_id: int, duration: float) -> None:
+        """Log turn end with pre-calculated duration (for replay)."""
+        self._write_line(f"(Turn {turn_id} duration: {duration:.1f}s)")
+        self._write_line("")
 
     def _write_line(self, text: str = "") -> None:
         """Write a line to the log file."""

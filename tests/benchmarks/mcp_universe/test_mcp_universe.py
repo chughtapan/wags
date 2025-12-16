@@ -2,7 +2,6 @@
 
 import json
 import os
-from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 from typing import Any, cast
@@ -43,86 +42,41 @@ def _extract_text_content(content_items: Any) -> list[str]:
     return [item.text for item in content_items if hasattr(item, "text")]
 
 
-def _find_tool_name(messages: list[Any], tool_id: str) -> str:
-    """Find tool name from messages by tool_id."""
-    for msg in messages:
-        if hasattr(msg, "tool_calls") and msg.tool_calls and tool_id in msg.tool_calls:
-            return str(msg.tool_calls[tool_id].params.name)
-    return "unknown"
+def _process_message_logs(
+    msg_obj: Any, turn_idx: int, new_messages: list[Any], logger: StructuredEventLogger
+) -> tuple[int, int]:
+    """Process and log tool calls, results, and assistant responses.
 
-
-def _get_final_assistant_message(messages: list[Any]) -> str | None:
-    """Extract the final assistant text message from message history."""
-    for msg in reversed(messages):
-        if hasattr(msg, "role") and msg.role == "assistant" and hasattr(msg, "content"):
-            for content_item in msg.content:
-                if hasattr(content_item, "text") and content_item.text:
-                    return str(content_item.text)
-    return None
-
-
-def _determine_completion_status(
-    total_tool_calls: int, errors: list[dict[str, Any]], final_msg: str | None
-) -> tuple[str, str]:
-    """Determine completion status and reason based on execution results."""
-    if total_tool_calls >= MAX_ITERATIONS:
-        return "max_iterations", f"Agent reached maximum iteration limit ({total_tool_calls} tool calls)"
-    if errors and not final_msg:
-        return "error", f"Agent encountered {len(errors)} error(s) and did not complete"
-    if errors:
-        return "completed", f"Agent completed with {len(errors)} recoverable error(s) during execution"
-    return "completed", "Agent completed all requested tasks"
-
-
-@dataclass
-class LoggingContext:
-    """Context for logging during test execution."""
-
-    structured: StructuredEventLogger
-    human: HumanReadableLogger
-    errors: list[dict[str, Any]]
-
-
-def _process_message_logs(msg_obj: Any, turn_idx: int, new_messages: list[Any], ctx: LoggingContext) -> int:
-    """Process and log tool calls, results, and assistant responses. Returns tool call count."""
+    Returns (tool_call_count, error_count).
+    """
     tool_call_count = 0
+    error_count = 0
 
     # Log tool calls
     if hasattr(msg_obj, "tool_calls") and msg_obj.tool_calls:
         for tool_id, call in msg_obj.tool_calls.items():
             tool_call_count += 1
             args = call.params.arguments or {}
-            ctx.structured.log_tool_call(turn_idx, call.params.name, args, tool_id)
-            ctx.human.log_tool_call(turn_idx, call.params.name, args)
+            logger.log_tool_call(turn_idx, call.params.name, args, tool_id)
 
     # Log tool results
     if hasattr(msg_obj, "tool_results") and msg_obj.tool_results:
         for tool_id, result in msg_obj.tool_results.items():
             result_content = _extract_text_content(result.content) if hasattr(result, "content") else []
             is_error = result.isError if hasattr(result, "isError") else False
-            tool_name = _find_tool_name(new_messages, tool_id)
             result_data = result_content if result_content else str(result)
 
-            ctx.structured.log_tool_result(turn_idx, tool_id, result_data, is_error)
-            ctx.human.log_tool_result(turn_idx, tool_name, result_data, is_error)
+            logger.log_tool_result(turn_idx, tool_id, result_data, is_error)
 
             if is_error:
-                ctx.errors.append(
-                    {
-                        "turn_id": turn_idx,
-                        "tool_id": tool_id,
-                        "tool_name": tool_name,
-                        "error_message": str(result_data),
-                    }
-                )
+                error_count += 1
 
     # Log assistant text responses
     if hasattr(msg_obj, "role") and msg_obj.role == "assistant" and hasattr(msg_obj, "content"):
         for text in _extract_text_content(msg_obj.content):
-            ctx.structured.log_assistant_response(turn_idx, text)
-            ctx.human.log_assistant_response(turn_idx, text)
+            logger.log_assistant_response(turn_idx, text)
 
-    return tool_call_count
+    return tool_call_count, error_count
 
 
 def _setup_environment(model: str, temperature: float) -> None:
@@ -151,17 +105,14 @@ def _get_task_description(task: dict[str, Any]) -> str:
 
 async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, output_dir: Path) -> Path:
     """Run MCP-Universe test and return path to results."""
-    # Initialize loggers
     raw_dir = output_dir / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
-    structured_logger = StructuredEventLogger(raw_dir / f"{test_id}_structured.jsonl")
-    human_logger = HumanReadableLogger(raw_dir / f"{test_id}_readable.log")
+    logger = StructuredEventLogger(raw_dir / f"{test_id}_structured.jsonl")
 
     _setup_environment(model, temperature)
     task_file = _DATA_DIR.joinpath(f"{test_id}.json")
     with task_file.open("r", encoding="utf-8") as f:
         task = cast(dict[str, Any], json.load(f))
-    human_logger.log_test_start(test_id, model, _get_task_description(task))
 
     output_path = raw_dir / f"{test_id}_complete.json"
     test_dir = Path(__file__).parent
@@ -179,7 +130,6 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
         async with agent.run() as agent_app:
             questions = task.get("question", [])
 
-            # Handle both single string and list formats
             if isinstance(questions, str):
                 questions = [questions]
             elif not isinstance(questions, list):
@@ -187,50 +137,28 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
 
             prev_message_count = 0
             total_tool_calls = 0
-            log_ctx = LoggingContext(structured=structured_logger, human=human_logger, errors=[])
 
             for turn_idx, question in enumerate(questions, 1):
                 user_msg = _parse_question(question)
                 if not user_msg:
                     continue
 
-                structured_logger.log_turn(turn_idx, "start", user_msg)
-                human_logger.log_turn_start(turn_idx, user_msg)
+                logger.log_turn(turn_idx, "start", user_msg)
                 await agent_app.send(user_msg)
 
-                # Extract messages added in this turn for detailed logging
                 messages = agent_app._agent(None).message_history
                 new_messages = messages[prev_message_count:]
                 prev_message_count = len(messages)
 
-                # Log tool calls, results, and assistant responses
                 for msg_obj in new_messages:
-                    total_tool_calls += _process_message_logs(msg_obj, turn_idx, new_messages, log_ctx)
+                    tool_calls, _ = _process_message_logs(msg_obj, turn_idx, new_messages, logger)
+                    total_tool_calls += tool_calls
 
-                structured_logger.log_turn(turn_idx, "end")
-                human_logger.log_turn_end(turn_idx)
+                logger.log_turn(turn_idx, "end")
 
-            # Get messages for output
             messages = agent_app._agent(None).message_history
-            structured_logger.log_message_summary(messages)
+            logger.log_message_summary(messages)
 
-            # Log error summary if any errors occurred
-            if log_ctx.errors:
-                human_logger.log_errors(log_ctx.errors)
-
-            # Determine completion status
-            final_assistant_msg = _get_final_assistant_message(messages)
-            status, reason = _determine_completion_status(total_tool_calls, log_ctx.errors, final_assistant_msg)
-
-            human_logger.log_execution_summary(
-                status=status,
-                reason=reason,
-                total_tool_calls=total_tool_calls,
-                error_count=len(log_ctx.errors),
-                total_turns=len(questions),
-            )
-
-            # Save output using MessageSerializer (BFCL pattern)
             complete_json = MessageSerializer.serialize_complete(messages)
             output_path.write_text(complete_json)
 
@@ -239,8 +167,8 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
     return await run_test()
 
 
-async def _validate_test(test_id: str, log_dir: Path) -> dict[str, Any]:
-    """Validate test results and log to human-readable file."""
+async def _validate_test(test_id: str, model: str, log_dir: Path) -> dict[str, Any]:
+    """Validate test results and generate human-readable log."""
     complete_path = log_dir / f"{test_id}_complete.json"
     if not complete_path.exists():
         pytest.skip(f"Complete JSON file not found: {complete_path}")
@@ -254,9 +182,18 @@ async def _validate_test(test_id: str, log_dir: Path) -> dict[str, Any]:
     eval_path = log_dir / f"{test_id}_evaluation.json"
     eval_path.write_text(json.dumps(evaluation, indent=2, default=str))
 
-    # Log to human-readable file if it exists
+    # Generate human-readable log from structured log
+    structured_path = log_dir / f"{test_id}_structured.jsonl"
     human_log_path = log_dir / f"{test_id}_readable.log"
-    if human_log_path.exists():
+
+    if structured_path.exists():
+        task_file = _DATA_DIR.joinpath(f"{test_id}.json")
+        with task_file.open("r", encoding="utf-8") as f:
+            task = cast(dict[str, Any], json.load(f))
+
+        HumanReadableLogger.from_structured_log(
+            human_log_path, structured_path, test_id, model, _get_task_description(task)
+        )
         _log_evaluation_results(human_log_path, evaluation)
 
     return evaluation
@@ -264,7 +201,7 @@ async def _validate_test(test_id: str, log_dir: Path) -> dict[str, Any]:
 
 def _log_evaluation_results(log_path: Path, evaluation: dict[str, Any]) -> None:
     """Log evaluation results to human-readable log."""
-    human_logger = HumanReadableLogger(log_path)
+    human_logger = HumanReadableLogger(log_path, append=True)
     human_logger.log_evaluation_start()
 
     failed_checks = 0
@@ -340,7 +277,7 @@ async def test_mcp_universe(
     log_dir = Path(request.config.getoption("--log-dir")) if validate_only else output_dir / "raw"
 
     # Validate and get results
-    evaluation = await _validate_test(test_id, log_dir)
+    evaluation = await _validate_test(test_id, model, log_dir)
 
     # Fail test with detailed message if evaluation failed
     if not evaluation["passed"]:
