@@ -7,12 +7,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-MAX_ITERATIONS = 500  # Must match test_mcp_universe.py
 
-
-def _determine_completion_status(total_tool_calls: int, errors: list[dict[str, Any]]) -> tuple[str, str]:
+def _determine_completion_status(
+    total_tool_calls: int, errors: list[dict[str, Any]], max_iterations: int = 500
+) -> tuple[str, str]:
     """Determine completion status and reason based on execution results."""
-    if total_tool_calls >= MAX_ITERATIONS:
+    if total_tool_calls >= max_iterations:
         return "max_iterations", f"Agent reached maximum iteration limit ({total_tool_calls} tool calls)"
     if errors:
         return "completed", f"Agent completed with {len(errors)} recoverable error(s) during execution"
