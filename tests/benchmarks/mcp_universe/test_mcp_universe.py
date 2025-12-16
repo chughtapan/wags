@@ -42,41 +42,26 @@ def _extract_text_content(content_items: Any) -> list[str]:
     return [item.text for item in content_items if hasattr(item, "text")]
 
 
-def _process_message_logs(
-    msg_obj: Any, turn_idx: int, new_messages: list[Any], logger: StructuredEventLogger
-) -> tuple[int, int]:
-    """Process and log tool calls, results, and assistant responses.
-
-    Returns (tool_call_count, error_count).
-    """
+def _log_message(msg: Any, turn_idx: int, logger: StructuredEventLogger) -> int:
+    """Log tool calls, results, and assistant responses. Returns tool call count."""
     tool_call_count = 0
-    error_count = 0
 
-    # Log tool calls
-    if hasattr(msg_obj, "tool_calls") and msg_obj.tool_calls:
-        for tool_id, call in msg_obj.tool_calls.items():
+    if hasattr(msg, "tool_calls") and msg.tool_calls:
+        for tool_id, call in msg.tool_calls.items():
             tool_call_count += 1
-            args = call.params.arguments or {}
-            logger.log_tool_call(turn_idx, call.params.name, args, tool_id)
+            logger.log_tool_call(turn_idx, call.params.name, call.params.arguments or {}, tool_id)
 
-    # Log tool results
-    if hasattr(msg_obj, "tool_results") and msg_obj.tool_results:
-        for tool_id, result in msg_obj.tool_results.items():
-            result_content = _extract_text_content(result.content) if hasattr(result, "content") else []
-            is_error = result.isError if hasattr(result, "isError") else False
-            result_data = result_content if result_content else str(result)
+    if hasattr(msg, "tool_results") and msg.tool_results:
+        for tool_id, result in msg.tool_results.items():
+            content = _extract_text_content(result.content) if hasattr(result, "content") else []
+            is_error = getattr(result, "isError", False)
+            logger.log_tool_result(turn_idx, tool_id, content or str(result), is_error)
 
-            logger.log_tool_result(turn_idx, tool_id, result_data, is_error)
-
-            if is_error:
-                error_count += 1
-
-    # Log assistant text responses
-    if hasattr(msg_obj, "role") and msg_obj.role == "assistant" and hasattr(msg_obj, "content"):
-        for text in _extract_text_content(msg_obj.content):
+    if getattr(msg, "role", None) == "assistant" and hasattr(msg, "content"):
+        for text in _extract_text_content(msg.content):
             logger.log_assistant_response(turn_idx, text)
 
-    return tool_call_count, error_count
+    return tool_call_count
 
 
 def _setup_environment(model: str, temperature: float) -> None:
@@ -150,9 +135,8 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
                 new_messages = messages[prev_message_count:]
                 prev_message_count = len(messages)
 
-                for msg_obj in new_messages:
-                    tool_calls, _ = _process_message_logs(msg_obj, turn_idx, new_messages, logger)
-                    total_tool_calls += tool_calls
+                for msg in new_messages:
+                    total_tool_calls += _log_message(msg, turn_idx, logger)
 
                 logger.log_turn(turn_idx, "end")
 
