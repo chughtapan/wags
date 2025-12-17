@@ -1,6 +1,7 @@
 """Pytest configuration and fixtures for evaluation tests."""
 
 from collections.abc import Generator
+from pathlib import Path
 from typing import Any, Protocol, cast
 
 import pytest
@@ -25,6 +26,14 @@ def model(request: pytest.FixtureRequest) -> str:
 def temperature(request: pytest.FixtureRequest) -> float:
     """Temperature from CLI or default."""
     return cast(float, request.config.getoption("--temperature"))
+
+
+@pytest.fixture
+def output_dir(request: pytest.FixtureRequest) -> Path:
+    """Output directory for test results."""
+    path = Path(request.config.getoption("--output-dir"))
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

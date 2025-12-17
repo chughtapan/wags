@@ -1,0 +1,26 @@
+mcp:
+  servers:
+    # GitHub MCP Server for repository management tasks
+    # Using Docker with pinned version v0.15.0 (before PR #1091) for research reproducibility
+    github:
+      command: docker
+      args:
+        - run
+        - -i
+        - --rm
+        - -e
+        - GITHUB_PERSONAL_ACCESS_TOKEN
+        - -e
+        - GITHUB_PERSONAL_ACCOUNT_NAME
+        - ghcr.io/github/github-mcp-server:v0.15.0
+      env:
+        GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_PERSONAL_ACCESS_TOKEN}
+        GITHUB_PERSONAL_ACCOUNT_NAME: ${GITHUB_PERSONAL_ACCOUNT_NAME}
+
+logger:
+  level: info
+  type: console
+  show_chat: true
+  show_tools: true
+  truncate_tools: false
+  progress_display: true
