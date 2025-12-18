@@ -5,7 +5,7 @@
 """Simple GEPA-based instruction optimization for BFCL tests.
 
 Usage:
-    python experiments/optimize_gepa.py --test-subset multi_turn_base --num-tests <N>
+    python experiments/gepa_bfcl.py --test-subset multi_turn_base --num-tests <N>
 """
 
 import argparse
@@ -203,7 +203,7 @@ def main():
     parser.add_argument("--model", default="gpt-5")
     parser.add_argument("--reflection-model", default="gpt-5")
     parser.add_argument("--max-evaluations", type=int, default=20)
-    parser.add_argument("--output-dir", type=Path, default=Path("outputs/gepa"))
+    parser.add_argument("--output-dir", type=Path, default=Path("outputs/gepa_on_bfcl"))
     parser.add_argument("--auto", choices=["light", "medium", "heavy"], default=None)
     parser.add_argument("--instruction-file", type=Path, required=True)
     parser.add_argument("--pytest-binary", default="pytest")
