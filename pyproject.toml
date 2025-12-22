@@ -36,8 +36,6 @@ dev = [
 evals = [
     "bfcl-eval",
     "mcpuniverse",
-    "jinja2>=3.0.0",
-    "python-dotenv>=1.0.0",
     "appworld",
     "appworld-experiments[simplified]",
 ]

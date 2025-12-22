@@ -10,12 +10,9 @@ mcp:
         - --rm
         - -e
         - GITHUB_PERSONAL_ACCESS_TOKEN
-        - -e
-        - GITHUB_PERSONAL_ACCOUNT_NAME
         - ghcr.io/github/github-mcp-server:v0.15.0
       env:
         GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_PERSONAL_ACCESS_TOKEN}
-        GITHUB_PERSONAL_ACCOUNT_NAME: ${GITHUB_PERSONAL_ACCOUNT_NAME}
 
 logger:
   level: info
