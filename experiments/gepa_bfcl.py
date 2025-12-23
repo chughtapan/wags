@@ -120,12 +120,16 @@ class BFCLAgent(dspy.Module):
         passed = result.returncode == 0
         tools_used = self._collect_tool_names(output_dir, test_id)
 
+        behavior_summary = self._summarize_behavior(output_dir, test_id)
+
         return dspy.Prediction(
             test_id=test_id,
             passed=passed,
             tools_used=tools_used,
-            output=result.stdout + result.stderr,
+            behavior=behavior_summary,
         )
+
+
 
     def get_instruction_text(self) -> str:
         instructions = getattr(self.prompt_predictor.signature, "instructions", "")
@@ -144,6 +148,27 @@ class BFCLAgent(dspy.Module):
             return []
         calls = MessageSerializer.extract_tool_calls_by_turn(data)
         return [call.get("function") for turn in calls for call in turn if call.get("function")]
+    
+    @staticmethod
+    def _summarize_behavior(output_dir: Path, test_id: str) -> str:
+        complete_file = output_dir / "raw" / f"{test_id}_complete.json"
+        if not complete_file.exists():
+            return "NO_TRACE"
+
+        data = json.load(open(complete_file))
+
+        tool_calls = MessageSerializer.extract_tool_calls_by_turn(data)
+        tool_seq = []
+        for turn in tool_calls:
+            for call in turn:
+                if call.get("function"):
+                    tool_seq.append(call["function"])
+
+        return (
+            f"TOOLS: {' -> '.join(tool_seq) or 'NONE'}\n"
+            f"NUM_TOOLS: {len(tool_seq)}"
+        )
+
 
 
 # -------------------------
@@ -157,23 +182,49 @@ def bfcl_metric_with_feedback(
     pred_name: Optional[str] = None,
     pred_trace: Optional[Any] = None,
 ) -> MetricFeedback:
+    # Score stays EXACTLY the same
     score = 1.0 if pred.passed else 0.0
-    feedback = [f"Test {gold.test_id} {'PASSED' if pred.passed else 'FAILED'}"]
 
-    if not pred.passed:
-        expected = set(gold.expected_tools)
-        used = set(pred.tools_used)
-        if expected and not used:
-            feedback.append(f"No tools called; expected: {', '.join(expected)}")
-        else:
+    feedback_parts = []
+
+    # High-level outcome
+    feedback_parts.append(
+        f"RESULT: {'PASS' if pred.passed else 'FAIL'}"
+    )
+
+    # Expected vs used tools (what you already had)
+    expected = set(gold.expected_tools)
+    used = set(pred.tools_used)
+
+    if expected:
+        feedback_parts.append(
+            f"EXPECTED_TOOLS: {', '.join(sorted(expected))}"
+        )
+        feedback_parts.append(
+            f"USED_TOOLS: {', '.join(sorted(used)) if used else 'NONE'}"
+        )
+
+        if not pred.passed:
             missing = expected - used
             extra = used - expected
             if missing:
-                feedback.append(f"Missing tools: {', '.join(missing)}")
+                feedback_parts.append(
+                    f"MISSING_TOOLS: {', '.join(sorted(missing))}"
+                )
             if extra:
-                feedback.append(f"Unexpected tools: {', '.join(extra)}")
+                feedback_parts.append(
+                    f"EXTRA_TOOLS: {', '.join(sorted(extra))}"
+                )
 
-    return MetricFeedback(score=score, feedback=" | ".join(feedback))
+    if hasattr(pred, "behavior"):
+        feedback_parts.append("BEHAVIOR_SUMMARY:")
+        feedback_parts.append(pred.behavior)
+
+    return MetricFeedback(
+        score=score,
+        feedback="\n".join(feedback_parts),
+    )
+
 
 
 # -------------------------
