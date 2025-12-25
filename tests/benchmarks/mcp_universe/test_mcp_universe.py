@@ -70,12 +70,14 @@ def _setup_environment(model: str, temperature: float) -> None:
         raise ValueError(
             "GITHUB_PERSONAL_ACCESS_TOKEN environment variable not set. Please set it before running tests."
         )
-    github_account_name = os.getenv("GITHUB_PERSONAL_ACCOUNT_NAME", "vinamra-test")
+    if not os.getenv("GITHUB_PERSONAL_ACCOUNT_NAME"):
+        raise ValueError(
+            "GITHUB_PERSONAL_ACCOUNT_NAME environment variable not set. Please set it before running tests."
+        )
     os.environ.update(
         {
             "DEFAULT_MODEL": model,
             "TEMPERATURE": str(temperature),
-            "GITHUB_PERSONAL_ACCOUNT_NAME": github_account_name,
         }
     )
 
@@ -223,26 +225,13 @@ def _log_evaluation_results(log_path: Path, evaluation: dict[str, Any]) -> None:
 
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
-    """Dynamically generate test cases."""
+    """Dynamically generate test cases from task JSON files."""
     if "test_id" in metafunc.fixturenames:
-        validate_only = metafunc.config.getoption("--validate-only")
-
-        if validate_only:
-            # Find existing output files to validate
-            log_dir = Path(metafunc.config.getoption("--log-dir"))
-            if log_dir.exists():
-                output_files = list(log_dir.glob("**/*_complete.json"))
-                test_ids = [f.stem.replace("_complete", "") for f in output_files]
-            else:
-                test_ids = []
-        else:
-            # Generate test IDs for repository management tasks
-            test_ids = sorted(
-                e.name.removesuffix(".json")
-                for e in _DATA_DIR.iterdir()
-                if e.is_file() and e.name.startswith("github_task_") and e.name.endswith(".json")
-            )
-
+        test_ids = sorted(
+            e.name.removesuffix(".json")
+            for e in _DATA_DIR.iterdir()
+            if e.is_file() and e.name.startswith("github_task_") and e.name.endswith(".json")
+        )
         metafunc.parametrize("test_id", test_ids)
 
 
@@ -257,10 +246,8 @@ async def test_mcp_universe(
     if not validate_only:
         await _run_mcp_universe_test(test_id, model, temperature, output_dir)
 
-    # Determine log directory
-    log_dir = Path(request.config.getoption("--log-dir")) if validate_only else output_dir / "raw"
-
     # Validate and get results
+    log_dir = output_dir / "raw"
     evaluation = await _validate_test(test_id, model, log_dir)
 
     # Fail test with detailed message if evaluation failed
