@@ -42,17 +42,12 @@ MCP-Universe is a comprehensive benchmark from Salesforce AI Research that evalu
 git clone https://github.com/chughtapan/wags.git
 cd wags
 
-# Install base dependencies
-uv sync
-
-# Install mcpuniverse from the wags-dev branch
-uv pip install "mcpuniverse @ git+https://github.com/vinamra57/MCP-Universe.git@wags-dev"
+# Install dependencies
+uv pip install -e ".[dev,evals]"
 
 # Pre-pull the GitHub MCP server image
 docker pull ghcr.io/github/github-mcp-server:v0.15.0
 ```
-
-**Note**: The `wags-dev` branch of MCP-Universe removes `mathutils` (fails to build on Python 3.13 due to removed private API `_PyLong_AsInt`) and fixes package data glob patterns to include nested benchmark configs.
 
 ### Environment Variables
 
