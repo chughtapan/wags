@@ -1,7 +1,7 @@
 """"
 logging_utils.py
 
-Utility functions for logging and saving outputs
+Utility functions and objects for logging and saving outputs
 """
 
 from __future__ import annotations
@@ -71,7 +71,6 @@ class TeeIO:
     Similar to a file, this object processes writes to both a 
     stream (stdout, stderr) and a log file
     """
-    
     def __init__(self, real_stream, log_file):
         self.real_stream = real_stream
         self.log_file = log_file
@@ -86,4 +85,50 @@ class TeeIO:
 
     def isatty(self) -> bool:
         return False
+
+
+@dataclass
+class RunContext:
+    """
+    Stores metadata used by metric functions and loggers
     
+    Meant to be read only after initialization
+    """
+    run_id: str
+    output_dir: Path
+    metric_calls_path: Path
+    candidate_snapshots_path: Path
+    train_ids: set[str]
+    dev_ids: set[str]
+    score_definition: dict[str, Any]
+    
+RUN_CTX: RunContext | None = None
+    
+    
+def try_git_info() -> dict[str, Any]:
+    """
+    Tries to retrieve git info, does not crash if not found
+    """
+    info:dict[str, Any] = dict()
+    try:
+        head = subprocess.run(
+            args=["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        info["git_commit"] = head.stdout.strip() if head.returncode == 0 else None
+        
+        status = subprocess.run(
+            args=["git", "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        info["git_dirty"] = bool(status.stdout.strip())
+    
+    except Exception:
+        info["git_commit"] = None
+        info["git_dirty"] = None
+    
+    return info
