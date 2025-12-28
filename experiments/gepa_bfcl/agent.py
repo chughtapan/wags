@@ -1,0 +1,167 @@
+"""
+DSPy module wrapper for running BFCL tests with pytest
+"""
+
+from __future__ import annotations
+import json
+import subprocess
+import time
+import uuid
+from pathlib import Path
+from typing import Any, List
+import dspy
+from tests.benchmarks.bfcl import evaluator as bfcl_evaluator
+from tests.utils.fastagent_helpers import MessageSerializer
+from logging_utils import sha256_text
+
+
+class BFCLExample(dspy.Example):
+    """
+    DSPy Example wrapper for BFCL cases/examples
+    """
+    
+    def __init__(
+        self,
+        test_id: str | None = None,
+        question: str | None = None,
+        *,
+        base: dspy.Example | None = None,
+        **kwargs: Any
+    ):
+        if base is None:
+            super().__init__(test_id=test_id, question=question, **kwargs)
+        else:
+            super().__init__(base=base, **kwargs)
+            
+            
+class MetricFeedback(dspy.Prediction):
+    """
+    Container for metric score + text feedback returned to GEPA
+    """
+    
+    def __init__(self, score: float, feedback: str):
+        super().__init__(score=score, feedback=feedback)
+        
+
+class BFCLAgent(dspy.Module):
+    """
+    DSPy module that evaluates a given instruction prompt by running
+    BFCL tests (with pytest) and parsing resulting outputs
+    """
+    
+    def __init__(
+        self, 
+        instruction_text: str,
+        model: str,
+        base_dir: Path,
+        pytest_binary: str,
+        enable_scoring_mode: bool
+    ):
+        super().__init__()
+        self.model = model
+        self.base_dir = base_dir
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+        self.pytest_binary = pytest_binary
+        self.enable_scoring_mode = enable_scoring_mode
+        
+        # The file at this path is changed before each run
+        self._instruction_path = self.base_dir / "current_instruction.txt"
+        
+        # Define the model's task
+        signature = dspy.Signature(
+            "prompt_input -> prompt_output",
+            instructions=instruction_text
+        )
+        
+        # dspy.Predict handles logic of constructing prompt 
+        # and sending it to the LM
+        self.prompt_predictor = dspy.Predict(signature)
+    
+    
+    def forward(self, test_id: str, question: str) -> dspy.Prediction:
+        """
+        Run a single BFCL test case using the current instruction prompt
+        """
+        # Initialize timing
+        t0 = time.perf_counter()
+        timings: dict[str, float] = {}
+
+        # EXPLAIN
+        try:
+            t_trace = time.perf_counter()
+            _ = self.prompt_predictor(prompt_input=question)
+            timings["dspy_trace_anchor_s"] = time.perf_counter() - t_trace
+        except Exception:
+            timings["dspy_trace_anchor_s"] = 0.0
+        
+        # Write current instruction
+        instruction_text = self.get_instruction_text()
+        instruction_hash = sha256_text(instruction_text)
+        
+        t_write = time.perf_counter()
+        self._instruction_path.write_text(instruction_text, encoding="utf-8")
+        timings["write_instruction_s"] = time.perf_counter() - t_write
+
+        # Create a unique directory for each individual run
+        run_uid = uuid.uuid4().hex[:12]
+        run_dir = self.base_dir / "runs" / f"{test_id}__{run_uid}"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Construct the pytest command
+        cmd = [
+            self.pytest_binary,
+            f"tests/benchmarks/bfcl/test_bfcl.py::test_bfcl[{test_id}]",
+            "--model", 
+            self.model, 
+            "--instruction-file", 
+            str(self._instruction_path),
+            "--output-dir",
+            str(run_dir),
+            "-q",
+            "-x"
+        ]
+        if self.enable_scoring_mode:
+            cmd.append("--gepa-scoring-mode")
+
+        # Run the pytest command
+        t_pytest = time.perf_counter()
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True
+        )
+        timings["pytest_run_s"] = time.perf_counter() - t_pytest
+        complete_path = run_dir / "raw" / f"{test_id}_complete.json"
+
+        tool_calls_by_turn: List[List[dict[str, Any]]] = []
+        executable_responses: List[List[str]] = []
+        evaluation: dict[str, Any] | None = None
+        eval_error: str | None = None
+    
+    
+    def get_instruction_text(self) -> str:
+        """
+        Return the current instruction text used by dspy
+        """
+        instructions = getattr(self.prompt_predictor.signature, "instructions", "")
+        if isinstance(instructions, (list, tuple)):
+            return "\n".join(str(p) for p in instructions if p)
+        return str(instructions or "")
+    
+    @staticmethod
+    def _summarize_behavior_from_calls(tool_calls: List[List[dict[str, Any]]]) -> str:
+        """
+        Summarize tool-use behavior for logging and feedback
+        """
+        tool_seq: List[str] = []
+        for turn in tool_calls:
+            for call in turn:
+                fn = call.get("function")
+                if fn:
+                    tool_seq.append(fn)
+                    
+        return (
+            f"TOOLS: {' -> '.join(tool_seq) or 'NONE'}\n"
+            f"NUM_TOOLS: {len(tool_seq)}"
+        )
+        
