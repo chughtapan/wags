@@ -1,4 +1,6 @@
 """
+agent.py
+
 DSPy module wrapper for running BFCL tests with pytest
 """
 
@@ -12,7 +14,7 @@ from typing import Any, List
 import dspy
 from tests.benchmarks.bfcl import evaluator as bfcl_evaluator
 from tests.utils.fastagent_helpers import MessageSerializer
-from logging_utils import sha256_text
+from .logging_utils import sha256_text
 
 
 class BFCLExample(dspy.Example):
@@ -32,15 +34,6 @@ class BFCLExample(dspy.Example):
             super().__init__(test_id=test_id, question=question, **kwargs)
         else:
             super().__init__(base=base, **kwargs)
-            
-            
-class MetricFeedback(dspy.Prediction):
-    """
-    Container for metric score + text feedback returned to GEPA
-    """
-    
-    def __init__(self, score: float, feedback: str):
-        super().__init__(score=score, feedback=feedback)
         
 
 class BFCLAgent(dspy.Module):
@@ -77,22 +70,22 @@ class BFCLAgent(dspy.Module):
         # and sending it to the LM
         self.prompt_predictor = dspy.Predict(signature)
     
-    
+
     def forward(self, test_id: str, question: str) -> dspy.Prediction:
         """
         Run a single BFCL test case using the current instruction prompt
         """
         # Initialize timing
         t0 = time.perf_counter()
-        timings: dict[str, float] = {}
+        timing: dict[str, float] = {}
 
-        # EXPLAIN
+        # dspy trace anchor
         try:
             t_trace = time.perf_counter()
             _ = self.prompt_predictor(prompt_input=question)
-            timings["dspy_trace_anchor_s"] = time.perf_counter() - t_trace
+            timing["dspy_trace_anchor_s"] = time.perf_counter() - t_trace
         except Exception:
-            timings["dspy_trace_anchor_s"] = 0.0
+            timing["dspy_trace_anchor_s"] = 0.0
         
         # Write current instruction
         instruction_text = self.get_instruction_text()
@@ -100,7 +93,7 @@ class BFCLAgent(dspy.Module):
         
         t_write = time.perf_counter()
         self._instruction_path.write_text(instruction_text, encoding="utf-8")
-        timings["write_instruction_s"] = time.perf_counter() - t_write
+        timing["write_instruction_s"] = time.perf_counter() - t_write
 
         # Create a unique directory for each individual run
         run_uid = uuid.uuid4().hex[:12]
@@ -130,14 +123,61 @@ class BFCLAgent(dspy.Module):
             capture_output=True,
             text=True
         )
-        timings["pytest_run_s"] = time.perf_counter() - t_pytest
+        timing["pytest_run_s"] = time.perf_counter() - t_pytest
+        
+        # Parse outputs and evaluate
         complete_path = run_dir / "raw" / f"{test_id}_complete.json"
 
         tool_calls_by_turn: List[List[dict[str, Any]]] = []
         executable_responses: List[List[str]] = []
         evaluation: dict[str, Any] | None = None
         eval_error: str | None = None
-    
+
+        t_eval = time.perf_counter()
+        if complete_path.exists():
+            try:
+                complete_data = json.loads(complete_path.read_text())
+                tool_calls_by_turn = MessageSerializer.extract_tool_calls_by_turn(complete_data)
+                
+                t_fmt = time.perf_counter()
+                executable_responses = MessageSerializer.format_to_executable(tool_calls_by_turn)
+                timing["format_to_executable_s"] = time.perf_counter() - t_fmt
+                
+                t_chk = time.perf_counter()
+                evaluation = bfcl_evaluator._run_evaluation(
+                    test_id,
+                    tool_calls_by_turn,
+                    executable_responses,
+                )
+                timing["bfcl_checker_s"] = time.perf_counter() - t_chk
+            except Exception as e:
+                eval_error = f"{type(e).__name__}: {e}"
+        
+        else:
+            eval_error = "Complete JSON not found (agent may have crashed)"
+            
+        timing["parse_and_eval_s"] = time.perf_counter() - t_eval
+        
+        tools_used = [call.get("function") for turn in tool_calls_by_turn for call in turn if call.get("function")]
+        behavior_summary = self._summarize_behavior_from_calls(tool_calls_by_turn)
+
+        timing["total_forward_s"] = time.perf_counter() - t0
+
+        # Final prediction for the current case
+        return dspy.Prediction(
+            test_id=test_id,
+            instruction_hash=instruction_hash,
+            instruction_text=instruction_text,
+            tools_used=tools_used,
+            behavior=behavior_summary,
+            executable_responses=executable_responses,
+            evaluation=evaluation,
+            eval_error=eval_error,
+            pytest_stdout=result.stdout,
+            pytest_stderr=result.stderr,
+            run_dir=str(run_dir),
+            timing=timing
+        )
     
     def get_instruction_text(self) -> str:
         """
