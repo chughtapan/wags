@@ -36,12 +36,24 @@ def output_dir(request: pytest.FixtureRequest) -> Path:
     return path
 
 
+@pytest.fixture
+def toolset(request: pytest.FixtureRequest) -> str:
+    """Toolset from CLI: 'full' (all tools) or 'minimal' (essential tools only)."""
+    return cast(str, request.config.getoption("--toolset"))
+
+
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Add custom CLI options."""
     parser.addoption("--model", default="gpt-4o-mini", help="Model to use")
     parser.addoption("--temperature", default=0.001, type=float, help="Temperature for LLM (default: 0.001)")
     parser.addoption("--output-dir", default="outputs", help="Output directory for results")
     parser.addoption("--validate-only", action="store_true", help="Only validate existing logs")
+    parser.addoption(
+        "--toolset",
+        default="full",
+        choices=["full", "minimal"],
+        help="Tool availability: 'full' (all tools) or 'minimal' (19 essential tools)",
+    )
 
 
 def pytest_configure(config: pytest.Config) -> None:
