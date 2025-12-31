@@ -114,9 +114,7 @@ def _get_task_description(task: dict[str, Any]) -> str:
     return str(task_description)
 
 
-async def _run_mcp_universe_test(
-    test_id: str, model: str, temperature: float, output_dir: Path, toolset: str
-) -> Path:
+async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, output_dir: Path, toolset: str) -> Path:
     """Run MCP-Universe test and return path to results."""
     raw_dir = output_dir / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
