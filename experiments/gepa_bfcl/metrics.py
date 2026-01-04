@@ -104,10 +104,10 @@ def bfcl_metric_with_feedback(
     if split:
         feedback_parts.append(f"SPLIT: {split}")
         
-    if involved_classes:
-        feedback_parts.append(f"INVOLVED_CLASSES (servers mounted): {', '.join(involved_classes)}")
-    if excluded:
-        feedback_parts.append(f"EXCLUDED_FUNCTIONS: {', '.join(excluded)}")
+    # if involved_classes:
+    #     feedback_parts.append(f"INVOLVED_CLASSES (servers mounted): {', '.join(involved_classes)}")
+    # if excluded:
+    #     feedback_parts.append(f"EXCLUDED_FUNCTIONS: {', '.join(excluded)}")
 
     if evaluation and isinstance(evaluation, dict):
         validation = evaluation.get("validation", {})
@@ -136,8 +136,8 @@ def bfcl_metric_with_feedback(
     if excluded and pred_exec:
         used_fns = {fn_name(s) for turn in pred_exec for s in turn}
         bad = sorted(set(excluded) & used_fns)
-        if bad:
-            feedback_parts.append(f"CONSTRAINT_VIOLATION: used excluded function(s): {', '.join(bad)}")
+        # if bad:
+        #     feedback_parts.append(f"CONSTRAINT_VIOLATION: used excluded function(s): {', '.join(bad)}")
 
     if hasattr(pred, "behavior"):
         feedback_parts.append("BEHAVIOR_SUMMARY:")
