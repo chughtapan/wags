@@ -35,7 +35,7 @@ def stringify_question(question: Any) -> str:
     return ""
 
 
-def load_test_cases(subset: str, limit: int,) -> List[BFCLExample]:
+def load_test_cases(subset: str, limit: int | None = None) -> List[BFCLExample]:
     """
     Load BFCL test cases from a given subset and return as BFCLExample objects
     """

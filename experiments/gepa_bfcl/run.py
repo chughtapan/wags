@@ -19,6 +19,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 import shlex
+import random
 
 import dspy
 from dspy.teleprompt import GEPA
@@ -41,9 +42,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run GEPA instruction optimization on BFCL"
     )
-    
+
     parser.add_argument("--test-subset", default="multi_turn_base")
-    parser.add_argument("--num-tests", type=int, default=10) #TODO: FIND A WAY TO MAKE THIS RUN ON ALL TEST CASES SIMPLY
+    parser.add_argument("--shuffle", action="store_true")
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--num-tests", type=int, default=None)
 
     parser.add_argument("--model", default="gpt-5")
     parser.add_argument("--reflection-model", default="gpt-5")
@@ -113,10 +116,20 @@ def main() -> None:
 
         # Load dataset
         t_load = time.perf_counter()
-        examples = load_test_cases(args.test_subset, args.num_tests)
+        all_examples = load_test_cases(args.test_subset, limit=None)
         
+        rng = random.Random(args.seed)
+        examples = list(all_examples)
+        if args.shuffle:
+            rng.shuffle(examples)
+            
+        if args.num_tests is not None:
+            examples = examples[: args.num_tests]
+
+                
         train_size = int(0.7 * len(examples))
-        trainset, devset = examples[:train_size], examples[train_size+1:]
+        trainset = examples[:train_size]
+        devset = examples[train_size:]
         timings["load_dataset_s"] = time.perf_counter() - t_load
         
         # Split dataset
@@ -128,7 +141,10 @@ def main() -> None:
                 {
                     "run_id": run_id,
                     "test_subset": args.test_subset,
+                    "shuffle": args.shuffle,
+                    "seed": args.seed,
                     "num_tests": args.num_tests,
+                    "examples_used_ordered": [e.test_id for e in examples],
                     "train_ids": sorted(train_ids),
                     "dev_ids": sorted(dev_ids),
                 },
@@ -136,6 +152,7 @@ def main() -> None:
             ),
             encoding="utf-8",
         )
+
         
         # Initialize global run context
         global RUN_CTX
