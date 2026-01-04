@@ -23,19 +23,15 @@ class MetricFeedback(dspy.Prediction):
 
 
 def build_score_definition() -> dict[str, Any]:
-    """
-    Returns a description of how scores are computed
-    """
     return {
         "hard_valid": "BFCL evaluator validation.valid (boolean) from multi_turn_checker",
-        "soft": "turn-wise function-name overlap F1-like score (ignores args), averaged across turns",
-        "final": "0.9*hard_valid + 0.1*soft",
+        "final": "1.0 if hard_valid else 0.0",
         "note": (
-            "Optimization and candidate scores use `final`."
-            "Hard validity is the primary objective; "
-            "soft score provides shaping for optimization."
+            "Optimization and candidate scores use only hard validity. "
+            "No soft or shaping score is applied."
         )
-    }    
+    }
+  
     
 def bfcl_metric_with_feedback(
     gold: dspy.Example,
@@ -77,14 +73,9 @@ def bfcl_metric_with_feedback(
     if evaluation and isinstance(evaluation, dict):
         hard_valid = bool(evaluation.get("validation", {}).get("valid", False))
         
-    # Compute soft score
-    if gt:
-        soft = soft_sequence_score(gt, pred_exec)
-    else:
-        soft = 1.0 if hard_valid else 0.0
-        
     # Final score
-    final_score = 0.9*(1.0 if hard_valid else 0.0) + 0.1*soft
+    final_score = 1.0 if hard_valid else 0.0
+
     
     # Train/dev split
     split = None
@@ -98,8 +89,7 @@ def bfcl_metric_with_feedback(
             
     feedback_parts.append(f"RESULT: {'PASS' if hard_valid else 'FAIL'}")
     feedback_parts.append(
-        f"SCORE_BREAKDOWN: hard={'1.0' if hard_valid else '0.0'} "
-        f"soft={soft:.3f} final={final_score:.3f}"
+        f"SCORE: {'1.0' if hard_valid else '0.0'} (hard_valid)"
     )
     if split:
         feedback_parts.append(f"SPLIT: {split}")
@@ -156,7 +146,6 @@ def bfcl_metric_with_feedback(
             "split": split,
             "instruction_hash": getattr(pred, "instruction_hash", None),
             "hard_valid": hard_valid,
-            "soft": soft,
             "final": final_score,
             "timing": getattr(pred, "timing", None),
             "run_dir": run_dir,
@@ -184,7 +173,6 @@ def bfcl_metric_with_feedback(
                 "test_id": test_id,
                 "split": split,
                 "hard_valid": hard_valid,
-                "soft": soft,
                 "final": final_score,
             },
         }
