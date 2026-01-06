@@ -1,0 +1,12 @@
+for step in optimization:
+    select candidate(s)
+    run agent on train examples
+    compute metric → (score, feedback)
+    build reflection prompt containing:
+        - current instruction
+        - feedback summaries
+        - scores
+        - possibly history
+    ask reflection LM:
+        "Propose an improved instruction"
+    parse LM output into a new instruction candidate

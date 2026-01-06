@@ -4,6 +4,10 @@ agent.py
 DSPy module wrapper for running BFCL tests with pytest
 """
 
+# IMPORTANT:
+# All DSPy modules in BFCLAgent must explicitly use execution_lm.
+# Never rely on dspy.settings.lm here.
+
 from __future__ import annotations
 import json
 import subprocess
@@ -46,12 +50,14 @@ class BFCLAgent(dspy.Module):
         self, 
         instruction_text: str,
         model: str,
+        execution_lm: dspy.LM,
         base_dir: Path,
         pytest_binary: str,
         enable_scoring_mode: bool
     ):
         super().__init__()
         self.model = model
+        self.execution_lm = execution_lm
         self.base_dir = base_dir
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.pytest_binary = pytest_binary
@@ -68,7 +74,10 @@ class BFCLAgent(dspy.Module):
         
         # dspy.Predict handles logic of constructing prompt 
         # and sending it to the LM
-        self.prompt_predictor = dspy.Predict(signature)
+        self.prompt_predictor = dspy.Predict(
+            signature,
+            lm=self.execution_lm,
+        )
     
 
     def forward(self, test_id: str, question: str) -> dspy.Prediction:

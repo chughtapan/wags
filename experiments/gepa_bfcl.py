@@ -530,7 +530,7 @@ def main():
     parser.add_argument("--test-subset", default="multi_turn_base")
     parser.add_argument("--num-tests", type=int, default=10)
     parser.add_argument("--model", default="gpt-5")
-    parser.add_argument("--reflection-model", default="gpt-5")
+    parser.add_argument("--reflection-model", default="gpt-5-mini")
     parser.add_argument("--max-evaluations", type=int, default=20)
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/gepa_on_bfcl"))
     parser.add_argument("--auto", choices=["light", "medium", "heavy"], default=None)
@@ -611,6 +611,10 @@ def main():
             "instruction_file": str(args.instruction_file),
             "instruction_hash": instruction_hash,
             "score_definition": score_def,
+            "models": {
+                "agent_model": args.model,
+                "reflection_model": args.reflection_model,
+            },
             "dataset_split": {
                 "train_ids": sorted(train_ids),
                 "dev_ids": sorted(dev_ids),
@@ -627,6 +631,7 @@ def main():
         agent = BFCLAgent(
             instruction_text=instruction_text,
             model=args.model,
+            execution_lm=execution_lm,
             base_dir=args.output_dir,
             pytest_binary=args.pytest_binary,
             enable_scoring_mode=args.gepa_scoring_mode,
@@ -678,6 +683,8 @@ def main():
         # GEPA
         t_gepa = time.perf_counter()
         reflection_lm = dspy.LM(args.reflection_model)
+        execution_lm = dspy.LM(args.model)
+        
         dspy.configure(lm=reflection_lm)
 
         gepa_kwargs: dict[str, Any] = dict(
@@ -691,6 +698,8 @@ def main():
             gepa_kwargs["auto"] = args.auto
         else:
             gepa_kwargs["max_full_evals"] = args.max_evaluations
+            
+        gepa_kwargs["reflection_lm"] = args.reflection_model
 
         # Persist GEPA config/hparams exactly
         (args.output_dir / "gepa_config.json").write_text(json.dumps(safe_json(gepa_kwargs), indent=2), encoding="utf-8")
