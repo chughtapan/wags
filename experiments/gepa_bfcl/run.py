@@ -27,6 +27,7 @@ from dspy.teleprompt import GEPA
 from .agent import BFCLAgent
 from .data_utils import load_test_cases
 from .metrics import bfcl_metric_with_feedback, build_score_definition
+from .env_utils import validate_model_environment
 from .logging_utils import (
     RUN_CTX,
     RunContext,
@@ -49,7 +50,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--num-tests", type=int, default=None)
 
     parser.add_argument("--model", default="gpt-5")
-    parser.add_argument("--reflection-model", default="gpt-5")
+    parser.add_argument("--reflection-model", default="gpt-5-mini")
 
     parser.add_argument("--max-evaluations", type=int, default=20)
     parser.add_argument("--auto", choices=["light", "medium", "heavy"], default=None)
@@ -75,6 +76,9 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    
+    validate_model_environment([args.model, args.reflection_model])
+    
     args.output_dir.mkdir(parents=True, exist_ok=True)
     
     # Console mirroring
@@ -108,6 +112,7 @@ def main() -> None:
     
     metric_calls_path = args.output_dir / "metric_calls.jsonl"
     candidate_snapshots_path = args.output_dir / "candidate_snapshots.jsonl"
+    reflection_calls_path = args.output_dir / "reflection_calls.jsonl"
     score_definition = build_score_definition()
 
     try:
@@ -179,6 +184,10 @@ def main() -> None:
             "instruction_file": str(args.instruction_file),
             "instruction_hash": instruction_hash,
             "score_definition": score_definition,
+            "models": {
+                "agent_model": args.model,
+                "reflection_model": args.reflection_model
+            },
             "dataset_split": {
                 "train_ids": sorted(train_ids),
                 "dev_ids": sorted(dev_ids),
@@ -195,10 +204,19 @@ def main() -> None:
             encoding="utf-8",
         )
         
+        # Create LMs
+        reflection_lm = dspy.LM(args.reflection_model)
+        execution_lm = dspy.LM(args.model)
+
+        # Always configure a global LM (reflection-only by policy)
+        dspy.configure(lm=reflection_lm)
+
+        
         # Create agent
         agent = BFCLAgent(
             instruction_text=instruction_text,
             model=args.model,
+            execution_lm=execution_lm,
             base_dir=args.output_dir,
             pytest_binary=args.pytest_binary,
             enable_scoring_mode=args.gepa_scoring_mode,
@@ -255,9 +273,6 @@ def main() -> None:
         
         # Finalize GEPA parameters
         t_gepa = time.perf_counter()
-
-        reflection_lm = dspy.LM(args.reflection_model)
-        dspy.configure(lm=reflection_lm)
         gepa_kwargs: dict[str, Any] = {
             "metric": bfcl_metric_with_feedback,
             "reflection_lm": reflection_lm,
@@ -278,11 +293,42 @@ def main() -> None:
         
         # Create and run GEPA optimizer
         gepa = GEPA(**gepa_kwargs)
+        
+        reflection_lm.history.clear()
         optimized_agent = gepa.compile(
             agent,
             trainset=trainset,
             valset=devset,
         )
+
+        for i, entry in enumerate(reflection_lm.history):
+            record = {
+                "ts": entry.get("timestamp"),
+                "run_id": run_id,
+                "call_index": i,
+                "model": entry.get("model") or args.reflection_model,
+                "model_type": entry.get("model_type"),
+
+                # Prompting
+                "prompt": entry.get("prompt"),
+                "messages": entry.get("messages"),
+
+                # Outputs
+                "raw_response": entry.get("response"),
+                "outputs": entry.get("outputs"),
+
+                # Generation config
+                "kwargs": entry.get("kwargs"),
+
+                # Usage & cost
+                "usage": entry.get("usage"),
+                "cost": entry.get("cost"),
+
+                # Traceability
+                "uuid": entry.get("uuid"),
+            }
+
+            append_jsonl(reflection_calls_path, safe_json(record))
 
         results = optimized_agent.detailed_results
         timings["gepa_compile_s"] = time.perf_counter() - t_gepa
@@ -330,7 +376,7 @@ def main() -> None:
                 "total_count": len(examples),
             },
             "gepa": {
-                "objective": "final (0.9*hard_valid + 0.1*soft) aggregated over dev set by GEPA internals",
+                "objective": "binary hard_valid (1.0 pass / 0.0 fail) aggregated over dev set by GEPA",
                 "val_aggregate_scores": safe_json(results.val_aggregate_scores),
                 "candidate_count": len(results.candidates),
             },

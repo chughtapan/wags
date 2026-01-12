@@ -4,10 +4,6 @@ agent.py
 DSPy module wrapper for running BFCL tests with pytest
 """
 
-# IMPORTANT:
-# All DSPy modules in BFCLAgent must explicitly use execution_lm.
-# Never rely on dspy.settings.lm here.
-
 from __future__ import annotations
 import json
 import subprocess
@@ -74,10 +70,7 @@ class BFCLAgent(dspy.Module):
         
         # dspy.Predict handles logic of constructing prompt 
         # and sending it to the LM
-        self.prompt_predictor = dspy.Predict(
-            signature,
-            lm=self.execution_lm,
-        )
+        self.prompt_predictor = dspy.Predict(signature)
     
 
     def forward(self, test_id: str, question: str) -> dspy.Prediction:
@@ -91,10 +84,12 @@ class BFCLAgent(dspy.Module):
         # dspy trace anchor
         try:
             t_trace = time.perf_counter()
-            _ = self.prompt_predictor(prompt_input=question)
+            with dspy.context(lm=self.execution_lm):
+                _ = self.prompt_predictor(prompt_input=question)
             timing["dspy_trace_anchor_s"] = time.perf_counter() - t_trace
-        except Exception:
+        except Exception as e:
             timing["dspy_trace_anchor_s"] = 0.0
+            print(f"[TRACE_ANCHOR_ERROR] {type(e).__name__}: {e}")
         
         # Write current instruction
         instruction_text = self.get_instruction_text()
