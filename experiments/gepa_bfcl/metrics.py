@@ -8,7 +8,8 @@ from __future__ import annotations
 from typing import Any, Optional, List
 import dspy
 from tests.benchmarks.bfcl import loader as bfcl_loader
-from .logging_utils import RUN_CTX, append_jsonl, safe_json, utc_now_iso
+from . import logging_utils
+from .logging_utils import append_jsonl, safe_json, utc_now_iso
 from .scoring_utils import fn_name, soft_sequence_score, diff_summary
 
 
@@ -47,6 +48,14 @@ def bfcl_metric_with_feedback(
     # Extract test id and initialize feedback
     test_id = getattr(pred, "test_id", None) or getattr(gold, "test_id", None)
     feedback_parts: List[str] = []
+    ctx = logging_utils.RUN_CTX
+    
+    if ctx is None:
+        raise RuntimeError(
+            "RUN_CTX is None inside bfcl_metric_with_feedback. "
+            "This means run.py did not initialize logging_utils.RUN_CTX correctly."
+        )
+
     
     # Load BFCL truth + constraints for feedback
     gt: list[list[str]] = []
@@ -79,10 +88,10 @@ def bfcl_metric_with_feedback(
     
     # Train/dev split
     split = None
-    if RUN_CTX and test_id:
-        if test_id in RUN_CTX.train_ids:
+    if ctx and test_id:
+        if ctx.train_ids and test_id in ctx.train_ids:
             split = "train"
-        elif test_id in RUN_CTX.dev_ids:
+        elif ctx.dev_ids and test_id in ctx.dev_ids:
             split = "dev"
         else:
             split = "unknown"
@@ -138,10 +147,10 @@ def bfcl_metric_with_feedback(
         feedback_parts.append(f"RUN_DIR: {run_dir}")
 
     # Log the record
-    if RUN_CTX and test_id:
+    if ctx and test_id:
         record = {
             "ts": utc_now_iso(),
-            "run_id": RUN_CTX.run_id,
+            "run_id": ctx.run_id,
             "test_id": test_id,
             "split": split,
             "instruction_hash": getattr(pred, "instruction_hash", None),
@@ -161,12 +170,12 @@ def bfcl_metric_with_feedback(
                 else None
             ),
         }
-        append_jsonl(RUN_CTX.metric_calls_path, record)
+        append_jsonl(ctx.metric_calls_path, record)
         
         # Candidate snapshot
         snap = {
             "ts": utc_now_iso(),
-            "run_id": RUN_CTX.run_id,
+            "run_id": ctx.run_id,
             "instruction_hash": getattr(pred, "instruction_hash", None),
             "instruction_text": getattr(pred, "instruction_text", None),
             "latest_eval": {
@@ -176,6 +185,6 @@ def bfcl_metric_with_feedback(
                 "final": final_score,
             },
         }
-        append_jsonl(RUN_CTX.candidate_snapshots_path, snap)
+        append_jsonl(ctx.candidate_snapshots_path, snap)
         
     return MetricFeedback(score=final_score, feedback="\n".join(feedback_parts))

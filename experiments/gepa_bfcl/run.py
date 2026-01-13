@@ -29,8 +29,6 @@ from .data_utils import load_test_cases, extract_test_number, parse_test_number_
 from .metrics import bfcl_metric_with_feedback, build_score_definition
 from .env_utils import validate_model_environment
 from .logging_utils import (
-    RUN_CTX,
-    RunContext,
     TeeIO,
     append_jsonl,
     safe_json,
@@ -38,6 +36,7 @@ from .logging_utils import (
     try_git_info,
     utc_now_iso,
 )
+from . import logging_utils
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -203,9 +202,7 @@ def main() -> None:
             encoding="utf-8",
         )
                 
-        # Initialize global run context
-        global RUN_CTX
-        RUN_CTX = RunContext(
+        logging_utils.RUN_CTX = logging_utils.RunContext(
             run_id=run_id,
             output_dir=args.output_dir,
             metric_calls_path=metric_calls_path,
@@ -213,7 +210,7 @@ def main() -> None:
             run_index_path=run_index_path,
             train_ids=train_ids,
             dev_ids=dev_ids,
-            score_definition=score_definition
+            score_definition=score_definition,
         )
         
         # Load initial instructions
