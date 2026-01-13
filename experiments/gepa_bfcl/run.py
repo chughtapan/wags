@@ -25,7 +25,7 @@ import dspy
 from dspy.teleprompt import GEPA
 
 from .agent import BFCLAgent
-from .data_utils import load_test_cases
+from .data_utils import load_test_cases, extract_test_number, parse_test_number_spec
 from .metrics import bfcl_metric_with_feedback, build_score_definition
 from .env_utils import validate_model_environment
 from .logging_utils import (
@@ -48,9 +48,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--shuffle", action="store_true")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--num-tests", type=int, default=None)
-
-    parser.add_argument("--model", default="gpt-5")
-    parser.add_argument("--reflection-model", default="gpt-5-mini")
+    parser.add_argument("--test-numbers", type=str, default=None)
+    
+    parser.add_argument("--model", default="gpt-5-mini")
+    parser.add_argument("--reflection-model", default="gpt-5")
 
     parser.add_argument("--max-evaluations", type=int, default=20)
     parser.add_argument("--auto", choices=["light", "medium", "heavy"], default=None)
@@ -118,18 +119,52 @@ def main() -> None:
     try:
         print(f"[{utc_now_iso()}] RUN_ID={run_id}")
         print(f"[{utc_now_iso()}] output_dir={args.output_dir}")
+        
+        selected_test_numbers: set[int] | None = None
+        if args.test_numbers:
+            selected_test_numbers = parse_test_number_spec(args.test_numbers)
 
         # Load dataset
         t_load = time.perf_counter()
         all_examples = load_test_cases(args.test_subset, limit=None)
-        
-        rng = random.Random(args.seed)
+
         examples = list(all_examples)
+
+        # Explicit numeric test selection
+        if selected_test_numbers is not None:
+            before = len(examples)
+
+            matched = []
+            matched_numbers = set()
+
+            for e in examples:
+                num = extract_test_number(e.test_id)
+                if num in selected_test_numbers:
+                    matched.append(e)
+                    matched_numbers.add(num)
+
+            examples = matched
+            after = len(examples)
+
+            print(
+                f"[{utc_now_iso()}] Selected tests by number: "
+                f"{sorted(matched_numbers)} ({after}/{len(selected_test_numbers)} found"
+            )
+
+        # ---- Shuffle & slice ----
+        rng = random.Random(args.seed)
+
         if args.shuffle:
             rng.shuffle(examples)
-            
+
         if args.num_tests is not None:
-            examples = examples[: args.num_tests]
+            if selected_test_numbers is not None:
+                print(
+                    f"[{utc_now_iso()}] --test-numbers provided; ignoring --num-tests"
+                )
+            else:
+                examples = examples[: args.num_tests]
+
 
                 
         train_size = int(0.7 * len(examples))
@@ -152,12 +187,19 @@ def main() -> None:
                     "examples_used_ordered": [e.test_id for e in examples],
                     "train_ids": sorted(train_ids),
                     "dev_ids": sorted(dev_ids),
+                    "test_number_selection": (
+                        sorted(selected_test_numbers) if selected_test_numbers is not None else None
+                    ),
+                    "selection_mode": (
+                        "explicit_numbers" if selected_test_numbers is not None
+                        else "first_n" if args.num_tests is not None
+                        else "all"
+                    ),
                 },
                 indent=2,
             ),
             encoding="utf-8",
         )
-
         
         # Initialize global run context
         global RUN_CTX
@@ -184,6 +226,19 @@ def main() -> None:
             "instruction_file": str(args.instruction_file),
             "instruction_hash": instruction_hash,
             "score_definition": score_definition,
+            "test_selection": {
+                "mode": (
+                    "explicit_numbers" if selected_test_numbers is not None
+                    else "first_n" if args.num_tests is not None
+                    else "all"
+                ),
+                "test_numbers": (
+                    sorted(selected_test_numbers) if selected_test_numbers is not None else None
+                ),
+                "num_tests": args.num_tests,
+                "shuffle": args.shuffle,
+                "seed": args.seed,
+            },
             "models": {
                 "agent_model": args.model,
                 "reflection_model": args.reflection_model

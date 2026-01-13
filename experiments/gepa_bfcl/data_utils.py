@@ -48,3 +48,34 @@ def load_test_cases(subset: str, limit: int | None = None) -> List[BFCLExample]:
         examples.append(ex.with_inputs("test_id", "question"))
 
     return examples
+
+
+def extract_test_number(test_id: str) -> int | None:
+    try:
+        return int(test_id.rsplit("_", 1)[-1])
+    except ValueError:
+        return None
+    
+    
+def parse_test_number_spec(spec: str) -> set[int]:
+    numbers: set[int] = set()
+
+    for part in spec.split(","):
+        part = part.strip()
+        if not part:
+            continue
+
+        if "-" in part:
+            start_s, end_s = part.split("-", 1)
+            start, end = int(start_s), int(end_s)
+
+            if start > end:
+                raise ValueError(
+                    f"Invalid test number range: {start}-{end}"
+                )
+
+            numbers.update(range(start, end + 1))
+        else:
+            numbers.add(int(part))
+
+    return numbers

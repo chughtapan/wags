@@ -49,5 +49,6 @@ def validate_model_environment(models: List[str]) -> None:
         )
         sys.exit(2)
 
+
 def is_invalid_key(value: str) -> bool:
     return value.strip() == "" or value.lower().startswith("your_")
