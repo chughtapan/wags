@@ -98,6 +98,7 @@ class RunContext:
     output_dir: Path
     metric_calls_path: Path
     candidate_snapshots_path: Path
+    run_index_path: Path
     train_ids: set[str]
     dev_ids: set[str]
     score_definition: dict[str, Any]
@@ -132,3 +133,13 @@ def try_git_info() -> dict[str, Any]:
         info["git_dirty"] = None
     
     return info
+
+def log_run_index(record: dict[str, Any]) -> None:
+    """
+    Append a single BFCL execution record to run_index.jsonl
+    """
+    global RUN_CTX
+    if RUN_CTX is None:
+        return
+
+    append_jsonl(RUN_CTX.run_index_path, safe_json(record))

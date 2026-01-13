@@ -14,7 +14,8 @@ from typing import Any, List
 import dspy
 from tests.benchmarks.bfcl import evaluator as bfcl_evaluator
 from tests.utils.fastagent_helpers import MessageSerializer
-from .logging_utils import sha256_text
+from .logging_utils import sha256_text, RUN_CTX, append_jsonl, utc_now_iso, safe_json
+
 
 
 class BFCLExample(dspy.Example):
@@ -77,6 +78,22 @@ class BFCLAgent(dspy.Module):
         """
         Run a single BFCL test case using the current instruction prompt
         """
+        phase = "unknown"
+        if RUN_CTX is not None:
+            if test_id in RUN_CTX.train_ids:
+                phase = "gepa_train"
+            elif test_id in RUN_CTX.dev_ids:
+                phase = "gepa_dev"
+            else:
+                phase = "baseline"
+                
+        test_number = None
+        try:
+            test_number = int(test_id.rsplit("_", 1)[-1])
+        except Exception:
+            pass
+
+
         # Initialize timing
         t0 = time.perf_counter()
         timing: dict[str, float] = {}
@@ -166,6 +183,35 @@ class BFCLAgent(dspy.Module):
         behavior_summary = self._summarize_behavior_from_calls(tool_calls_by_turn)
 
         timing["total_forward_s"] = time.perf_counter() - t0
+        
+        if RUN_CTX is not None:
+            record = {
+                "ts": utc_now_iso(),
+                "run_id": RUN_CTX.run_id,
+
+                "phase": phase,
+                "test_id": test_id,
+                "test_number": test_number,
+
+                "instruction": {
+                    "hash": instruction_hash,
+                },
+
+                "evaluation": {
+                    "valid": bool(
+                        evaluation.get("validation", {}).get("valid", False)
+                    ) if evaluation else False,
+                    "eval_error": eval_error,
+                },
+
+                "run_dir": str(run_dir),
+            }
+
+            append_jsonl(
+                RUN_CTX.run_index_path,
+                safe_json(record)
+            )
+
 
         # Final prediction for the current case
         return dspy.Prediction(

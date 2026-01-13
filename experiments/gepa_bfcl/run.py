@@ -114,6 +114,8 @@ def main() -> None:
     metric_calls_path = args.output_dir / "metric_calls.jsonl"
     candidate_snapshots_path = args.output_dir / "candidate_snapshots.jsonl"
     reflection_calls_path = args.output_dir / "reflection_calls.jsonl"
+    run_index_path = args.output_dir / "run_index.jsonl"
+    
     score_definition = build_score_definition()
 
     try:
@@ -151,7 +153,7 @@ def main() -> None:
                 f"{sorted(matched_numbers)} ({after}/{len(selected_test_numbers)} found"
             )
 
-        # ---- Shuffle & slice ----
+        # Shuffle & slice
         rng = random.Random(args.seed)
 
         if args.shuffle:
@@ -200,7 +202,7 @@ def main() -> None:
             ),
             encoding="utf-8",
         )
-        
+                
         # Initialize global run context
         global RUN_CTX
         RUN_CTX = RunContext(
@@ -208,6 +210,7 @@ def main() -> None:
             output_dir=args.output_dir,
             metric_calls_path=metric_calls_path,
             candidate_snapshots_path=candidate_snapshots_path,
+            run_index_path=run_index_path,
             train_ids=train_ids,
             dev_ids=dev_ids,
             score_definition=score_definition
