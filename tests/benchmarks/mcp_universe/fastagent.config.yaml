@@ -21,3 +21,4 @@ logger:
   show_tools: true
   truncate_tools: false
   progress_display: true
+  enable_markup: false

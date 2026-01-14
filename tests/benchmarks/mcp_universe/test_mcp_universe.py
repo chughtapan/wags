@@ -25,6 +25,30 @@ _DATA_DIR = resources.files("mcpuniverse").joinpath("benchmark/configs/test/repo
 MAX_ITERATIONS = 500
 MAX_TOKENS = 16000
 
+# Minimal toolset: union of all distinct tools used by successful runs
+# Source: why-agents-fail-dataset/mcp_universe/checkpoint-2025-11-06/mcp_universe_tool_stats.csv
+MINIMAL_TOOLSET = [
+    "add_issue_comment",
+    "create_branch",
+    "create_issue",
+    "create_or_update_file",
+    "create_pull_request",
+    "create_repository",
+    "fork_repository",
+    "get_file_contents",
+    "get_issue",
+    "get_issue_comments",
+    "get_me",
+    "get_pull_request",
+    "list_branches",
+    "list_issues",
+    "push_files",
+    "run_workflow",
+    "search_code",
+    "search_issues",
+    "search_repositories",
+]
+
 
 def _parse_question(question: Any) -> str:
     """Parse question from various formats into a string."""
@@ -90,7 +114,7 @@ def _get_task_description(task: dict[str, Any]) -> str:
     return str(task_description)
 
 
-async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, output_dir: Path) -> Path:
+async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, output_dir: Path, toolset: str) -> Path:
     """Run MCP-Universe test and return path to results."""
     raw_dir = output_dir / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
@@ -106,10 +130,14 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
     config_path = str(test_dir / "fastagent.config.yaml")
     agent = FastAgent("MCP-Universe Test", config_path=config_path, ignore_unknown_args=True)
 
+    # Apply tool filtering based on toolset parameter
+    tools_config = {"github": MINIMAL_TOOLSET} if toolset == "minimal" else None
+
     @agent.agent(
         name="test_agent",
         model=model,
         servers=["github"],
+        tools=tools_config,
         instruction=test_dir / "instruction.txt",
         request_params=RequestParams(maxTokens=MAX_TOKENS, max_iterations=MAX_ITERATIONS),
     )
@@ -236,15 +264,15 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
 
 
 @pytest.mark.asyncio
-async def test_mcp_universe(
-    test_id: str, model: str, temperature: float, output_dir: Path, request: pytest.FixtureRequest
+async def test_mcp_universe(  # noqa: PLR0913
+    test_id: str, model: str, temperature: float, output_dir: Path, toolset: str, request: pytest.FixtureRequest
 ) -> None:
     """Run or validate a MCP-Universe repository management test."""
     validate_only = request.config.getoption("--validate-only")
 
     # Run test if not in validate-only mode
     if not validate_only:
-        await _run_mcp_universe_test(test_id, model, temperature, output_dir)
+        await _run_mcp_universe_test(test_id, model, temperature, output_dir, toolset)
 
     # Validate and get results
     log_dir = output_dir / "raw"

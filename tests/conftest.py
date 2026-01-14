@@ -68,6 +68,9 @@ def gepa_log_dir(request: pytest.FixtureRequest) -> Path | None:
 def gepa_scoring_mode(request: pytest.FixtureRequest) -> bool:
     """Flag controlling GEPA scoring-only mode."""
     return bool(request.config.getoption("--gepa-scoring-mode"))
+def toolset(request: pytest.FixtureRequest) -> str:
+    """Toolset from CLI: 'full' (all tools) or 'minimal' (essential tools only)."""
+    return cast(str, request.config.getoption("--toolset"))
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -82,6 +85,12 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--gepa-dir", default=None, help="Directory for GEPA experiment data")
     parser.addoption("--gepa-log-dir", default=None, help="Directory for GEPA logs")
     parser.addoption("--gepa-scoring-mode", action="store_true", help="Enable GEPA scoring-only mode")
+    parser.addoption(
+        "--toolset",
+        default="full",
+        choices=["full", "minimal"],
+        help="Tool availability: 'full' (all tools) or 'minimal' (19 essential tools)",
+    )
 
 
 def pytest_configure(config: pytest.Config) -> None:
