@@ -112,9 +112,11 @@ class MessageSerializer:
             tool_name: Tool name potentially with server prefix
 
         Returns:
-            Tool name without prefix (e.g., 'github-list_issues' -> 'list_issues')
+            Tool name without prefix (e.g., 'vehiclecontrolapi__list_issues' -> 'list_issues')
         """
-        if "-" in tool_name:
+        if "__" in tool_name:
+            return tool_name.split("__", 1)[1]
+        elif "-" in tool_name:
             return tool_name.split("-", 1)[1]
         return tool_name
 
