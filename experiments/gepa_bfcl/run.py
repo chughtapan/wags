@@ -55,18 +55,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-evaluations", type=int, default=20)
     parser.add_argument("--auto", choices=["light", "medium", "heavy"], default=None)
 
-    parser.add_argument(
-        "--instruction-file",
-        type=Path,
-        required=True,
-        help="Path to initial instruction prompt.",
-    )
-
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=Path("outputs/gepa_on_bfcl"),
-    )
+    parser.add_argument("--instruction-file", type=Path, required=True)
+    parser.add_argument("--output-dir", type=Path, default=Path("outputs/gepa_on_bfcl"))
 
     parser.add_argument("--pytest-binary", default="pytest")
     parser.add_argument("--gepa-scoring-mode", action="store_true")
@@ -149,7 +139,7 @@ def main() -> None:
 
             print(
                 f"[{utc_now_iso()}] Selected tests by number: "
-                f"{sorted(matched_numbers)} ({after}/{len(selected_test_numbers)} found"
+                f"{sorted(matched_numbers)} ({after}/{len(selected_test_numbers)} found)"
             )
 
         # Shuffle & slice

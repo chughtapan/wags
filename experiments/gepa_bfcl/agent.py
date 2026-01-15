@@ -106,7 +106,7 @@ class BFCLAgent(dspy.Module):
             timing["dspy_trace_anchor_s"] = time.perf_counter() - t_trace
         except Exception as e:
             timing["dspy_trace_anchor_s"] = 0.0
-            print(f"[TRACE_ANCHOR_ERROR] {type(e).__name__}: {e}")
+            # print(f"[TRACE_ANCHOR_ERROR] {type(e).__name__}: {e}")
         
         # Write current instruction
         instruction_text = self.get_instruction_text()
@@ -153,6 +153,7 @@ class BFCLAgent(dspy.Module):
         executable_responses: List[List[str]] = []
         evaluation: dict[str, Any] | None = None
         eval_error: str | None = None
+        failure_summary: str | None = None
 
         t_eval = time.perf_counter()
         if complete_path.exists():
@@ -160,8 +161,17 @@ class BFCLAgent(dspy.Module):
                 complete_data = json.loads(complete_path.read_text())
                 tool_calls_by_turn = MessageSerializer.extract_tool_calls_by_turn(complete_data)
                 
+                for turn in tool_calls_by_turn:
+                    for call in turn:
+                        if "function" in call and call["function"]:
+                            call["function"] = self.strip_tool_prefix(call["function"])        
+                
                 t_fmt = time.perf_counter()
                 executable_responses = MessageSerializer.format_to_executable(tool_calls_by_turn)
+                executable_responses = [
+                    [self.strip_tool_prefix(call) for call in turn]
+                    for turn in executable_responses
+                ]
                 timing["format_to_executable_s"] = time.perf_counter() - t_fmt
                 
                 t_chk = time.perf_counter()
@@ -170,6 +180,17 @@ class BFCLAgent(dspy.Module):
                     tool_calls_by_turn,
                     executable_responses,
                 )
+                
+                if evaluation is not None:
+                    eval_path = run_dir / "evaluation.json"
+                    eval_path.write_text(
+                        json.dumps(safe_json(evaluation), indent=2),
+                        encoding="utf-8",
+                    )
+                
+                    if "validation" in evaluation:
+                        failure_summary = self.summarize_validation_failure(evaluation["validation"])
+                
                 timing["bfcl_checker_s"] = time.perf_counter() - t_chk
             except Exception as e:
                 eval_error = f"{type(e).__name__}: {e}"
@@ -180,7 +201,7 @@ class BFCLAgent(dspy.Module):
         timing["parse_and_eval_s"] = time.perf_counter() - t_eval
         
         tools_used = [call.get("function") for turn in tool_calls_by_turn for call in turn if call.get("function")]
-        behavior_summary = self._summarize_behavior_from_calls(tool_calls_by_turn)
+        behavior_summary = self.summarize_behavior_from_calls(tool_calls_by_turn)
 
         timing["total_forward_s"] = time.perf_counter() - t0
         
@@ -202,9 +223,15 @@ class BFCLAgent(dspy.Module):
                         evaluation.get("validation", {}).get("valid", False)
                     ) if evaluation else False,
                     "eval_error": eval_error,
+                    "path": str(run_dir / "evaluation.json") if evaluation else None,
                 },
-
-                "run_dir": str(run_dir),
+                
+                "failure_summary": failure_summary,
+                "irrelevant": bool(
+                    evaluation.get("irrelevance_check", {}).get("irrelevant", False)
+                ) if evaluation else False,
+                
+                "run_dir": str(run_dir)
             }
 
             append_jsonl(
@@ -238,8 +265,8 @@ class BFCLAgent(dspy.Module):
             return "\n".join(str(p) for p in instructions if p)
         return str(instructions or "")
     
-    @staticmethod
-    def _summarize_behavior_from_calls(tool_calls: List[List[dict[str, Any]]]) -> str:
+    
+    def summarize_behavior_from_calls(self, tool_calls: List[List[dict[str, Any]]]) -> str:
         """
         Summarize tool-use behavior for logging and feedback
         """
@@ -254,4 +281,22 @@ class BFCLAgent(dspy.Module):
             f"TOOLS: {' -> '.join(tool_seq) or 'NONE'}\n"
             f"NUM_TOOLS: {len(tool_seq)}"
         )
+        
+    def strip_tool_prefix(self, fn: str) -> str:
+        # vehiclecontrolapi__startEngine -> startEngine
+        return fn.split("__", 1)[-1]
+    
+    
+    def summarize_validation_failure(self, validation: dict[str, Any]) -> str | None:
+        if not validation or validation.get("valid", True):
+            return None
+
+        reasons = []
+
+        for key in ["missing_calls", "extra_calls", "wrong_order", "argument_mismatches"]:
+            if key in validation and validation[key]:
+                reasons.append(f"{key}: {validation[key]}")
+
+        return "; ".join(reasons) if reasons else "validation_failed"
+
         
