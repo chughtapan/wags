@@ -6,7 +6,7 @@ meta-tools to control which groups are active.
 """
 
 import inspect
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, TypeVar
 
@@ -90,7 +90,7 @@ class GroupsMiddleware(WagsMiddlewareBase):
         self.max_tools = max_tools
         self._enabled_groups: set[str] = set()
         self._tool_to_groups: dict[str, set[str]] = {}
-        self._all_tools: list[Tool] | None = None
+        self._all_tools: Sequence[Tool] | None = None
         self._children_map: dict[str, set[str]] = {}
 
         self._build_hierarchy()
@@ -165,7 +165,7 @@ class GroupsMiddleware(WagsMiddlewareBase):
                             )
                     self._tool_to_groups[name] = groups
 
-    def _discover_groups_from_metadata(self, tools: list[Tool]) -> None:
+    def _discover_groups_from_metadata(self, tools: Sequence[Tool]) -> None:
         """Discover group memberships from tool metadata."""
         for tool in tools:
             if tool.name in self._tool_to_groups:
@@ -311,8 +311,8 @@ class GroupsMiddleware(WagsMiddlewareBase):
     async def on_list_tools(
         self,
         context: MiddlewareContext[mt.ListToolsRequest],
-        call_next: CallNext[mt.ListToolsRequest, list[Tool]],
-    ) -> list[Tool]:
+        call_next: CallNext[mt.ListToolsRequest, Sequence[Tool]],
+    ) -> Sequence[Tool]:
         """Filter tools to only enabled groups + meta-tools."""
         all_tools = await call_next(context)
         self._all_tools = all_tools
