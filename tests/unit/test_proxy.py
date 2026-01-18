@@ -52,10 +52,11 @@ class TestProxyTodoIntegration:
         assert "Task Management" in proxy.instructions
 
         # Should have todo tools available
-        tools = await proxy._tool_manager.get_tools()
-        assert "TodoWrite" in tools
+        tools = await proxy.get_tools()
+        tool_names = {t.name for t in tools}
+        assert "TodoWrite" in tool_names
         # Should also have original tool
-        assert "test_tool" in tools
+        assert "test_tool" in tool_names
 
     def test_create_proxy_with_todos_rejects_instructions(self) -> None:
         """Test that enable_todos=True raises error if server has instructions."""
@@ -75,11 +76,12 @@ class TestProxyTodoIntegration:
         server = FastMCP("test-server")
         proxy = create_proxy(server, enable_todos=True)
 
-        tools = await proxy._tool_manager.get_tools()
+        tools = await proxy.get_tools()
+        tool_names = {t.name for t in tools}
 
         # Tools should be TodoWrite, not todo_TodoWrite
-        assert "TodoWrite" in tools
-        assert "todo_TodoWrite" not in tools
+        assert "TodoWrite" in tool_names
+        assert "todo_TodoWrite" not in tool_names
 
     def test_custom_server_name(self) -> None:
         """Test creating proxy with custom name."""
