@@ -139,7 +139,7 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
         servers=["github"],
         tools=tools_config,
         instruction=test_dir / "instruction.txt",
-        request_params=RequestParams(maxTokens=MAX_TOKENS, max_iterations=MAX_ITERATIONS),
+        request_params=RequestParams(max_tokens=MAX_TOKENS, max_iterations=MAX_ITERATIONS),
     )
     async def run_test() -> Path:
         async with agent.run() as agent_app:
