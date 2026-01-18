@@ -176,8 +176,7 @@ class GroundTruthElicitationHandler:
             func_name = self.extract_function_name(message)
             self.structured_logger.log_elicitation(func_name, "accepted", ground_truth_params)
             return ElicitResult(
-                action="accept",
-                content=cast(dict[str, str | int | float | bool | list[str] | None], ground_truth_params),
+                action="accept", content=cast(dict[str, str | int | float | bool | None], ground_truth_params)
             )
 
         # No matching function found or no text params
