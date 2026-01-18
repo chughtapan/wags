@@ -47,6 +47,7 @@ override-dependencies = [
     "google-genai>=1.33.0",  # Override mcpuniverse's google-genai==1.16.1 constraint
     "mistralai>=1.7.0",  # Override mcpuniverse's mistralai==1.6.0 constraint
     "python-dotenv>=1.1.0",  # Override mcpuniverse's python-dotenv==1.0.1 constraint
+    "uvicorn>=0.35.0",  # Override mcpuniverse's uvicorn==0.34.0 constraint
     "mcp @ git+https://github.com/chughtapan/python-sdk.git@wags-dev", # Align with core dependency
 ]
 

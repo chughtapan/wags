@@ -209,7 +209,7 @@ async def serve_task_mcp(task_id: str, experiment_name: str = "wags-benchmark") 
             tool = Tool(
                 name=api_doc["name"],
                 description=api_doc["description"],
-                inputSchema=api_doc["input_schema"],
+                input_schema=api_doc["input_schema"],
                 outputSchema=api_doc["output_schema"],
             )
             tools.append(tool)
