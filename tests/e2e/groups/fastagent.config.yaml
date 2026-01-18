@@ -1,0 +1,8 @@
+mcp:
+  servers:
+    mock-github-groups:
+      transport: stdio
+      command: fastmcp
+      args:
+        - run
+        - server.py
