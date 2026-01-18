@@ -996,8 +996,8 @@ wheels = [
 
 [[package]]
 name = "fastmcp"
-version = "0.0.1.dev2654+b065a337"
-source = { git = "https://github.com/chughtapan/fastmcp.git?rev=wags-dev#b065a337b378165967b992982392b50db9fc3718" }
+version = "0.0.1.dev2655+ada60bdd"
+source = { git = "https://github.com/chughtapan/fastmcp.git?rev=wags-dev#ada60bddf5bc6b3846004f2185fdaf2dbed60bc7" }
 dependencies = [
     { name = "authlib" },
     { name = "cyclopts" },
