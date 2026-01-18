@@ -51,7 +51,7 @@ class TestMessageSerializer:
     def test_preserves_tool_results(self) -> None:
         """Test that tool results are preserved in serialization."""
         # Create a message with tool results
-        tool_result = CallToolResult(content=[TextContent(type="text", text="Tool output")], isError=False)
+        tool_result = CallToolResult(content=[TextContent(type="text", text="Tool output")], is_error=False)
 
         msg = PromptMessageExtended(role="user", content=[], tool_results={"tool_123": tool_result})
 

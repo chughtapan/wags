@@ -156,7 +156,7 @@ class MessageSerializer:
         serialized = {}
         for tool_id, result in tool_results.items():
             result_content = [MessageSerializer._serialize_content_item(c) for c in result.content]
-            serialized[tool_id] = {"content": result_content, "is_error": result.isError}
+            serialized[tool_id] = {"content": result_content, "is_error": result.is_error}
         return serialized
 
     @staticmethod

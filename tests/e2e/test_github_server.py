@@ -54,7 +54,7 @@ class TestGitHubRootsMiddleware:
                 # Verify successful response (not blocked by middleware)
                 assert tool_id in tool_results
                 result = tool_results[tool_id]
-                assert not result.isError
+                assert not result.is_error
 
         await test_function()
 
@@ -99,7 +99,7 @@ class TestGitHubRootsMiddleware:
                 # Verify middleware denied access (error response)
                 assert tool_id in tool_results
                 result = tool_results[tool_id]
-                assert result.isError
+                assert result.is_error
 
                 # Verify error message indicates access denial
                 error_text = get_result_text(result)
@@ -141,7 +141,7 @@ class TestGitHubRootsMiddleware:
                             # Check if the call succeeded
                             if tool_id in tool_results:
                                 result = tool_results[tool_id]
-                                if not result.isError:
+                                if not result.is_error:
                                     success_found = True
                                     break
 
