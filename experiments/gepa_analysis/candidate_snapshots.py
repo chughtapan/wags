@@ -1,6 +1,7 @@
-import json
 from pathlib import Path
-from datetime import datetime
+import argparse
+import json
+
 import pandas as pd
 
 
@@ -55,9 +56,32 @@ def build_candidate_prompt_table(df: pd.DataFrame) -> pd.DataFrame:
     return candidate_df.sort_values("first_seen_ts").reset_index(drop=True)
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Build candidate prompt table.")
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="1-14-prefinal",
+        help="Run directory name or path under outputs/gepa_on_bfcl (analysis lives in outputs/gepa_analysis).",
+    )
+    return parser.parse_args()
+
+def resolve_run_dir(output_dir_arg: str) -> Path:
+    arg_path = Path(output_dir_arg)
+    parts = arg_path.parts
+    for idx, part in enumerate(parts[:-1]):
+        if part == "outputs" and parts[idx + 1] == "gepa_on_bfcl":
+            return arg_path
+        if part == "outputs" and parts[idx + 1] == "gepa_analysis":
+            return Path("./outputs/gepa_on_bfcl") / arg_path.name
+    return Path("./outputs/gepa_on_bfcl") / output_dir_arg
+
+
 def main():
-    run_dir = Path("./outputs/gepa_on_bfcl/1-14-prefinal")
-    output_dir = Path("./outputs/gepa_analysis/1-14-prefinal")
+    args = parse_args()
+    run_dir = resolve_run_dir(args.output_dir)
+    run_name = run_dir.name
+    output_dir = Path("./outputs/gepa_analysis") / run_name
     output_dir.mkdir(parents=True, exist_ok=True)
     
     snapshots_path = Path(run_dir / "candidate_snapshots.jsonl")

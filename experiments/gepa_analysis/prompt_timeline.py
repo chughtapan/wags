@@ -1,7 +1,9 @@
-import matplotlib.pyplot as plt
-from pathlib import Path
-import pandas as pd
 import numpy as np
+from pathlib import Path
+import argparse
+
+import matplotlib.pyplot as plt
+import pandas as pd
 
 def plot_prompt_search_timeline(candidate_df: pd.DataFrame, output_dir: Path):
     # Add discovery order
@@ -89,6 +91,33 @@ def plot_prompt_search_timeline(candidate_df: pd.DataFrame, output_dir: Path):
     plt.savefig(output_dir / "prompt_search_timeline.png", dpi=150)
     plt.close()
 
-output_dir = Path("./outputs/gepa_analysis/1-14-prefinal")
-candidate_df = pd.read_csv(output_dir / "candidate_snaps.csv")
-plot_prompt_search_timeline(candidate_df, output_dir)
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Plot prompt search timeline.")
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="1-14-prefinal",
+        help="Run directory name or path under outputs/gepa_on_bfcl (analysis lives in outputs/gepa_analysis).",
+    )
+    return parser.parse_args()
+
+def resolve_analysis_dir(output_dir_arg: str) -> Path:
+    arg_path = Path(output_dir_arg)
+    parts = arg_path.parts
+    for idx, part in enumerate(parts[:-1]):
+        if part == "outputs" and parts[idx + 1] == "gepa_analysis":
+            return arg_path
+        if part == "outputs" and parts[idx + 1] == "gepa_on_bfcl":
+            return Path("./outputs/gepa_analysis") / arg_path.name
+    return Path("./outputs/gepa_analysis") / output_dir_arg
+
+
+def main():
+    args = parse_args()
+    output_dir = resolve_analysis_dir(args.output_dir)
+    candidate_df = pd.read_csv(output_dir / "candidate_snaps.csv")
+    plot_prompt_search_timeline(candidate_df, output_dir)
+
+
+if __name__ == "__main__":
+    main()

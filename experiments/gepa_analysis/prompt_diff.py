@@ -1,6 +1,8 @@
-import pandas as pd
-from pathlib import Path
 import difflib
+from pathlib import Path
+import argparse
+
+import pandas as pd
 
 
 def unified_prompt_diff(base_text: str, new_text: str) -> str:
@@ -17,8 +19,30 @@ def unified_prompt_diff(base_text: str, new_text: str) -> str:
 
     return "\n".join(diff)
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Generate prompt diffs.")
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="1-14-prefinal",
+        help="Run directory name or path under outputs/gepa_on_bfcl (analysis lives in outputs/gepa_analysis).",
+    )
+    return parser.parse_args()
+
+def resolve_analysis_dir(output_dir_arg: str) -> Path:
+    arg_path = Path(output_dir_arg)
+    parts = arg_path.parts
+    for idx, part in enumerate(parts[:-1]):
+        if part == "outputs" and parts[idx + 1] == "gepa_analysis":
+            return arg_path
+        if part == "outputs" and parts[idx + 1] == "gepa_on_bfcl":
+            return Path("./outputs/gepa_analysis") / arg_path.name
+    return Path("./outputs/gepa_analysis") / output_dir_arg
+
+
 def main():
-    output_dir = Path("./outputs/gepa_analysis/1-14-prefinal")
+    args = parse_args()
+    output_dir = resolve_analysis_dir(args.output_dir)
     df = pd.read_csv(output_dir / "candidate_snaps.csv")
 
     output_md = Path(output_dir / "prompt_diffs.md")
