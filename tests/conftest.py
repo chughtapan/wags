@@ -37,6 +37,37 @@ def output_dir(request: pytest.FixtureRequest) -> Path:
 
 
 @pytest.fixture
+def instruction_file(request: pytest.FixtureRequest) -> Path | None:
+    """Optional path to replacement instruction file."""
+    value = request.config.getoption("--instruction-file")
+    return Path(value) if value else None
+
+
+@pytest.fixture
+def instruction_override(request: pytest.FixtureRequest) -> str | None:
+    """Inline instructions overriding file-based prompts."""
+    value = request.config.getoption("--instruction-override")
+    return value if value else None
+
+
+@pytest.fixture
+def gepa_dir(request: pytest.FixtureRequest) -> Path | None:
+    """Directory for GEPA experiment artifacts."""
+    value = request.config.getoption("--gepa-dir")
+    return Path(value) if value else None
+
+
+@pytest.fixture
+def gepa_log_dir(request: pytest.FixtureRequest) -> Path | None:
+    """Directory for GEPA-specific logs."""
+    value = request.config.getoption("--gepa-log-dir")
+    return Path(value) if value else None
+
+
+@pytest.fixture
+def gepa_scoring_mode(request: pytest.FixtureRequest) -> bool:
+    """Flag controlling GEPA scoring-only mode."""
+    return bool(request.config.getoption("--gepa-scoring-mode"))
 def toolset(request: pytest.FixtureRequest) -> str:
     """Toolset from CLI: 'full' (all tools) or 'minimal' (essential tools only)."""
     return cast(str, request.config.getoption("--toolset"))
@@ -48,6 +79,12 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--temperature", default=0.001, type=float, help="Temperature for LLM (default: 0.001)")
     parser.addoption("--output-dir", default="outputs", help="Output directory for results")
     parser.addoption("--validate-only", action="store_true", help="Only validate existing logs")
+    parser.addoption("--log-dir", default="outputs/raw", help="Directory with logs (for validate mode)")
+    parser.addoption("--instruction-file", default=None, help="Path to replacement instruction file")
+    parser.addoption("--instruction-override", default=None, help="Literal replacement instructions")
+    parser.addoption("--gepa-dir", default=None, help="Directory for GEPA experiment data")
+    parser.addoption("--gepa-log-dir", default=None, help="Directory for GEPA logs")
+    parser.addoption("--gepa-scoring-mode", action="store_true", help="Enable GEPA scoring-only mode")
     parser.addoption(
         "--toolset",
         default="full",

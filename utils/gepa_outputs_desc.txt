@@ -1,0 +1,117 @@
+📄 File-by-File Specification
+
+1️⃣ baseline.json
+Purpose: Explicit baseline record, separate from optimized results.
+{
+  "instruction_hash": "sha256:abcd...",
+  "pass_rate": 0.42,
+  "passed": 21,
+  "total": 50,
+  "test_ids": ["bfcl_001", "bfcl_002", "..."],
+  "model": "gpt-5"
+}
+Why:
+Makes “baseline vs optimized” trivially inspectable
+Prevents ambiguity if instructions don’t change
+
+2️⃣ gepa_candidates.json
+Purpose: Full candidate history — this is the most important artifact.
+One entry per candidate index, matching detailed_results.
+[
+  {
+    "candidate_id": 0,
+    "instruction_hash": "sha256:aaaa...",
+    "instruction_text": "...",
+    "val_score": 0.38,
+    "discovered_at_metric_call": 0,
+    "parents": null
+  },
+  {
+    "candidate_id": 1,
+    "instruction_hash": "sha256:bbbb...",
+    "instruction_text": "...",
+    "val_score": 0.44,
+    "discovered_at_metric_call": 12,
+    "parents": [0]
+  }
+]
+Mapping:
+candidate_id → index in detailed_results.candidates
+val_score → val_aggregate_scores[i]
+parents → parents[i]
+discovered_at_metric_call → discovery_eval_counts[i]
+Why:
+Shows exploration
+Shows convergence
+Allows later analysis without rerunning GEPA
+
+3️⃣ gepa_pareto.txt
+Purpose: Human-readable frontier summary (reviewer bait).
+Example:
+GEPA Pareto Frontier (Validation Set)
+====================================
+
+Candidate 3 | score=0.52 | discovered_at=31
+--------------------------------------------
+<instruction text>
+
+Candidate 7 | score=0.51 | discovered_at=44
+--------------------------------------------
+<instruction text>
+Construction:
+Include all candidates that are Pareto-optimal
+Sorted by score descending
+Plain text, no JSON
+Why:
+Lets a human actually read what GEPA found
+Zero tooling required
+
+4️⃣ gepa_iterations.jsonl
+Purpose: Iteration-level traceability without over-logging.
+One JSON object per GEPA iteration, append-only.
+{"iteration": 0, "instruction_hash": "sha256:aaaa...", "val_score": 0.38, "evaluated_test_ids": ["bfcl_001", "bfcl_004"], "metric_calls_so_far": 5}
+{"iteration": 1, "instruction_hash": "sha256:bbbb...", "val_score": 0.44, "evaluated_test_ids": ["bfcl_002", "bfcl_003"], "metric_calls_so_far": 11}
+Why:
+Distinguishes “did nothing” vs “explored”
+Enables simple plots later
+JSONL avoids schema lock-in
+
+5️⃣ reflection_traces/iter_XXX.txt
+Purpose: Raw reflection text (minimal but defensible).
+Each file contains:
+ITERATION 3
+Candidate: 7
+Score: 0.51
+
+=== REFLECTION PROMPT ===
+...
+
+=== REFLECTION OUTPUT ===
+<verbatim LLM output>
+Source:
+Whatever GEPA emits during reflection
+No parsing
+No summarization
+Why:
+Satisfies “uses model traces”
+Auditable
+No DSPy internals exposed
+
+------------------------------
+
+outputs/gepa/
+└── <experiment_id>/              # already exists (args.output_dir)
+    ├── baseline.json
+    ├── optimized_instructions.txt
+    ├── optimization_metadata.json
+    │
+    ├── gepa_candidates.json
+    ├── gepa_pareto.txt
+    ├── gepa_iterations.jsonl
+    │
+    ├── reflection_traces/
+    │   ├── iter_000.txt
+    │   ├── iter_001.txt
+    │   └── ...
+    │
+    └── gepa_logs/                # GEPA’s native log_dir (unchanged)

@@ -10,6 +10,7 @@ import pytest
 
 from tests.benchmarks.bfcl import evaluator, loader
 from tests.benchmarks.bfcl.elicitation import create_elicitation_handler
+from tests.conftest import instruction_file
 from tests.utils.fastagent_helpers import MessageSerializer
 from tests.utils.logger import StructuredEventLogger
 
@@ -25,14 +26,25 @@ def _parse_question(question: Any) -> str:
     return ""
 
 
-async def _run_bfcl_test(test_id: str, model: str, temperature: float, output_dir: Path) -> Path:
+async def _run_bfcl_test(
+    test_id: str,
+    model: str,
+    temperature: float,
+    output_dir: Path,
+    instruction_file: Path | None,
+) -> Path:
     """Run BFCL test and return path to complete.json."""
     from fast_agent import FastAgent
 
     test_case = loader.load_test_entry(test_id)
     ground_truth = loader.load_ground_truth(test_id)
 
-    instruction_path = Path(__file__).parent / "instruction.txt"
+    default_instruction = Path(__file__).parent / "instruction.txt"
+    instruction_path = instruction_file if instruction_file is not None else default_instruction
+    print(f"Using INSTRUCTION file: {instruction_path}")
+    if not instruction_path.exists():
+        raise FileNotFoundError(f"Instruction file not found: {instruction_path}")
+    
     structured_log_path = output_dir / "raw" / f"{test_id}_structured.jsonl"
     structured_log_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -134,11 +146,19 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
 
 @pytest.mark.asyncio
 async def test_bfcl(
-    test_id: str, model: str, temperature: float, output_dir: Path, request: pytest.FixtureRequest
+    test_id: str,
+    model: str,
+    temperature: float,
+    output_dir: Path,
+    instruction_file: Path | None,
+    request: pytest.FixtureRequest,
 ) -> None:
     """Run or validate a BFCL test based on mode."""
-    if not request.config.getoption("--validate-only"):
-        await _run_bfcl_test(test_id, model, temperature, output_dir)
+    if request.config.getoption("--validate-only"):
+        log_dir = Path(request.config.getoption("--log-dir"))
+    else:
+        await _run_bfcl_test(test_id, model, temperature, output_dir, instruction_file)
+        log_dir = output_dir / "raw"
 
     log_dir = output_dir / "raw"
     complete_path = log_dir / f"{test_id}_complete.json"
