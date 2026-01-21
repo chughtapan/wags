@@ -16,27 +16,32 @@ appworld download data
 ## Run Tests
 
 ```bash
-# Run first task from train dataset (automatically organized to results/gpt-4o/train/)
-pytest tests/benchmarks/appworld/test_appworld.py --dataset train --limit 1 --model gpt-4o
+# Run first task (uses default: train,dev datasets, organized to results/gpt-4o/train_dev/)
+pytest tests/benchmarks/appworld/test_appworld.py --limit 1 --model gpt-4o
 
-# Run first 5 train tasks
-pytest tests/benchmarks/appworld/test_appworld.py --dataset train --limit 5 --model gpt-4o
+# Run only train dataset
+pytest tests/benchmarks/appworld/test_appworld.py --datasets train --limit 5 --model gpt-4o
 
-# Run all dev tasks
-pytest tests/benchmarks/appworld/test_appworld.py --dataset dev --model gpt-4o
+# Run only dev dataset
+pytest tests/benchmarks/appworld/test_appworld.py --datasets dev --model gpt-4o
+
+# Run multiple datasets
+pytest tests/benchmarks/appworld/test_appworld.py --datasets train,dev,test_normal
 
 # Run specific task (use actual task IDs like 82e2fac_1, not train_001)
 pytest 'tests/benchmarks/appworld/test_appworld.py::test_appworld[82e2fac_1]'
 
 # Validate existing results (auto-detects from results/gpt-4o/train/)
-pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-4o --dataset train
+pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-4o --datasets train
 ```
 
 ## CLI Options
 
 ### Dataset Selection
 ```bash
---dataset {train,dev,test_normal,test_challenge}  # Default: train
+--datasets train                    # Single dataset
+--datasets train,dev                # Multiple datasets (default)
+--datasets train,dev,test_normal    # Run train, dev, and test_normal
 ```
 - `train`: Training dataset (90 tasks)
 - `dev`: Development/validation dataset
@@ -54,6 +59,15 @@ pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-4o
 --temperature 0.001  # Temperature for sampling (default: 0.001)
 ```
 
+### Prompt Mode
+```bash
+# Default: zero-shot (no examples in prompt)
+pytest tests/benchmarks/appworld/test_appworld.py --datasets train
+
+# Few-shot: include worked-out examples in system prompt
+pytest tests/benchmarks/appworld/test_appworld.py --datasets train --default-few-shot
+```
+
 ### Parallel Execution
 ```bash
 -n 4     # Run with 4 workers
@@ -61,7 +75,7 @@ pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-4o
 -n auto  # Auto-detect number of CPUs
 ```
 
-Example: `pytest tests/benchmarks/appworld/test_appworld.py --dataset train -n 4`
+Example: `pytest tests/benchmarks/appworld/test_appworld.py --datasets train -n 4`
 
 ## File Structure
 

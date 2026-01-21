@@ -90,8 +90,8 @@ Validate existing logs without running new tests:
 
 **AppWorld:**
 ```bash
-# Validate logs (auto-detects from results/{model}/{dataset}/)
-.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-4o --dataset train
+# Validate logs (auto-detects from results/{model}/{datasets}/)
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-4o --datasets train
 ```
 
 ### AppWorld Results Organization
@@ -100,7 +100,7 @@ AppWorld tests automatically organize results during execution:
 
 ```bash
 # Run tests - results automatically organized
-.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --dataset train --model gpt-4o
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --datasets train --model gpt-4o
 
 # Results automatically written to:
 # - results/gpt-4o/train/outputs/raw/ (conversation logs)
@@ -113,9 +113,10 @@ rm -rf experiments/outputs/gpt-4o/  # Frees ~15GB
 
 **AppWorld-specific options:**
 ```bash
---dataset DATASET         # Dataset: train, dev, test_normal, test_challenge (default: train)
+--datasets DATASETS       # Comma-separated datasets (default: train,dev)
 --limit N                 # Run only first N tasks from dataset
 --start-from TASK_ID      # Resume from specific task ID
+--default-few-shot        # Include few-shot examples (default: zero-shot)
 ```
 
 ### Parallel Execution
@@ -127,10 +128,37 @@ Run tests in parallel using multiple workers:
 .venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py -n 4
 
 # Run with 8 workers
-.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --dataset train -n 8
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --datasets train -n 8
 
 # Auto-detect number of CPUs
 .venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py -n auto
+```
+
+### AppWorld Dataset Selection
+
+Run tests on one or more datasets (default: `train,dev`):
+
+```bash
+# Run on default datasets (train,dev)
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py
+
+# Run on specific dataset
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --datasets train
+
+# Run on multiple datasets
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --datasets train,dev,test_normal
+```
+
+### AppWorld Prompt Mode
+
+By default, AppWorld tests run in **zero-shot mode** (no examples in prompt). Use `--default-few-shot` to include worked-out examples:
+
+```bash
+# Zero-shot (default) - no examples in prompt
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --datasets train
+
+# Few-shot - include demo examples in system prompt
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --datasets train --default-few-shot
 ```
 
 ## Further Reading
