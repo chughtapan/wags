@@ -9,12 +9,13 @@ def load_candidate_snapshots(path: Path) -> pd.DataFrame:
     rows = []
 
     with path.open() as f:
-        for line in f:
+        for idx, line in enumerate(f):
             record = json.loads(line)
 
             eval_info = record.get("latest_eval", {})
 
             rows.append({
+                "eval_idx": idx,
                 "ts": pd.to_datetime(record["ts"], utc=True),
                 "instruction_hash": record["instruction_hash"],
                 "instruction_text": record["instruction_text"],
@@ -35,8 +36,14 @@ def build_candidate_prompt_table(df: pd.DataFrame) -> pd.DataFrame:
     for instruction_hash, g in grouped:
         instruction_text = g["instruction_text"].iloc[0]
 
-        train_scores = g[g["split"] == "train"]["score"]
-        dev_scores = g[g["split"] == "dev"]["score"]
+        train_scores = g[g["split"] == "train"]["score"].dropna()
+        dev_scores = g[g["split"] == "dev"]["score"].dropna()
+        all_scores = g["score"].dropna()
+        
+        train_passes = (train_scores == 1).sum()
+        dev_passes = (dev_scores == 1).sum()
+        overall_passes = (all_scores == 1).sum()
+
 
         rows.append({
             "instruction_hash": instruction_hash,
@@ -49,6 +56,17 @@ def build_candidate_prompt_table(df: pd.DataFrame) -> pd.DataFrame:
             "overall_pass_rate": g["score"].mean(),
             "instruction_length_chars": len(instruction_text),
             "instruction_length_lines": instruction_text.count("\n") + 1,
+            "n_train": int(train_scores.shape[0]),
+            "n_dev": int(dev_scores.shape[0]),
+            "n_scored": int(all_scores.shape[0]),
+            "train_passes": int(train_passes),
+            "dev_passes": int(dev_passes),
+            "overall_passes": int(overall_passes),
+            "n_unique_tests": g["test_id"].nunique(dropna=True),
+            "n_unique_train_tests": g[g["split"] == "train"]["test_id"].nunique(dropna=True),
+            "n_unique_dev_tests": g[g["split"] == "dev"]["test_id"].nunique(dropna=True),
+            "hard_valid_rate": g["hard_valid"].mean() if g["hard_valid"].notna().any() else None,
+            "n_hard_valid": int(g["hard_valid"].sum()),
         })
 
     candidate_df = pd.DataFrame(rows)
@@ -87,8 +105,9 @@ def main():
     snapshots_path = Path(run_dir / "candidate_snapshots.jsonl")
 
     df_raw = load_candidate_snapshots(snapshots_path)
-    candidate_df = build_candidate_prompt_table(df_raw)
+    df_raw.to_csv(output_dir / "candidate_evals_raw.csv", index=False)
 
+    candidate_df = build_candidate_prompt_table(df_raw)
     candidate_df.to_csv(output_dir / "candidate_snaps.csv", index=False)
 
     print("\n=== Candidate Prompt Summary ===")
