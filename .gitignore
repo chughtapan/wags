@@ -53,7 +53,6 @@ fastagent.secrets.yaml
 outputs/
 output*/
 results/
-experiments/
 fastagent.jsonl
 test_script_*.py
 .claude/
@@ -64,3 +63,5 @@ site/
 
 # Appworld data
 data/
+
+/utils/

@@ -1,0 +1,68 @@
+outputs
+├── baseline_multi_turn_base
+│   ├── multi_turn_base_0_test.json
+│   ├── multi_turn_base_100_test.json
+    ..
+│   └── raw
+│       ├── multi_turn_base_0_complete.json
+│       ├── multi_turn_base_0_structured.jsonl
+│       ├── multi_turn_base_100_complete.json
+│       ├── multi_turn_base_100_structured.jsonl
+│       ..
+├── bfcl_new_results.txt
+├── gepa
+│   ├── current_instruction.txt
+│   ├── gepa_logs
+│   │   ├── generated_best_outputs_valset
+│   │   │   └── task_0
+│   │   │       └── iter_0_prog_0.json
+│   │   └── gepa_state.bin
+│   ├── gepa_output.txt
+│   ├── optimization_metadata.json
+│   ├── optimized_instructions.txt
+│   └── runs
+│       ├── multi_turn_base_0
+│       │   ├── multi_turn_base_0_test.json
+│       │   └── raw
+│       │       ├── multi_turn_base_0_complete.json
+│       │       └── multi_turn_base_0_structured.jsonl
+│       ├── multi_turn_base_1
+│       │   ├── multi_turn_base_1_test.json
+│       │   └── raw
+│       │       ├── multi_turn_base_1_complete.json
+│       │       └── multi_turn_base_1_structured.jsonl
+│       ├── multi_turn_base_2
+│       │   ├── multi_turn_base_2_test.json
+│       │   └── raw
+│       │       └── multi_turn_base_2_structured.jsonl
+│       ├── multi_turn_base_3
+│       │   ├── multi_turn_base_3_test.json
+│       │   └── raw
+│       │       └── multi_turn_base_3_structured.jsonl
+│       ├── multi_turn_base_4
+│       │   ├── multi_turn_base_4_test.json
+│       │   └── raw
+│       │       └── multi_turn_base_4_structured.jsonl
+│       ├── multi_turn_base_5
+│       │   ├── multi_turn_base_5_test.json
+│       │   └── raw
+│       │       └── multi_turn_base_5_structured.jsonl
+│       ├── multi_turn_base_6
+│       │   ├── multi_turn_base_6_test.json
+│       │   └── raw
+│       │       └── multi_turn_base_6_structured.jsonl
+│       ├── multi_turn_base_7
+│       │   ├── multi_turn_base_7_test.json
+│       │   └── raw
+│       │       └── multi_turn_base_7_structured.jsonl
+│       ├── multi_turn_base_8
+│       │   ├── multi_turn_base_8_test.json
+│       │   └── raw
+│       │       └── multi_turn_base_8_structured.jsonl
+│       └── multi_turn_base_9
+│           ├── multi_turn_base_9_test.json
+│           └── raw
+│               └── multi_turn_base_9_structured.jsonl
+└── tree.txt
+
+30 directories, 745 files
