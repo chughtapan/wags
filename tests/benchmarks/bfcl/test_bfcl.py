@@ -159,8 +159,8 @@ async def test_bfcl(
     else:
         await _run_bfcl_test(test_id, model, temperature, output_dir, instruction_file)
         log_dir = output_dir / "raw"
-
-    log_dir = output_dir / "raw"
     complete_path = log_dir / f"{test_id}_complete.json"
     evaluation = _validate_from_complete_json(test_id, complete_path)
     assert evaluation["validation"]["valid"], f"Validation failed for {test_id}"
+    eval_path = log_dir / f"{test_id}_evaluation.json"
+    eval_path.write_text(json.dumps(evaluation, indent=2, default=str))
