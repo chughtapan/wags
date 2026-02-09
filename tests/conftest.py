@@ -91,6 +91,13 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         choices=["full", "minimal"],
         help="Tool availability: 'full' (all tools) or 'minimal' (19 essential tools)",
     )
+    parser.addoption(
+        "-F",
+        "--external-feedback",
+        action="store_true",
+        default=False,
+        help="BFCL only: enable ExternalFeedbackMiddleware",
+    )
 
 
 def pytest_configure(config: pytest.Config) -> None:

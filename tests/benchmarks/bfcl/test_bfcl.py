@@ -32,6 +32,7 @@ async def _run_bfcl_test(
     temperature: float,
     output_dir: Path,
     instruction_file: Path | None,
+    external_feedback_enabled: bool,
 ) -> Path:
     """Run BFCL test and return path to complete.json."""
     from fast_agent import FastAgent
@@ -62,7 +63,8 @@ async def _run_bfcl_test(
             "TEMPERATURE": str(temperature),
             "TEST_DATA_PATH": str(test_data_path.absolute()),
             "TEST_ID": test_id,
-            "SERVER_SCRIPT_PATH": str(test_dir / "mcp_server.py"),
+            "SERVER_SCRIPT_PATH": str(test_dir / "wags_mcp_server.py"),
+            "BFCL_EXTERNAL_FEEDBACK_ENABLED": "1" if external_feedback_enabled else "0",
         }
     )
 
@@ -157,7 +159,15 @@ async def test_bfcl(
     if request.config.getoption("--validate-only"):
         log_dir = Path(request.config.getoption("--log-dir"))
     else:
-        await _run_bfcl_test(test_id, model, temperature, output_dir, instruction_file)
+        external_feedback_enabled = bool(request.config.getoption("--external-feedback"))
+        await _run_bfcl_test(
+            test_id,
+            model,
+            temperature,
+            output_dir,
+            instruction_file,
+            external_feedback_enabled,
+        )
         log_dir = output_dir / "raw"
     complete_path = log_dir / f"{test_id}_complete.json"
     evaluation = _validate_from_complete_json(test_id, complete_path)
