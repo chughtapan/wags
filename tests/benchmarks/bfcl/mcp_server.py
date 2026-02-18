@@ -2,6 +2,11 @@
 """
 MCP Server wrapper for BFCL API classes.
 Exposes API methods as MCP tools with automatic introspection.
+
+Experimental WAGS integration:
+- If BFCL_EXTERNAL_FEEDBACK_ENABLED is set, we wrap the FastMCP server with a WAGS proxy
+  and attach ExternalFeedbackMiddleware.
+- Otherwise, behavior is identical to the original BFCL server.
 """
 
 import argparse
@@ -9,6 +14,7 @@ import asyncio
 import importlib
 import inspect
 import json
+import os
 import sys
 from typing import Any
 
@@ -19,6 +25,13 @@ from bfcl_eval.constants.executable_backend_config import (
     STATELESS_CLASSES,
 )
 from mcp.server.fastmcp import FastMCP
+
+
+def _env_flag_enabled(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def load_api_class(class_name: str) -> Any:
@@ -97,6 +110,14 @@ async def main() -> None:
     args = parser.parse_args()
 
     class_name = args.class_name
+    
+    # Normalize class name to handle lowercase inputs like "vehiclecontrolapi"
+    if class_name.lower() in {k.lower(): k for k in CLASS_FILE_PATH_MAPPING}.keys():
+        for k in CLASS_FILE_PATH_MAPPING:
+            if k.lower() == class_name.lower():
+                class_name = k
+                break
+
 
     if class_name not in CLASS_FILE_PATH_MAPPING:
         print("Usage: python mcp_server.py <ClassName> [test_file.json test_id]", file=sys.stderr)
@@ -105,7 +126,7 @@ async def main() -> None:
 
     # Load the API class
     api = load_api_class(class_name)
-    print(f"Loaded {class_name}", file=sys.stderr)
+    print(f"[mcp_server] Loaded {class_name}", file=sys.stderr, flush=True)
 
     # Initialize scenario state if needed
     if hasattr(api, "_load_scenario") and class_name not in STATELESS_CLASSES:
@@ -125,6 +146,49 @@ async def main() -> None:
     # Patch tools with BFCL's richer descriptions
     patch_tool_with_func_doc(server, func_docs)
 
+    # --- WAGS / external feedback experiment wiring (env-gated) ---
+    feedback_enabled = _env_flag_enabled("BFCL_EXTERNAL_FEEDBACK_ENABLED", default=False)
+    if feedback_enabled:
+        print("[mcp_server] BFCL_EXTERNAL_FEEDBACK_ENABLED=ON -> starting WAGS proxy mode", file=sys.stderr, flush=True)
+
+        # Import here so baseline BFCL runs don't depend on WAGS.
+        from wags import create_proxy
+        from wags.middleware.external_feedback import ExternalFeedbackMiddleware
+
+        proxy = create_proxy(server, server_name=f"wags-{class_name.lower()}-proxy")
+
+        # Attach middleware to the PROXY (not the underlying server).
+        proxy.add_middleware(
+            ExternalFeedbackMiddleware(
+                target_tool_name=os.getenv("BFCL_EXTERNAL_FEEDBACK_TOOL", "startEngine"),
+                warning_message=os.getenv(
+                    "BFCL_EXTERNAL_FEEDBACK_MESSAGE",
+                    "🚨 TEST WARNING: This tool call is intentionally blocked. Choose a different action and continue. 🚨",
+                ),
+                trigger_on_nth_call=int(os.getenv("BFCL_EXTERNAL_FEEDBACK_N", "1")),
+            )
+        )
+
+        # Loud startup logging so we know wiring is correct.
+        try:
+            tool_count = len(server._tool_manager._tools)
+            tool_names_preview = list(server._tool_manager._tools.keys())[:10]
+        except Exception:
+            tool_count = -1
+            tool_names_preview = []
+
+        print(f"[mcp_server] Base server tool count: {tool_count}", file=sys.stderr, flush=True)
+        if tool_names_preview:
+            print(f"[mcp_server] Base server tools (preview): {tool_names_preview}", file=sys.stderr, flush=True)
+
+        print(f"[mcp_server] Proxy middleware count: {len(proxy.middleware)}", file=sys.stderr, flush=True)
+        print(f"[mcp_server] Proxy middleware: {[type(m).__name__ for m in proxy.middleware]}", file=sys.stderr, flush=True)
+
+        await proxy.run_stdio_async()
+        return
+
+    # --- Baseline behavior ---
+    print("[mcp_server] BFCL_EXTERNAL_FEEDBACK_ENABLED=OFF -> starting baseline server mode", file=sys.stderr, flush=True)
     await server.run_stdio_async()
 
 

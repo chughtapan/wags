@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 from pathlib import Path
+import sys
 from typing import Any, cast
 
 import pytest
@@ -42,7 +43,7 @@ async def _run_bfcl_test(
 
     default_instruction = Path(__file__).parent / "instruction.txt"
     instruction_path = instruction_file if instruction_file is not None else default_instruction
-    print(f"Using INSTRUCTION file: {instruction_path}")
+    print(f"Using INSTRUCTION file: {instruction_path}", flush=True, file=sys.stderr)
     if not instruction_path.exists():
         raise FileNotFoundError(f"Instruction file not found: {instruction_path}")
     
@@ -63,8 +64,7 @@ async def _run_bfcl_test(
             "TEMPERATURE": str(temperature),
             "TEST_DATA_PATH": str(test_data_path.absolute()),
             "TEST_ID": test_id,
-            "SERVER_SCRIPT_PATH": str(test_dir / "wags_mcp_server.py"),
-            "BFCL_EXTERNAL_FEEDBACK_ENABLED": "1" if external_feedback_enabled else "0",
+            "SERVER_SCRIPT_PATH": str(test_dir / "mcp_server.py"),
         }
     )
 
