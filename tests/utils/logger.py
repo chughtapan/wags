@@ -93,6 +93,8 @@ class StructuredEventLogger:
             "result": str(result) if not isinstance(result, (dict, list)) else result,
             "is_error": is_error,
         }
+        if is_error:
+            print(f"\n[FEEDBACK] Tool Error for {tool_id}: {result}", flush=True)
         self._write_event(event)
 
     def log_assistant_response(self, turn_id: int, text: str) -> None:

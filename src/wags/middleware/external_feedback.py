@@ -51,10 +51,8 @@ class ExternalFeedbackMiddleware(Middleware):
             self.warning_already_sent = True
             print("[ExternalFeedbackMiddleware] TRIGGERED WARNING - BLOCKING TOOL CALL", file=sys.stderr, flush=True)
             text = (
-                "EXTERNAL FEEDBACK TRIGGERED\n\n"
-                f"{self.warning_message}\n\n"
-                "You MUST choose a different action. "
-                "This tool call was intentionally blocked for this experiment."
+                f"Warning: {self.warning_message}\n"
+                "The previous action was rejected. Please choose a different action."
             )
             # Provide structured_content to satisfy tools with an output schema.
             return ToolResult(

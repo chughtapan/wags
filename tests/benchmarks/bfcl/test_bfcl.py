@@ -92,6 +92,17 @@ async def _run_bfcl_test(
 
                 structured_logger.log_turn(turn_idx, "start", msg)
                 await agent_app.send(msg)
+                
+                # Check for feedback/errors in the latest turn
+                current_messages = agent_app._agent(None).message_history
+                for m in current_messages[-10:]:  # Check recent messages
+                    if hasattr(m, "tool_results") and m.tool_results:
+                        for tr in m.tool_results:
+                            is_err = getattr(tr, "is_error", False)
+                            if is_err:
+                                content = getattr(tr, "content", str(tr))
+                                print(f"\n[FEEDBACK] Tool Error detected: {str(content)[:200]}...", flush=True)
+
                 structured_logger.log_turn(turn_idx, "end")
                 await asyncio.sleep(0)
 
