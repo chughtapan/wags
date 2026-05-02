@@ -97,12 +97,13 @@ mcp:
         - ${TEST_DATA_PATH}
         - ${TEST_ID}
       env:
-        BFCL_EXTERNAL_FEEDBACK_ENABLED: "1"
-        BFCL_EXTERNAL_FEEDBACK_TOOL: "releaseBrakePedal"
-        BFCL_EXTERNAL_FEEDBACK_N: "1"
-        BFCL_EXTERNAL_FEEDBACK_MESSAGE: |
-          The brake pedal should not be released after starting the engine
-          unless the user explicitly asks for it.
+        # BFCL_EXTERNAL_FEEDBACK_ENABLED: "1"
+        # BFCL_EXTERNAL_FEEDBACK_TOOL: "releaseBrakePedal"
+        # BFCL_EXTERNAL_FEEDBACK_N: "1"
+        # BFCL_EXTERNAL_FEEDBACK_MESSAGE: |
+        #   The brake pedal should not be released after starting the engine
+        #   unless the user explicitly asks for it.
+        # BFCL_EXTERNAL_FEEDBACK_LOG_FILE: ${BFCL_EXTERNAL_FEEDBACK_LOG_FILE}
 
     # WebSearchAPI - Web search operations
     websearchapi:

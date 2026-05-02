@@ -1,0 +1,21 @@
+{
+  "subset": "E",
+  "condition": "vague",
+  "description": "Argument constraint violation — vague feedback with no detail about the violated constraint.",
+  "test_ids": [],
+  "triggers": [
+    {
+      "tool_name": "setSpeed",
+      "trigger_type": "argument_value",
+      "argument_conditions": {
+        "checks": [
+          {"key": "speed", "op": "gt", "value": 120}
+        ],
+        "match": "any"
+      },
+      "occurrence": 1,
+      "feedback_message": "The requested operation could not be completed.",
+      "condition_label": "vague"
+    }
+  ]
+}

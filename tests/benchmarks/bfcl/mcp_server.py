@@ -11,6 +11,7 @@ Experimental WAGS integration:
 
 import argparse
 import asyncio
+import functools
 import importlib
 import inspect
 import json
@@ -78,6 +79,28 @@ def load_scenario_from_test(test_file: str, test_id: str, class_name: str) -> di
     return {}
 
 
+def _strip_return_annotation(method: Any) -> Any:
+    """Remove the return annotation so FastMCP skips Pydantic output validation.
+
+    Several BFCL API methods have return annotations like Dict[str, Union[str, bool]]
+    that don't match their actual return values (e.g. booking_history is a nested dict,
+    not str|bool). FastMCP builds a Pydantic output model from the annotation; when
+    validation fails the tool response is dropped entirely, leaving an unanswered
+    tool_call_id that causes OpenAI to reject the next request with a 400 error.
+
+    IMPORTANT: we must set __signature__ explicitly rather than just overriding
+    __annotations__. functools.wraps sets __wrapped__, and inspect.signature follows
+    __wrapped__ back to the original function — bypassing __annotations__ entirely.
+    Setting __signature__ directly takes precedence over __wrapped__ in inspect.signature.
+    """
+    @functools.wraps(method)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        return method(*args, **kwargs)
+    orig_sig = inspect.signature(method)
+    wrapper.__signature__ = orig_sig.replace(return_annotation=inspect.Parameter.empty)
+    return wrapper
+
+
 def patch_tool_with_func_doc(server: FastMCP, func_docs: dict[str, dict[str, Any]]) -> None:
     """Patch registered tools with BFCL's richer function documentation.
 
@@ -141,12 +164,12 @@ async def main() -> None:
 
     for method_name, method in inspect.getmembers(api, predicate=inspect.ismethod):
         if not method_name.startswith("_"):
-            server.add_tool(method, name=method_name)
+            server.add_tool(_strip_return_annotation(method), name=method_name)
 
     # Patch tools with BFCL's richer descriptions
     patch_tool_with_func_doc(server, func_docs)
 
-    # --- WAGS / external feedback experiment wiring (env-gated) ---
+    # --- WAGS / external feedback experiment wiring ---
     feedback_enabled = _env_flag_enabled("BFCL_EXTERNAL_FEEDBACK_ENABLED", default=False)
     if feedback_enabled:
         print("[mcp_server] BFCL_EXTERNAL_FEEDBACK_ENABLED=ON -> starting WAGS proxy mode", file=sys.stderr, flush=True)
@@ -157,9 +180,25 @@ async def main() -> None:
 
         proxy = create_proxy(server, server_name=f"wags-{class_name.lower()}-proxy")
 
-        # Attach middleware to the PROXY (not the underlying server).
-        proxy.add_middleware(
-            ExternalFeedbackMiddleware(
+        # Config-file mode: BFCL_EXTERNAL_FEEDBACK_CONFIG points to a JSON rules
+        # file.  Legacy mode: individual _TOOL / _MESSAGE / _N env vars are used.
+        config_path = os.getenv("BFCL_EXTERNAL_FEEDBACK_CONFIG")
+        if config_path:
+            print(
+                f"[mcp_server] Config-file mode: loading triggers from {config_path}",
+                file=sys.stderr,
+                flush=True,
+            )
+            middleware = ExternalFeedbackMiddleware(config_path=config_path)
+        else:
+            print(
+                "[mcp_server] Legacy env-var mode: "
+                f"tool={os.getenv('BFCL_EXTERNAL_FEEDBACK_TOOL', 'startEngine')} "
+                f"n={os.getenv('BFCL_EXTERNAL_FEEDBACK_N', '1')}",
+                file=sys.stderr,
+                flush=True,
+            )
+            middleware = ExternalFeedbackMiddleware(
                 target_tool_name=os.getenv("BFCL_EXTERNAL_FEEDBACK_TOOL", "startEngine"),
                 warning_message=os.getenv(
                     "BFCL_EXTERNAL_FEEDBACK_MESSAGE",
@@ -167,7 +206,9 @@ async def main() -> None:
                 ),
                 trigger_on_nth_call=int(os.getenv("BFCL_EXTERNAL_FEEDBACK_N", "1")),
             )
-        )
+
+        # Attach middleware to the PROXY (not the underlying server).
+        proxy.add_middleware(middleware)
 
         # Loud startup logging so we know wiring is correct.
         try:

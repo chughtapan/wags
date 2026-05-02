@@ -1,0 +1,15 @@
+{
+  "subset": "A",
+  "condition": "null",
+  "description": "Simple tool-name blocking — null feedback (bare rejection, no explanation).",
+  "test_ids": [],
+  "triggers": [
+    {
+      "tool_name": "releaseBrakePedal",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "",
+      "condition_label": "null"
+    }
+  ]
+}

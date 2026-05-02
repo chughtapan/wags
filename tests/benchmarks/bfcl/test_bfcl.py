@@ -8,12 +8,74 @@ import sys
 from typing import Any, cast
 
 import pytest
+from mcp.types import CallToolResult, TextContent
+
+from fast_agent.types import PromptMessageExtended
 
 from tests.benchmarks.bfcl import evaluator, loader
 from tests.benchmarks.bfcl.elicitation import create_elicitation_handler
 from tests.conftest import instruction_file
 from tests.utils.fastagent_helpers import MessageSerializer
 from tests.utils.logger import StructuredEventLogger
+
+
+def _repair_unanswered_tool_calls(
+    agent_app: Any, user_text: str
+) -> Any:
+    """Return a message payload that repairs any unanswered tool_call_ids.
+
+    If the previous turn left an assistant tool_call without a matching
+    tool_result (e.g. fast-agent hit max_iterations or a tool-loop error break),
+    the next OpenAI request will 400 with "tool_call_ids did not have response
+    messages". We synthesize error tool_results for each dangling id and bundle
+    them with the outgoing user text into a single PromptMessageExtended so the
+    OpenAI converter emits tool messages before the user turn.
+    """
+    agent = agent_app._agent(None)
+    history = agent.message_history
+
+    responded: set[str] = set()
+    called: list[str] = []
+    for m in history:
+        tcs = getattr(m, "tool_calls", None)
+        if tcs:
+            called.extend(tcs.keys())
+        trs = getattr(m, "tool_results", None)
+        if trs:
+            responded.update(trs.keys())
+
+    unanswered = [cid for cid in called if cid not in responded]
+    if not unanswered:
+        return user_text
+
+    print(
+        f"[REPAIR] Synthesizing tool_results for {len(unanswered)} unanswered "
+        f"tool_call_id(s): {unanswered}",
+        flush=True,
+        file=sys.stderr,
+    )
+
+    synthetic_results = {
+        cid: CallToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text=(
+                        "[WAGS] No result available: the tool call did not "
+                        "complete in the previous turn."
+                    ),
+                )
+            ],
+            isError=True,
+        )
+        for cid in unanswered
+    }
+
+    return PromptMessageExtended(
+        role="user",
+        content=[TextContent(type="text", text=user_text)],
+        tool_results=synthetic_results,
+    )
 
 
 def _parse_question(question: Any) -> str:
@@ -27,6 +89,21 @@ def _parse_question(question: Any) -> str:
     return ""
 
 
+def _validate_openai_api_key_env() -> None:
+    """Fail fast for missing/placeholder OpenAI API key in BFCL runs."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key is None or not api_key.strip():
+        raise RuntimeError(
+            "OPENAI_API_KEY is not set. Export a valid key before running BFCL tests."
+        )
+
+    candidate = api_key.strip()
+    if candidate.startswith("${") and candidate.endswith("}"):
+        raise RuntimeError(
+            "OPENAI_API_KEY is set to a placeholder value. Export the real key instead."
+        )
+
+
 async def _run_bfcl_test(
     test_id: str,
     model: str,
@@ -37,6 +114,8 @@ async def _run_bfcl_test(
 ) -> Path:
     """Run BFCL test and return path to complete.json."""
     from fast_agent import FastAgent
+
+    _validate_openai_api_key_env()
 
     test_case = loader.load_test_entry(test_id)
     ground_truth = loader.load_ground_truth(test_id)
@@ -56,8 +135,19 @@ async def _run_bfcl_test(
     test_data_path = output_dir / f"{test_id}_test.json"
     test_data_path.write_text(json.dumps(test_case))
 
-    # Set environment variables BEFORE creating FastAgent
+    # Set environment variables BEFORE creating FastAgent.
+    # Save and restore to avoid state leaking into subsequent test cases
+    # when multiple tests run in the same pytest session.
     test_dir = Path(__file__).parent
+    _BFCL_ENV_KEYS = (
+        "DEFAULT_MODEL",
+        "TEMPERATURE",
+        "TEST_DATA_PATH",
+        "TEST_ID",
+        "SERVER_SCRIPT_PATH",
+        "BFCL_EXTERNAL_FEEDBACK_LOG_FILE",
+    )
+    _saved_env = {k: os.environ.get(k) for k in _BFCL_ENV_KEYS}
     os.environ.update(
         {
             "DEFAULT_MODEL": model,
@@ -65,6 +155,7 @@ async def _run_bfcl_test(
             "TEST_DATA_PATH": str(test_data_path.absolute()),
             "TEST_ID": test_id,
             "SERVER_SCRIPT_PATH": str(test_dir / "mcp_server.py"),
+            "BFCL_EXTERNAL_FEEDBACK_LOG_FILE": str(output_dir / "raw" / "external_feedback.log"),
         }
     )
 
@@ -91,7 +182,8 @@ async def _run_bfcl_test(
                     continue
 
                 structured_logger.log_turn(turn_idx, "start", msg)
-                await agent_app.send(msg)
+                send_payload = _repair_unanswered_tool_calls(agent_app, msg)
+                await agent_app.send(send_payload)
                 
                 # Check for feedback/errors in the latest turn
                 current_messages = agent_app._agent(None).message_history
@@ -115,7 +207,14 @@ async def _run_bfcl_test(
 
             return complete_path
 
-    return await run_test()
+    try:
+        return await run_test()
+    finally:
+        for k, v in _saved_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
 
 
 def _validate_from_complete_json(test_id: str, complete_path: Path) -> dict[str, Any]:
@@ -142,8 +241,8 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
             log_dir = output_dir / "raw"
 
             if log_dir.exists():
-                log_files = list(log_dir.glob("**/*_fastagent.jsonl"))
-                test_ids = [f.stem.replace("_fastagent", "") for f in log_files]
+                log_files = list(log_dir.glob("**/*_structured.jsonl"))
+                test_ids = [f.stem.replace("_structured", "") for f in log_files]
             else:
                 test_ids = []
         else:

@@ -1,0 +1,18 @@
+{
+  "subset": "B",
+  "condition": "specific",
+  "description": "Argument overspecification — agent passes a parameter that should not be present.",
+  "test_ids": [],
+  "triggers": [
+    {
+      "tool_name": "accelerate",
+      "trigger_type": "argument_present",
+      "argument_conditions": {
+        "forbidden_args": ["turboBoost"]
+      },
+      "occurrence": 1,
+      "feedback_message": "The 'turboBoost' parameter is not supported on this vehicle model. Remove it and retry with only the standard 'acceleration' argument.",
+      "condition_label": "specific"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "subset": "A",
+  "condition": "vague",
+  "description": "Simple tool-name blocking — vague feedback giving no detail about why the action failed.",
+  "test_ids": [],
+  "triggers": [
+    {
+      "tool_name": "releaseBrakePedal",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "That action is not permitted at this time.",
+      "condition_label": "vague"
+    }
+  ]
+}

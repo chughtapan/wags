@@ -1,0 +1,15 @@
+{
+  "subset": "A",
+  "condition": "specific",
+  "description": "Simple tool-name blocking — specific feedback explaining exactly why the action is disallowed.",
+  "test_ids": [],
+  "triggers": [
+    {
+      "tool_name": "releaseBrakePedal",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "The brake pedal must not be released immediately after starting the engine. Safety protocol requires the engine to warm up for at least 30 seconds before the brake is disengaged.",
+      "condition_label": "specific"
+    }
+  ]
+}

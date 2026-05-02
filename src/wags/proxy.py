@@ -1,7 +1,6 @@
 """MCP proxy server with middleware support."""
 
 from collections.abc import Awaitable, Callable
-from functools import partial
 from typing import Any, overload
 
 import mcp.types
@@ -51,9 +50,17 @@ class _WagsProxy(FastMCPProxy):
         call_next: Callable[[MiddlewareContext[Any]], Awaitable[Any]],
     ) -> Any:
         """Apply middleware chain."""
+        # Only apply middleware to tool call requests
+        # Middleware is designed for CallToolRequestParams which have a 'name' attribute
+        if not hasattr(context.message, 'name'):
+            return await call_next(context)
+
         chain = call_next
         for mw in reversed(self.middleware):
-            chain = partial(mw, call_next=chain)
+            prev_chain = chain
+            async def middleware_wrapper(ctx: MiddlewareContext[Any], mw: Any = mw, prev_chain: Any = prev_chain) -> Any:
+                return await mw.on_call_tool(ctx, prev_chain)
+            chain = middleware_wrapper
 
         return await chain(context)
 

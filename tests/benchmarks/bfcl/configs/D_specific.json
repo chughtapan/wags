@@ -1,0 +1,18 @@
+{
+  "subset": "D",
+  "condition": "specific",
+  "description": "Missing prerequisite — agent attempts a tool call before a required prior step.",
+  "test_ids": [],
+  "triggers": [
+    {
+      "tool_name": "shiftGear",
+      "trigger_type": "precondition_missing",
+      "argument_conditions": {
+        "required_prior_calls": ["startEngine"]
+      },
+      "occurrence": 1,
+      "feedback_message": "Cannot shift gear: the engine is not running. Call startEngine before attempting any gear changes.",
+      "condition_label": "specific"
+    }
+  ]
+}

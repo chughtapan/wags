@@ -1,0 +1,15 @@
+{
+  "subset": "A",
+  "condition": "verbose",
+  "description": "Simple tool-name blocking — verbose feedback with a detailed multi-sentence explanation.",
+  "test_ids": [],
+  "triggers": [
+    {
+      "tool_name": "releaseBrakePedal",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "The brake pedal release has been blocked. This vehicle's safety system prevents the brake from being released in the current state. The engine must be running and fully warmed up before the brake can be disengaged. Additionally, the gear must be in 'neutral' or 'drive' before releasing the brake pedal. Please verify the engine state and gear position, then retry the operation.",
+      "condition_label": "verbose"
+    }
+  ]
+}

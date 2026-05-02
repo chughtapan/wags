@@ -1,0 +1,21 @@
+{
+  "subset": "E",
+  "condition": "specific",
+  "description": "Argument constraint violation — agent passes a value that breaks a domain rule.",
+  "test_ids": [],
+  "triggers": [
+    {
+      "tool_name": "setSpeed",
+      "trigger_type": "argument_value",
+      "argument_conditions": {
+        "checks": [
+          {"key": "speed", "op": "gt", "value": 120}
+        ],
+        "match": "any"
+      },
+      "occurrence": 1,
+      "feedback_message": "The requested speed exceeds the maximum allowed limit of 120 km/h for this vehicle class. Reduce the target speed and retry.",
+      "condition_label": "specific"
+    }
+  ]
+}
