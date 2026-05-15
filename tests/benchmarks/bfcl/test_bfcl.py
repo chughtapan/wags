@@ -148,16 +148,19 @@ async def _run_bfcl_test(
         "BFCL_EXTERNAL_FEEDBACK_LOG_FILE",
     )
     _saved_env = {k: os.environ.get(k) for k in _BFCL_ENV_KEYS}
-    os.environ.update(
-        {
-            "DEFAULT_MODEL": model,
-            "TEMPERATURE": str(temperature),
-            "TEST_DATA_PATH": str(test_data_path.absolute()),
-            "TEST_ID": test_id,
-            "SERVER_SCRIPT_PATH": str(test_dir / "mcp_server.py"),
-            "BFCL_EXTERNAL_FEEDBACK_LOG_FILE": str(output_dir / "raw" / "external_feedback.log"),
-        }
-    )
+    env_updates = {
+        "DEFAULT_MODEL": model,
+        "TEMPERATURE": str(temperature),
+        "TEST_DATA_PATH": str(test_data_path.absolute()),
+        "TEST_ID": test_id,
+        "SERVER_SCRIPT_PATH": str(test_dir / "mcp_server.py"),
+    }
+    # Only set a default log path if run_experiment.py didn't already provide one.
+    if not os.environ.get("BFCL_EXTERNAL_FEEDBACK_LOG_FILE"):
+        env_updates["BFCL_EXTERNAL_FEEDBACK_LOG_FILE"] = str(
+            output_dir / "raw" / "external_feedback.jsonl"
+        )
+    os.environ.update(env_updates)
 
     # Create FastAgent after environment variables are set
     config_path = test_dir / "fastagent.config.yaml"

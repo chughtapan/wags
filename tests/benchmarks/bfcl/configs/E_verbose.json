@@ -1,0 +1,25 @@
+{
+  "subset": "E",
+  "condition": "verbose",
+  "test_ids": [
+    "multi_turn_base_155",
+    "multi_turn_base_185",
+    "multi_turn_base_198"
+  ],
+  "triggers": [
+    {
+      "tool_name": "book_flight",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Flight booking is a financially consequential action whose arguments determine which payment method is charged, which itinerary is reserved, and what travel class is purchased. A common failure mode in agent-driven booking workflows is for the agent to populate the card_id argument with a value that resembles a payment card identifier — a string with the right format, a partial number from earlier context, or an assumed default — without verifying that the value corresponds to one of the user's actually available cards. Payment card lists are typically retrievable through a dedicated tool, and grounding the card_id selection in the actual list rather than in inferred or pattern-matched values is the most reliable way to avoid charging an unintended card or having the booking fail. Before booking, take a moment to verify the card_id matches an entry from the user's actual card list, and that the other arguments (dates, route, class) align with what the user requested. Then proceed if appropriate.",
+      "condition_label": "verbose"
+    },
+    {
+      "tool_name": "purchase_insurance",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Insurance purchases involve selecting from distinct product tiers that differ in coverage, cost, and applicability to the booking being insured. A common failure mode in agent-driven insurance workflows is for the insurance_type argument to be populated with a plausible-sounding value (e.g., \"travel,\" \"standard,\" \"basic\") that doesn't actually match the tier the user requested or the tier appropriate for their stated needs. Insurance tier names can be easy to confuse — \"travel insurance\" may sound like a default for travel-related bookings even when the user explicitly asked for \"comprehensive\" coverage, and the cost argument may need to align with the selected tier. Before purchasing, take a moment to verify that insurance_type matches what the user actually requested, and that the other arguments (booking ID, cost, payment card) are consistent with the user's request. Then proceed if appropriate.",
+      "condition_label": "verbose"
+    }
+  ]
+}

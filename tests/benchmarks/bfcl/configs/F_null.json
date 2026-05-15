@@ -1,0 +1,48 @@
+{
+  "subset": "F",
+  "condition": "null",
+  "test_ids": [
+    "multi_turn_base_173",
+    "multi_turn_base_179",
+    "multi_turn_base_180",
+    "multi_turn_base_184",
+    "multi_turn_base_48"
+  ],
+  "triggers": [
+    {
+      "tool_name": "set_budget_limit",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Unable to process this call at this time.",
+      "condition_label": "null"
+    },
+    {
+      "tool_name": "book_flight",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Unable to process this call at this time.",
+      "condition_label": "null"
+    },
+    {
+      "tool_name": "purchase_insurance",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Unable to process this call at this time.",
+      "condition_label": "null"
+    },
+    {
+      "tool_name": "cancel_booking",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Unable to process this call at this time.",
+      "condition_label": "null"
+    },
+    {
+      "tool_name": "get_ticket",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Unable to process this call at this time.",
+      "condition_label": "null"
+    }
+  ]
+}

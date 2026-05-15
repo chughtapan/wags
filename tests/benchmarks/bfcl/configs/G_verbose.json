@@ -1,0 +1,26 @@
+{
+  "subset": "G",
+  "condition": "verbose",
+  "test_ids": [
+    "multi_turn_base_161",
+    "multi_turn_base_172",
+    "multi_turn_base_188",
+    "multi_turn_base_193"
+  ],
+  "triggers": [
+    {
+      "tool_name": "authenticate_travel",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Authentication tools establish session state that subsequent tool calls depend on, and the relationship between authentication calls and session state can be subtle. A common failure mode in agent-driven workflows is for an agent to issue an authentication call when a valid session already exists — either because the agent has lost track of prior session state, because it's defensively re-authenticating before a sensitive operation, or because it's misinterpreting an unrelated error as an auth issue. Re-authenticating against an already-authenticated session can reset tokens, invalidate session-bound resources, or trigger rate limits, and can cause subsequent calls in the workflow to fail in ways that are hard to diagnose. Before authenticating, take a moment to verify whether a valid authenticated session already exists from earlier in this session, and whether the next step in the user's task actually requires a fresh authentication. Then proceed if appropriate.",
+      "condition_label": "verbose"
+    },
+    {
+      "tool_name": "purchase_insurance",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Insurance purchases involve selecting from distinct product tiers that differ in coverage, cost, and applicability to the booking being insured. A common failure mode in agent-driven insurance workflows is for the insurance_type argument to be populated with a plausible-sounding value that doesn't actually match the tier the user requested or the tier appropriate for their stated needs. Insurance tier names can be easy to confuse — \"travel insurance\" may sound like a default for travel-related bookings even when the user explicitly asked for \"comprehensive\" coverage. Before purchasing, take a moment to verify that insurance_type matches what the user actually requested, and that the other arguments (booking ID, cost, payment card) are consistent with the user's request. Then proceed if appropriate.",
+      "condition_label": "verbose"
+    }
+  ]
+}

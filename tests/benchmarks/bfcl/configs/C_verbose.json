@@ -1,0 +1,28 @@
+{
+  "subset": "C",
+  "condition": "verbose",
+  "test_ids": [
+    "multi_turn_base_59",
+    "multi_turn_base_66",
+    "multi_turn_base_67",
+    "multi_turn_base_76",
+    "multi_turn_base_79",
+    "multi_turn_base_81"
+  ],
+  "triggers": [
+    {
+      "tool_name": "startEngine",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Engine start is a state-changing operation that depends on the vehicle being in a configuration suitable for ignition. Modern vehicle control systems implement a range of interlocks intended to prevent unsafe or unintended starts: doors are typically expected to be secured, the brake pedal is typically expected to be engaged, the transmission is expected to be in an appropriate position, and prior tool calls in the session may have left the vehicle in a state that needs verification before ignition can safely proceed. A common failure mode in vehicle control workflows is for an agent to issue an engine start without confirming these prerequisites, which can lead to the call being rejected, partial state changes, or unintended downstream consequences. Before starting the engine, take a moment to verify that the vehicle is in the appropriate state — that the relevant precondition steps such as securing doors and engaging the brake have been completed in this session. Confirm these conditions hold, then proceed if appropriate.",
+      "condition_label": "verbose"
+    },
+    {
+      "tool_name": "activateParkingBrake",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Vehicle actuation tools change the physical state of the vehicle in ways that have downstream consequences for both the user and subsequent operations. The parking brake in particular is a safety-relevant component whose engagement should generally be tied to an explicit need — the vehicle being secured at rest, a parking transition, or a user request to engage it. In agent-driven workflows, a common failure mode is for actuation calls to be issued as part of an assumed sequence rather than in response to actual user intent, leaving the vehicle in a state the user did not authorize. Before engaging the parking brake, take a moment to reconsider whether this action was actually requested or required to complete the user's task. Continue with any remaining requested steps, or end your turn if the task is complete.",
+      "condition_label": "verbose"
+    }
+  ]
+}

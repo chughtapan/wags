@@ -1,14 +1,25 @@
 {
   "subset": "A",
   "condition": "null",
-  "description": "Simple tool-name blocking — null feedback (bare rejection, no explanation).",
-  "test_ids": [],
+  "test_ids": [
+    "multi_turn_base_52",
+    "multi_turn_base_53",
+    "multi_turn_base_54",
+    "multi_turn_base_55",
+    "multi_turn_base_73",
+    "multi_turn_base_84",
+    "multi_turn_base_87",
+    "multi_turn_base_89",
+    "multi_turn_base_92",
+    "multi_turn_base_97",
+    "multi_turn_base_98"
+  ],
   "triggers": [
     {
       "tool_name": "releaseBrakePedal",
       "trigger_type": "tool_only",
       "occurrence": 1,
-      "feedback_message": "",
+      "feedback_message": "Unable to process this call at this time.",
       "condition_label": "null"
     }
   ]

@@ -1,0 +1,42 @@
+{
+  "subset": "B",
+  "condition": "verbose",
+  "test_ids": [
+    "multi_turn_base_102",
+    "multi_turn_base_103",
+    "multi_turn_base_129",
+    "multi_turn_base_148",
+    "multi_turn_base_190",
+    "multi_turn_base_27"
+  ],
+  "triggers": [
+    {
+      "tool_name": "send_message",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Messaging tools in multi-user systems serve a wide range of communication purposes, from brief notifications to detailed coordination across stakeholders. Effective messages typically prioritize clarity and respect the recipient's context — they convey what the recipient needs to know without requiring them to parse through extraneous identifiers, metadata, or background that the system already tracks elsewhere. Many messaging workflows benefit from minimalism: the user generally has a specific intent for the message, and additional context the agent has access to (order IDs, symbols, prices, statuses, timestamps) is often more appropriately handled by the platform's structured data rather than embedded in conversational text. Before sending, take a moment to reconsider whether the message content is limited to what the user explicitly asked you to communicate. Verify that it reflects only what the user wanted conveyed, then proceed if appropriate.",
+      "condition_label": "verbose"
+    },
+    {
+      "tool_name": "resolve_ticket",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Ticket resolution is a consequential action in support workflows because it changes the ticket's state and signals to other systems and users that the underlying issue has been addressed. Resolution text serves as the durable record of what was done, and downstream auditing, customer follow-ups, and reporting often rely on its accuracy. A common failure mode in agent-driven resolution is for the resolution text to describe what was intended or summarized from prior context, rather than what was actually executed in the current session — this can result in tickets being closed prematurely or with misleading documentation. Before resolving, take a moment to reconsider whether the resolution describes only the actions that have actually been performed, and whether the ticket's underlying issue is genuinely addressed. Verify accordingly, then proceed if appropriate.",
+      "condition_label": "verbose"
+    },
+    {
+      "tool_name": "create_ticket",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Ticket creation is the entry point for many support and tracking workflows, and the quality of a ticket's initial title and description has downstream effects on triage, routing, and resolution. Effective tickets are typically scoped to a single, clearly described issue with only the context necessary for whoever picks it up to understand and act on it. Description fields can easily accumulate adjacent information — prior conversation, related but separate issues, system metadata, or context the user didn't ask to be recorded — which can dilute the ticket's purpose and make it harder to resolve. Before creating, take a moment to reconsider whether the title and description are limited to what the user actually asked to record. Verify, then proceed if appropriate.",
+      "condition_label": "verbose"
+    },
+    {
+      "tool_name": "contact_customer_support",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Customer support communications operate within established workflows where intake messages are typically reviewed by humans or routed through triage systems. Effective support requests tend to be concise and focused on a single issue, providing only the context necessary for the support team to understand and respond — extensive identifiers, transaction histories, and adjacent details are often more efficiently retrieved by support staff through their own systems than parsed from a long inbound message. A common pattern in agent-driven support contact is for messages to over-specify, which can slow triage and obscure the actual question. Before sending, take a moment to reconsider whether the message is scoped to the specific issue the user wants raised. Verify, then proceed if appropriate.",
+      "condition_label": "verbose"
+    }
+  ]
+}

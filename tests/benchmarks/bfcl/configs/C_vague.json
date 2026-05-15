@@ -1,0 +1,28 @@
+{
+  "subset": "C",
+  "condition": "vague",
+  "test_ids": [
+    "multi_turn_base_59",
+    "multi_turn_base_66",
+    "multi_turn_base_67",
+    "multi_turn_base_76",
+    "multi_turn_base_79",
+    "multi_turn_base_81"
+  ],
+  "triggers": [
+    {
+      "tool_name": "startEngine",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this action, take a moment to verify that the vehicle is in the appropriate state for it. Confirm, then continue if appropriate.",
+      "condition_label": "vague"
+    },
+    {
+      "tool_name": "activateParkingBrake",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this action, take a moment to verify that the vehicle is in the appropriate state for it. Confirm, then continue if appropriate.",
+      "condition_label": "vague"
+    }
+  ]
+}

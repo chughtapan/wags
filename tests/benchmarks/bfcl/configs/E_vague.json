@@ -1,20 +1,24 @@
 {
   "subset": "E",
   "condition": "vague",
-  "description": "Argument constraint violation — vague feedback with no detail about the violated constraint.",
-  "test_ids": [],
+  "test_ids": [
+    "multi_turn_base_155",
+    "multi_turn_base_185",
+    "multi_turn_base_198"
+  ],
   "triggers": [
     {
-      "tool_name": "setSpeed",
-      "trigger_type": "argument_value",
-      "argument_conditions": {
-        "checks": [
-          {"key": "speed", "op": "gt", "value": 120}
-        ],
-        "match": "any"
-      },
+      "tool_name": "book_flight",
+      "trigger_type": "tool_only",
       "occurrence": 1,
-      "feedback_message": "The requested operation could not be completed.",
+      "feedback_message": "Before proceeding with this call, take a moment to verify the argument values match what the user actually requested. Confirm, then continue if appropriate.",
+      "condition_label": "vague"
+    },
+    {
+      "tool_name": "purchase_insurance",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this call, take a moment to verify the argument values match what the user actually requested. Confirm, then continue if appropriate.",
       "condition_label": "vague"
     }
   ]

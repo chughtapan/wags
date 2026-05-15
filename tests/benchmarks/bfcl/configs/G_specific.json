@@ -1,0 +1,26 @@
+{
+  "subset": "G",
+  "condition": "specific",
+  "test_ids": [
+    "multi_turn_base_161",
+    "multi_turn_base_172",
+    "multi_turn_base_188",
+    "multi_turn_base_193"
+  ],
+  "triggers": [
+    {
+      "tool_name": "authenticate_travel",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before authenticating, take a moment to verify whether you've already authenticated successfully in this session. Re-authenticating when a valid session already exists can reset session state and cause downstream calls to fail. Confirm whether authentication is actually needed, then proceed if appropriate.",
+      "condition_label": "specific"
+    },
+    {
+      "tool_name": "purchase_insurance",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before purchasing, take a moment to verify the argument values you've selected, particularly the insurance type. Insurance offerings typically come in distinct tiers, and the user's request may specify or imply a particular one. Confirm the insurance_type matches what the user actually requested, and verify the other arguments are correct. Then proceed if appropriate.",
+      "condition_label": "specific"
+    }
+  ]
+}

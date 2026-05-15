@@ -1,0 +1,28 @@
+{
+  "subset": "C",
+  "condition": "specific",
+  "test_ids": [
+    "multi_turn_base_59",
+    "multi_turn_base_66",
+    "multi_turn_base_67",
+    "multi_turn_base_76",
+    "multi_turn_base_79",
+    "multi_turn_base_81"
+  ],
+  "triggers": [
+    {
+      "tool_name": "startEngine",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before starting the engine, take a moment to verify the vehicle is in the appropriate state. Engine start typically depends on prior conditions being satisfied, such as doors being secured and the brake being engaged. Confirm these conditions hold, then proceed if appropriate.",
+      "condition_label": "specific"
+    },
+    {
+      "tool_name": "activateParkingBrake",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Engaging the parking brake was not explicitly requested by the user. Take a moment to reconsider whether this action is necessary to complete the current task. Continue with any remaining requested steps, or end your turn if the task is complete.",
+      "condition_label": "specific"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "subset": "F",
+  "condition": "verbose",
+  "test_ids": [
+    "multi_turn_base_173",
+    "multi_turn_base_179",
+    "multi_turn_base_180",
+    "multi_turn_base_184",
+    "multi_turn_base_48"
+  ],
+  "triggers": [
+    {
+      "tool_name": "set_budget_limit",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Budget limit operations are configuration calls whose effect depends on the limit value being correct and on the call being made at the right point in the workflow. A common failure mode in agent-driven financial workflows is for an agent to repeat the same configuration call multiple times in a row — either because the prior call's result wasn't fully processed, because the agent is uncertain whether it succeeded, or because the agent has lost track of what's already been done in the session. Repeating a configuration call without intervening state changes typically produces no progress and consumes context that could be spent on subsequent steps. Before setting the budget limit, take a moment to reconsider whether you've already set or attempted to set this limit, and whether the next move in the user's task is actually a different action. Then proceed if appropriate.",
+      "condition_label": "verbose"
+    },
+    {
+      "tool_name": "book_flight",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Flight booking sits at a specific point in a multi-step travel workflow that typically involves authentication, account verification, card selection, and other prerequisites. A common failure mode is for an agent to issue a book_flight call before all the upstream context has been gathered — for example, picking a card_id based on inference rather than on the user's actual card list, or booking before confirming the trip parameters. Booking is also a financially consequential action that is hard to undo cleanly, so the cost of an incorrect call is higher than for read-only operations. Before booking, take a moment to reconsider whether this is the right next step at this point in the workflow and whether the arguments — payment card, dates, route, class — accurately reflect what the user requested. Then proceed if appropriate.",
+      "condition_label": "verbose"
+    },
+    {
+      "tool_name": "purchase_insurance",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Insurance purchase calls involve both selecting the right product tier and tying the purchase to the correct booking and payment method. A common failure mode in agent-driven workflows is for the insurance_type to be populated with a default-looking value rather than the tier the user actually requested, or for the call to be issued before the booking it's meant to insure has been confirmed. Insurance is also distinct from booking in that the tier names can be ambiguous — \"travel,\" \"standard,\" \"basic,\" \"comprehensive\" — and these distinctions matter for whether the coverage matches the user's intent. Before purchasing, take a moment to reconsider whether this is the right next step and whether the insurance type, booking ID, cost, and payment card are all consistent with what the user asked for. Then proceed if appropriate.",
+      "condition_label": "verbose"
+    },
+    {
+      "tool_name": "cancel_booking",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Booking cancellation is a state-changing operation with downstream effects on refunds, related reservations, and the user's broader travel plans. A common failure mode in agent-driven workflows is for cancellation tools to be confused with other completion-style actions — closing a ticket, resolving an issue, marking a task done — particularly when the user's phrasing is ambiguous about whether they want the booking itself undone or just a related record finalized. Cancellation is typically harder to reverse than other actions, so verifying intent before issuing the call is especially important. Before cancelling, take a moment to reconsider whether the user actually asked for the booking to be cancelled, or whether a different action (closing a ticket, resolving a support request, finalizing a different record) better matches their request. Then proceed if appropriate.",
+      "condition_label": "verbose"
+    },
+    {
+      "tool_name": "get_ticket",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Ticket retrieval is a read-only operation whose value depends on whether the information it returns is new or has changed since the last retrieval. A common failure mode in agent-driven workflows is for an agent to call get_ticket repeatedly across turns without taking action on the information already returned — either because the agent is uncertain how to proceed, because it's looking for a state change that hasn't happened, or because it's lost track of what it already knows. Repeated read-only calls don't progress the task and can crowd out the actions that would. Before retrieving, take a moment to reconsider whether you already have the ticket information from a recent call and whether the next step in the user's task is actually a different action. Then proceed if appropriate.",
+      "condition_label": "verbose"
+    }
+  ]
+}

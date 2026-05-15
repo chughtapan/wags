@@ -1,14 +1,25 @@
 {
   "subset": "A",
   "condition": "vague",
-  "description": "Simple tool-name blocking — vague feedback giving no detail about why the action failed.",
-  "test_ids": [],
+  "test_ids": [
+    "multi_turn_base_52",
+    "multi_turn_base_53",
+    "multi_turn_base_54",
+    "multi_turn_base_55",
+    "multi_turn_base_73",
+    "multi_turn_base_84",
+    "multi_turn_base_87",
+    "multi_turn_base_89",
+    "multi_turn_base_92",
+    "multi_turn_base_97",
+    "multi_turn_base_98"
+  ],
   "triggers": [
     {
       "tool_name": "releaseBrakePedal",
       "trigger_type": "tool_only",
       "occurrence": 1,
-      "feedback_message": "That action is not permitted at this time.",
+      "feedback_message": "This action does not appear to be necessary for the user's request. Reconsider whether it should be performed.",
       "condition_label": "vague"
     }
   ]

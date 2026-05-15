@@ -1,0 +1,25 @@
+{
+  "subset": "E",
+  "condition": "null",
+  "test_ids": [
+    "multi_turn_base_155",
+    "multi_turn_base_185",
+    "multi_turn_base_198"
+  ],
+  "triggers": [
+    {
+      "tool_name": "book_flight",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Unable to process this call at this time.",
+      "condition_label": "null"
+    },
+    {
+      "tool_name": "purchase_insurance",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Unable to process this call at this time.",
+      "condition_label": "null"
+    }
+  ]
+}

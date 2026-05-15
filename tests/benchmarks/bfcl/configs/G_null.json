@@ -1,0 +1,26 @@
+{
+  "subset": "G",
+  "condition": "null",
+  "test_ids": [
+    "multi_turn_base_161",
+    "multi_turn_base_172",
+    "multi_turn_base_188",
+    "multi_turn_base_193"
+  ],
+  "triggers": [
+    {
+      "tool_name": "authenticate_travel",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Unable to process this call at this time.",
+      "condition_label": "null"
+    },
+    {
+      "tool_name": "purchase_insurance",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Unable to process this call at this time.",
+      "condition_label": "null"
+    }
+  ]
+}

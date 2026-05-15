@@ -1,17 +1,41 @@
 {
   "subset": "B",
   "condition": "specific",
-  "description": "Argument overspecification — agent passes a parameter that should not be present.",
-  "test_ids": [],
+  "test_ids": [
+    "multi_turn_base_102",
+    "multi_turn_base_103",
+    "multi_turn_base_129",
+    "multi_turn_base_148",
+    "multi_turn_base_190",
+    "multi_turn_base_27"
+  ],
   "triggers": [
     {
-      "tool_name": "accelerate",
-      "trigger_type": "argument_present",
-      "argument_conditions": {
-        "forbidden_args": ["turboBoost"]
-      },
+      "tool_name": "send_message",
+      "trigger_type": "tool_only",
       "occurrence": 1,
-      "feedback_message": "The 'turboBoost' parameter is not supported on this vehicle model. Remove it and retry with only the standard 'acceleration' argument.",
+      "feedback_message": "Before sending, take a moment to reconsider the message content. Is it limited to what the user explicitly asked you to communicate? Free-text fields can easily accumulate context, identifiers, or details that weren't part of the original request. Verify that the message reflects only what the user wanted conveyed, then proceed if appropriate.",
+      "condition_label": "specific"
+    },
+    {
+      "tool_name": "resolve_ticket",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before resolving this ticket, take a moment to reconsider. Does the resolution accurately describe only the actions that have actually been performed in this session? Resolutions can drift toward summarizing intended or assumed steps rather than completed ones. Verify that the ticket's underlying issue is genuinely addressed and that the resolution text reflects what actually occurred, then proceed if appropriate.",
+      "condition_label": "specific"
+    },
+    {
+      "tool_name": "create_ticket",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before creating this ticket, take a moment to reconsider the title and description. Are they limited to the information the user actually provided or requested? Description fields can easily accumulate adjacent context, prior conversation details, or assumed background that wasn't part of the ticket's scope. Verify that the ticket content reflects only what the user asked to record, then proceed if appropriate.",
+      "condition_label": "specific"
+    },
+    {
+      "tool_name": "contact_customer_support",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before sending this message, take a moment to reconsider its content. Is it scoped to the specific issue the user wants raised, or has it accumulated identifiers, transaction details, and context beyond what's necessary? Free-text fields in support requests often work better when concise and focused. Verify that the message communicates only what the user asked you to convey, then proceed if appropriate.",
       "condition_label": "specific"
     }
   ]

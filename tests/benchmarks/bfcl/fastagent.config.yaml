@@ -1,5 +1,15 @@
 # Static configuration with all available BFCL API servers
 # This single config is used for all tests - the script selects which servers to use
+#
+# The _wags_env anchor forwards external-feedback env vars to every MCP server
+# subprocess.  When unset (baseline runs) the values default to empty strings and
+# mcp_server.py stays in baseline mode.
+
+_wags_env: &wags_env
+  BFCL_EXTERNAL_FEEDBACK_ENABLED: ${BFCL_EXTERNAL_FEEDBACK_ENABLED:}
+  BFCL_EXTERNAL_FEEDBACK_CONFIG: ${BFCL_EXTERNAL_FEEDBACK_CONFIG:}
+  BFCL_EXTERNAL_FEEDBACK_LOG_FILE: ${BFCL_EXTERNAL_FEEDBACK_LOG_FILE:}
+  TEST_ID: ${TEST_ID:}
 
 default_model: ${DEFAULT_MODEL:gpt-4o}
 
@@ -19,6 +29,7 @@ mcp:
         - GorillaFileSystem
         - ${TEST_DATA_PATH}
         - ${TEST_ID}
+      env: *wags_env
 
     # MathAPI - Mathematical operations
     mathapi:
@@ -30,6 +41,7 @@ mcp:
         - MathAPI
         - ${TEST_DATA_PATH}
         - ${TEST_ID}
+      env: *wags_env
 
     # MessageAPI - Messaging operations
     messageapi:
@@ -41,6 +53,7 @@ mcp:
         - MessageAPI
         - ${TEST_DATA_PATH}
         - ${TEST_ID}
+      env: *wags_env
 
     # TwitterAPI - Twitter operations
     twitterapi:
@@ -52,6 +65,7 @@ mcp:
         - TwitterAPI
         - ${TEST_DATA_PATH}
         - ${TEST_ID}
+      env: *wags_env
 
     # TicketAPI - Ticket management
     ticketapi:
@@ -63,6 +77,7 @@ mcp:
         - TicketAPI
         - ${TEST_DATA_PATH}
         - ${TEST_ID}
+      env: *wags_env
 
     # TradingBot - Trading operations
     tradingbot:
@@ -74,6 +89,7 @@ mcp:
         - TradingBot
         - ${TEST_DATA_PATH}
         - ${TEST_ID}
+      env: *wags_env
 
     # TravelAPI - Travel operations
     travelapi:
@@ -85,6 +101,7 @@ mcp:
         - TravelAPI
         - ${TEST_DATA_PATH}
         - ${TEST_ID}
+      env: *wags_env
 
     # VehicleControlAPI - Vehicle control operations
     vehiclecontrolapi:
@@ -96,14 +113,7 @@ mcp:
         - VehicleControlAPI
         - ${TEST_DATA_PATH}
         - ${TEST_ID}
-      env:
-        # BFCL_EXTERNAL_FEEDBACK_ENABLED: "1"
-        # BFCL_EXTERNAL_FEEDBACK_TOOL: "releaseBrakePedal"
-        # BFCL_EXTERNAL_FEEDBACK_N: "1"
-        # BFCL_EXTERNAL_FEEDBACK_MESSAGE: |
-        #   The brake pedal should not be released after starting the engine
-        #   unless the user explicitly asks for it.
-        # BFCL_EXTERNAL_FEEDBACK_LOG_FILE: ${BFCL_EXTERNAL_FEEDBACK_LOG_FILE}
+      env: *wags_env
 
     # WebSearchAPI - Web search operations
     websearchapi:
@@ -115,6 +125,7 @@ mcp:
         - WebSearchAPI
         - ${TEST_DATA_PATH}
         - ${TEST_ID}
+      env: *wags_env
 
     # MemoryAPI_kv - Key-value memory operations
     memoryapi_kv:
@@ -126,6 +137,7 @@ mcp:
         - MemoryAPI_kv
         - ${TEST_DATA_PATH}
         - ${TEST_ID}
+      env: *wags_env
 
     # MemoryAPI_vector - Vector memory operations
     memoryapi_vector:
@@ -137,6 +149,7 @@ mcp:
         - MemoryAPI_vector
         - ${TEST_DATA_PATH}
         - ${TEST_ID}
+      env: *wags_env
 
     # MemoryAPI_rec_sum - Recursive summarization memory operations
     memoryapi_rec_sum:
@@ -148,6 +161,7 @@ mcp:
         - MemoryAPI_rec_sum
         - ${TEST_DATA_PATH}
         - ${TEST_ID}
+      env: *wags_env
 
 logger:
   level: error

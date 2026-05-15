@@ -1,0 +1,57 @@
+{
+  "subset": "D",
+  "condition": "vague",
+  "test_ids": [
+    "multi_turn_base_0",
+    "multi_turn_base_10",
+    "multi_turn_base_18",
+    "multi_turn_base_4",
+    "multi_turn_base_40",
+    "multi_turn_base_42",
+    "multi_turn_base_44"
+  ],
+  "triggers": [
+    {
+      "tool_name": "grep",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this file operation, take a moment to verify the relevant state — your current location, the files involved, and whether the action is needed. Confirm, then continue if appropriate.",
+      "condition_label": "vague"
+    },
+    {
+      "tool_name": "cd",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this file operation, take a moment to verify the relevant state — your current location, the files involved, and whether the action is needed. Confirm, then continue if appropriate.",
+      "condition_label": "vague"
+    },
+    {
+      "tool_name": "mv",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this file operation, take a moment to verify the relevant state — your current location, the files involved, and whether the action is needed. Confirm, then continue if appropriate.",
+      "condition_label": "vague"
+    },
+    {
+      "tool_name": "ls",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this file operation, take a moment to verify the relevant state — your current location, the files involved, and whether the action is needed. Confirm, then continue if appropriate.",
+      "condition_label": "vague"
+    },
+    {
+      "tool_name": "mkdir",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this file operation, take a moment to verify the relevant state — your current location, the files involved, and whether the action is needed. Confirm, then continue if appropriate.",
+      "condition_label": "vague"
+    },
+    {
+      "tool_name": "echo",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this file operation, take a moment to verify the relevant state — your current location, the files involved, and whether the action is needed. Confirm, then continue if appropriate.",
+      "condition_label": "vague"
+    }
+  ]
+}

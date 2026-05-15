@@ -70,6 +70,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from fastmcp.exceptions import ToolError
 from fastmcp.server.middleware.middleware import CallNext, Middleware, MiddlewareContext
 from fastmcp.tools.tool import ToolResult
 from mcp.types import CallToolRequestParams
@@ -254,28 +255,7 @@ class ExternalFeedbackMiddleware(Middleware):
                     f"(match #{rule.match_count}, label={rule.condition_label})"
                 )
 
-                if rule.feedback_message:
-                    text = (
-                        f"Warning: {rule.feedback_message}\n"
-                        "The previous action was rejected. "
-                        "Please choose a different action."
-                    )
-                else:
-                    text = (
-                        "The previous action was rejected. "
-                        "Please choose a different action."
-                    )
-
-                return ToolResult(
-                    content=text,
-                    structured_content={
-                        "result": {
-                            "external_feedback": "true",
-                            "blocked": "true",
-                            "message": rule.feedback_message,
-                        }
-                    },
-                )
+                raise ToolError(rule.feedback_message or "")
 
         # ---- No rule fired — pass through ----
         self._write_log_record(

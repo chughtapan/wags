@@ -46,7 +46,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BFCL_DIR = REPO_ROOT / "tests" / "benchmarks" / "bfcl"
 CONFIGS_DIR = BFCL_DIR / "configs"
-RESULTS_DIR = REPO_ROOT / "results"
+RESULTS_DIR = REPO_ROOT / "outputs" / "feedback"
 
 VALID_SUBSETS = {"A", "B", "C", "D", "E", "F", "G"}
 VALID_CONDITIONS = {"specific", "vague", "verbose", "null"}
@@ -87,8 +87,9 @@ def build_pytest_filter(test_ids: list[str]) -> str:
     """
     if not test_ids:
         return ""
-    # Each ID may contain hyphens / underscores that are safe in -k expressions.
-    return " or ".join(test_ids)
+    # Wrap each ID in brackets to match the exact parametrized name (e.g. [multi_turn_base_0])
+    # and avoid substring matches (e.g. multi_turn_base_0 matching multi_turn_base_100).
+    return " or ".join(f"[{tid}]" for tid in test_ids)
 
 
 def build_env(
@@ -181,14 +182,14 @@ def parse_args(argv: list[str] | None = None) -> tuple[argparse.Namespace, list[
     )
     parser.add_argument(
         "--model",
-        default="gpt-4o",
-        help="LLM model name (default: gpt-4o).",
+        default="gpt-5",
+        help="LLM model name.",
     )
     parser.add_argument(
         "--temperature",
         type=float,
-        default=0.001,
-        help="Sampling temperature (default: 0.001).",
+        default=0.00,
+        help="Sampling temperature (default: 0.00).",
     )
     parser.add_argument(
         "--test-ids",

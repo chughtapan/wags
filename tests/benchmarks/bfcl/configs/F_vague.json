@@ -1,0 +1,48 @@
+{
+  "subset": "F",
+  "condition": "vague",
+  "test_ids": [
+    "multi_turn_base_173",
+    "multi_turn_base_179",
+    "multi_turn_base_180",
+    "multi_turn_base_184",
+    "multi_turn_base_48"
+  ],
+  "triggers": [
+    {
+      "tool_name": "set_budget_limit",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this call, take a moment to reconsider whether it's the right next step in the user's task. Confirm, then continue if appropriate.",
+      "condition_label": "vague"
+    },
+    {
+      "tool_name": "book_flight",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this call, take a moment to reconsider whether it's the right next step in the user's task. Confirm, then continue if appropriate.",
+      "condition_label": "vague"
+    },
+    {
+      "tool_name": "purchase_insurance",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this call, take a moment to reconsider whether it's the right next step in the user's task. Confirm, then continue if appropriate.",
+      "condition_label": "vague"
+    },
+    {
+      "tool_name": "cancel_booking",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this call, take a moment to reconsider whether it's the right next step in the user's task. Confirm, then continue if appropriate.",
+      "condition_label": "vague"
+    },
+    {
+      "tool_name": "get_ticket",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this call, take a moment to reconsider whether it's the right next step in the user's task. Confirm, then continue if appropriate.",
+      "condition_label": "vague"
+    }
+  ]
+}

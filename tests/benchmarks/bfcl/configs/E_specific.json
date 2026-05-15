@@ -1,20 +1,24 @@
 {
   "subset": "E",
   "condition": "specific",
-  "description": "Argument constraint violation — agent passes a value that breaks a domain rule.",
-  "test_ids": [],
+  "test_ids": [
+    "multi_turn_base_155",
+    "multi_turn_base_185",
+    "multi_turn_base_198"
+  ],
   "triggers": [
     {
-      "tool_name": "setSpeed",
-      "trigger_type": "argument_value",
-      "argument_conditions": {
-        "checks": [
-          {"key": "speed", "op": "gt", "value": 120}
-        ],
-        "match": "any"
-      },
+      "tool_name": "book_flight",
+      "trigger_type": "tool_only",
       "occurrence": 1,
-      "feedback_message": "The requested speed exceeds the maximum allowed limit of 120 km/h for this vehicle class. Reduce the target speed and retry.",
+      "feedback_message": "Before booking, take a moment to verify the argument values you've selected, particularly the payment card. The card_id should correspond to one of the user's available cards — confirm it matches an entry from the user's actual card list rather than a similarly formatted or assumed value. Verify the other booking arguments (dates, route, class) are also correct, then proceed if appropriate.",
+      "condition_label": "specific"
+    },
+    {
+      "tool_name": "purchase_insurance",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before purchasing, take a moment to verify the argument values you've selected, particularly the insurance type. Insurance offerings typically come in distinct tiers (e.g., basic, travel, comprehensive), and the user's request may specify or imply a particular tier. Confirm the insurance_type matches what the user actually requested, and verify the other arguments (booking ID, cost, payment card) are correct. Then proceed if appropriate.",
       "condition_label": "specific"
     }
   ]

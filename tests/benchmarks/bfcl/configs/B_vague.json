@@ -1,0 +1,42 @@
+{
+  "subset": "B",
+  "condition": "vague",
+  "test_ids": [
+    "multi_turn_base_102",
+    "multi_turn_base_103",
+    "multi_turn_base_129",
+    "multi_turn_base_148",
+    "multi_turn_base_190",
+    "multi_turn_base_27"
+  ],
+  "triggers": [
+    {
+      "tool_name": "send_message",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this call, take a moment to reconsider the content of the arguments. Verify they reflect what the user actually asked for, then continue if appropriate.",
+      "condition_label": "vague"
+    },
+    {
+      "tool_name": "resolve_ticket",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this call, take a moment to reconsider the content of the arguments. Verify they reflect what the user actually asked for, then continue if appropriate.",
+      "condition_label": "vague"
+    },
+    {
+      "tool_name": "create_ticket",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this call, take a moment to reconsider the content of the arguments. Verify they reflect what the user actually asked for, then continue if appropriate.",
+      "condition_label": "vague"
+    },
+    {
+      "tool_name": "contact_customer_support",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before proceeding with this call, take a moment to reconsider the content of the arguments. Verify they reflect what the user actually asked for, then continue if appropriate.",
+      "condition_label": "vague"
+    }
+  ]
+}

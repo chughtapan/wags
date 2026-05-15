@@ -1,0 +1,28 @@
+{
+  "subset": "C",
+  "condition": "null",
+  "test_ids": [
+    "multi_turn_base_59",
+    "multi_turn_base_66",
+    "multi_turn_base_67",
+    "multi_turn_base_76",
+    "multi_turn_base_79",
+    "multi_turn_base_81"
+  ],
+  "triggers": [
+    {
+      "tool_name": "startEngine",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Unable to process this call at this time.",
+      "condition_label": "null"
+    },
+    {
+      "tool_name": "activateParkingBrake",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Unable to process this call at this time.",
+      "condition_label": "null"
+    }
+  ]
+}

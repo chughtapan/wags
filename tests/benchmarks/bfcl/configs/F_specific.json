@@ -1,0 +1,48 @@
+{
+  "subset": "F",
+  "condition": "specific",
+  "test_ids": [
+    "multi_turn_base_173",
+    "multi_turn_base_179",
+    "multi_turn_base_180",
+    "multi_turn_base_184",
+    "multi_turn_base_48"
+  ],
+  "triggers": [
+    {
+      "tool_name": "set_budget_limit",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before setting the budget limit, take a moment to reconsider whether this is the right next step in the user's task. If you've already set or attempted to set a budget limit recently, repeating the call won't change the outcome — review what's been done so far and whether a different action is needed to move the task forward. Then proceed if appropriate.",
+      "condition_label": "specific"
+    },
+    {
+      "tool_name": "book_flight",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before booking, take a moment to reconsider whether this is the right next step in the user's task and whether the arguments you've selected are correct. Verify the action fits the current point in the workflow and that values like the payment card match what the user actually has available. Then proceed if appropriate.",
+      "condition_label": "specific"
+    },
+    {
+      "tool_name": "purchase_insurance",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before purchasing, take a moment to reconsider whether this is the right next step in the user's task and whether the arguments are correct. Verify that the insurance type, booking ID, and payment card match what the user requested. Then proceed if appropriate.",
+      "condition_label": "specific"
+    },
+    {
+      "tool_name": "cancel_booking",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before cancelling the booking, take a moment to reconsider whether this is the action the user actually requested. Cancellation is a state-changing operation that's easy to confuse with other actions like closing a ticket, resolving an issue, or undoing a different recent step. Verify that cancelling the booking is what the user asked for, then proceed if appropriate.",
+      "condition_label": "specific"
+    },
+    {
+      "tool_name": "get_ticket",
+      "trigger_type": "tool_only",
+      "occurrence": 1,
+      "feedback_message": "Before retrieving the ticket, take a moment to reconsider whether you already have the information this call would return. If you've recently called get_ticket and the ticket state hasn't changed, repeating the call won't yield new information — review what you already know and consider whether a different action is needed to move the task forward. Then proceed if appropriate.",
+      "condition_label": "specific"
+    }
+  ]
+}
