@@ -169,6 +169,14 @@ async def main() -> None:
     # Patch tools with BFCL's richer descriptions
     patch_tool_with_func_doc(server, func_docs)
 
+    # --- Seed initial cwd for precondition_check triggers ---
+    if hasattr(api, "_current_dir") and hasattr(api._current_dir, "name"):
+        os.environ["BFCL_INITIAL_CWD"] = "/" + api._current_dir.name
+        print(
+            f"[mcp_server] BFCL_INITIAL_CWD=/{api._current_dir.name}",
+            file=sys.stderr, flush=True,
+        )
+
     # --- WAGS / external feedback experiment wiring ---
     feedback_enabled = _env_flag_enabled("BFCL_EXTERNAL_FEEDBACK_ENABLED", default=False)
     if feedback_enabled:

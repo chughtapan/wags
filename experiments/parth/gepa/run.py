@@ -4,8 +4,8 @@ run.py
 Orchestrator for running GEPA-based instruction optimization 
 experiments on BFCL tests with logging/artifacts
 
-Run once per experiment with 
-`python -m experiments.gepa_bfcl.run --instruction-file path/to/instruction.txt [other options]`
+Run once per experiment with
+`python -m experiments.parth.gepa.run --instruction-file path/to/instruction.txt [other options]`
 """
 
 from __future__ import annotations

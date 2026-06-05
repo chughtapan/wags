@@ -13,45 +13,51 @@
   "triggers": [
     {
       "tool_name": "grep",
-      "trigger_type": "tool_only",
+      "trigger_type": "precondition_check",
       "occurrence": 1,
       "feedback_message": "Before searching, take a moment to verify the file you're searching is the correct one for this task. File names referenced in earlier turns or in similar tasks can be easy to confuse. Confirm the target file matches the user's current request, then proceed if appropriate.",
-      "condition_label": "specific"
+      "condition_label": "specific",
+      "condition": "arg_not_recent_file"
     },
     {
       "tool_name": "cd",
-      "trigger_type": "tool_only",
+      "trigger_type": "precondition_check",
       "occurrence": 1,
       "feedback_message": "Before changing directories, take a moment to verify your current working directory. You may already be in the target directory, or the path you're navigating to may not be relative to where you currently are. Confirm with pwd if uncertain, then proceed if appropriate.",
-      "condition_label": "specific"
+      "condition_label": "specific",
+      "condition": "cd_to_current_dir"
     },
     {
       "tool_name": "mv",
-      "trigger_type": "tool_only",
+      "trigger_type": "precondition_check",
       "occurrence": 1,
       "feedback_message": "Before moving the file, take a moment to verify the source and destination are what you intend. The destination argument can serve either as a new filename or as a target directory depending on context — confirm which is appropriate here, and verify any prior steps the move depends on have been completed. Then proceed if appropriate.",
-      "condition_label": "specific"
+      "condition_label": "specific",
+      "condition": "mv_dest_missing_directory"
     },
     {
       "tool_name": "ls",
-      "trigger_type": "tool_only",
+      "trigger_type": "precondition_check",
       "occurrence": 1,
       "feedback_message": "Before listing directory contents, take a moment to verify whether this information is already available from a recent call. Repeating a listing without state changes between calls typically returns the same result. Confirm whether a fresh listing is needed, then proceed if appropriate.",
-      "condition_label": "specific"
+      "condition_label": "specific",
+      "condition": "duplicate_ls_no_state_change"
     },
     {
       "tool_name": "mkdir",
-      "trigger_type": "tool_only",
+      "trigger_type": "precondition_check",
       "occurrence": 1,
       "feedback_message": "Before creating the directory, take a moment to verify it doesn't already exist and that your current working directory is the intended parent. Confirm with pwd and ls if uncertain, then proceed if appropriate.",
-      "condition_label": "specific"
+      "condition_label": "specific",
+      "condition": "mkdir_already_exists"
     },
     {
       "tool_name": "echo",
-      "trigger_type": "tool_only",
+      "trigger_type": "precondition_check",
       "occurrence": 1,
       "feedback_message": "Before writing the content, take a moment to verify the content string is formatted as intended. String literals can pick up extra quote characters or escape sequences that change what actually gets written to the file. Confirm the content matches what the user requested, then proceed if appropriate.",
-      "condition_label": "specific"
+      "condition_label": "specific",
+      "condition": "echo_content_extra_quotes"
     }
   ]
 }

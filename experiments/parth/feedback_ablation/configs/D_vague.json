@@ -13,45 +13,51 @@
   "triggers": [
     {
       "tool_name": "grep",
-      "trigger_type": "tool_only",
+      "trigger_type": "precondition_check",
       "occurrence": 1,
       "feedback_message": "Before proceeding with this file operation, take a moment to verify the relevant state — your current location, the files involved, and whether the action is needed. Confirm, then continue if appropriate.",
-      "condition_label": "vague"
+      "condition_label": "vague",
+      "condition": "arg_not_recent_file"
     },
     {
       "tool_name": "cd",
-      "trigger_type": "tool_only",
+      "trigger_type": "precondition_check",
       "occurrence": 1,
       "feedback_message": "Before proceeding with this file operation, take a moment to verify the relevant state — your current location, the files involved, and whether the action is needed. Confirm, then continue if appropriate.",
-      "condition_label": "vague"
+      "condition_label": "vague",
+      "condition": "cd_to_current_dir"
     },
     {
       "tool_name": "mv",
-      "trigger_type": "tool_only",
+      "trigger_type": "precondition_check",
       "occurrence": 1,
       "feedback_message": "Before proceeding with this file operation, take a moment to verify the relevant state — your current location, the files involved, and whether the action is needed. Confirm, then continue if appropriate.",
-      "condition_label": "vague"
+      "condition_label": "vague",
+      "condition": "mv_dest_missing_directory"
     },
     {
       "tool_name": "ls",
-      "trigger_type": "tool_only",
+      "trigger_type": "precondition_check",
       "occurrence": 1,
       "feedback_message": "Before proceeding with this file operation, take a moment to verify the relevant state — your current location, the files involved, and whether the action is needed. Confirm, then continue if appropriate.",
-      "condition_label": "vague"
+      "condition_label": "vague",
+      "condition": "duplicate_ls_no_state_change"
     },
     {
       "tool_name": "mkdir",
-      "trigger_type": "tool_only",
+      "trigger_type": "precondition_check",
       "occurrence": 1,
       "feedback_message": "Before proceeding with this file operation, take a moment to verify the relevant state — your current location, the files involved, and whether the action is needed. Confirm, then continue if appropriate.",
-      "condition_label": "vague"
+      "condition_label": "vague",
+      "condition": "mkdir_already_exists"
     },
     {
       "tool_name": "echo",
-      "trigger_type": "tool_only",
+      "trigger_type": "precondition_check",
       "occurrence": 1,
       "feedback_message": "Before proceeding with this file operation, take a moment to verify the relevant state — your current location, the files involved, and whether the action is needed. Confirm, then continue if appropriate.",
-      "condition_label": "vague"
+      "condition_label": "vague",
+      "condition": "echo_content_extra_quotes"
     }
   ]
 }

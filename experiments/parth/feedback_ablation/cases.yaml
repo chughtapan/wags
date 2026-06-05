@@ -438,7 +438,8 @@
   pattern: File Ops Without Verification
   trigger:
     tool_name: grep
-    trigger_type: tool_only
+    trigger_type: precondition_check
+    condition: arg_not_recent_file
     occurrence: first
   messages:
     specific: Before searching, take a moment to verify the file you're searching is the correct one for this task. File names
@@ -459,7 +460,8 @@
   pattern: File Ops Without Verification
   trigger:
     tool_name: cd
-    trigger_type: tool_only
+    trigger_type: precondition_check
+    condition: cd_to_current_dir
     occurrence: first
   messages:
     specific: Before changing directories, take a moment to verify your current working directory. You may already be in the
@@ -480,7 +482,8 @@
   pattern: File Ops Without Verification
   trigger:
     tool_name: mv
-    trigger_type: tool_only
+    trigger_type: precondition_check
+    condition: mv_dest_missing_directory
     occurrence: first
   messages:
     specific: Before moving the file, take a moment to verify the source and destination are what you intend. The destination
@@ -501,7 +504,8 @@
   pattern: File Ops Without Verification
   trigger:
     tool_name: cd
-    trigger_type: tool_only
+    trigger_type: precondition_check
+    condition: cd_to_current_dir
     occurrence: first
   messages:
     specific: Before changing directories, take a moment to verify your current working directory. You may already be in the
@@ -522,7 +526,8 @@
   pattern: File Ops Without Verification
   trigger:
     tool_name: ls
-    trigger_type: tool_only
+    trigger_type: precondition_check
+    condition: duplicate_ls_no_state_change
     occurrence: first
   messages:
     specific: Before listing directory contents, take a moment to verify whether this information is already available from
@@ -541,7 +546,8 @@
   pattern: File Ops Without Verification
   trigger:
     tool_name: mkdir
-    trigger_type: tool_only
+    trigger_type: precondition_check
+    condition: mkdir_already_exists
     occurrence: first
   messages:
     specific: Before creating the directory, take a moment to verify it doesn't already exist and that your current working
@@ -561,7 +567,8 @@
   pattern: File Ops Without Verification
   trigger:
     tool_name: echo
-    trigger_type: tool_only
+    trigger_type: precondition_check
+    condition: echo_content_extra_quotes
     occurrence: first
   messages:
     specific: Before writing the content, take a moment to verify the content string is formatted as intended. String literals

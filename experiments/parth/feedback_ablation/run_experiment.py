@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Experiment runner for BFCL external-feedback conditions.
+"""Experiment runner for BFCL runtime feedback
 
 Runs the BFCL evaluation suite for a single (subset, condition) cell.
 Resolves the right config file, sets all required environment variables,
@@ -8,17 +8,17 @@ and delegates to pytest with appropriate flags.
 Usage
 -----
     # Run subset A with specific-label feedback
-    python scripts/run_experiment.py --subset A --condition specific
+    python experiments/parth/feedback_ablation/run_experiment.py --subset A --condition specific
 
     # Override the test-case list (comma-separated IDs)
-    python scripts/run_experiment.py --subset E --condition vague \\
+    python experiments/parth/feedback_ablation/run_experiment.py --subset E --condition vague \\
         --test-ids multi_turn_base_62,multi_turn_base_70
 
     # Dry-run: print the pytest command without executing it
-    python scripts/run_experiment.py --subset D --condition specific --dry-run
+    python experiments/parth/feedback_ablation/run_experiment.py --subset D --condition specific --dry-run
 
     # Extra pytest flags are forwarded verbatim after --
-    python scripts/run_experiment.py --subset A --condition specific -- -x -v
+    python experiments/parth/feedback_ablation/run_experiment.py --subset A --condition specific -- -x -v
 
 Output
 ------
@@ -43,9 +43,10 @@ from pathlib import Path
 # Paths relative to repo root
 # ---------------------------------------------------------------------------
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+_THIS_DIR = Path(__file__).resolve().parent
+REPO_ROOT = _THIS_DIR.parent.parent.parent
 BFCL_DIR = REPO_ROOT / "tests" / "benchmarks" / "bfcl"
-CONFIGS_DIR = BFCL_DIR / "configs"
+CONFIGS_DIR = _THIS_DIR / "configs"
 RESULTS_DIR = REPO_ROOT / "outputs" / "feedback"
 
 VALID_SUBSETS = {"A", "B", "C", "D", "E", "F", "G"}

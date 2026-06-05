@@ -17,10 +17,11 @@ from pathlib import Path
 
 import yaml
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+_THIS_DIR = Path(__file__).resolve().parent
+REPO_ROOT = _THIS_DIR.parent.parent.parent
 FEEDBACK_DIR = REPO_ROOT / "outputs" / "feedback"
-ANNOTATIONS_CSV = REPO_ROOT / "annotations" / "Trigger Annotation Template.xlsx - Trigger Annotations.csv"
-CASES_YAML = REPO_ROOT / "cases.yaml"
+BASELINE_STABILITY_YAML = _THIS_DIR / "baseline_stability.yaml"
+CASES_YAML = _THIS_DIR / "cases.yaml"
 
 CONDITIONS = ["specific", "vague", "verbose", "null"]
 BASELINES = ["baseline_1", "baseline_2", "baseline_3"]
@@ -31,16 +32,13 @@ BASELINES = ["baseline_1", "baseline_2", "baseline_3"]
 # ---------------------------------------------------------------------------
 
 def load_baseline_outcomes() -> dict[tuple[str, str], str]:
-    """Load (subset, case_id) -> stability from annotations CSV."""
-    outcomes = {}
-    with open(ANNOTATIONS_CSV, newline="") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            subset = row["Subset"].strip()
-            case_id = row["Test Case ID"].strip()
-            stability = row["Stability (consistent_fail / flaky / consistent_pass)"].strip()
-            outcomes[(subset, case_id)] = stability
-    return outcomes
+    """Load (subset, case_id) -> stability from baseline_stability.yaml."""
+    with open(BASELINE_STABILITY_YAML) as f:
+        entries = yaml.safe_load(f)
+    return {
+        (e["subset"], e["case_id"]): e["baseline_stability"]
+        for e in entries
+    }
 
 
 def load_expected_cases() -> dict[str, list[str]]:
@@ -474,7 +472,7 @@ def main() -> None:
     print(f"Conditions: {sorted(set(r['condition'] for r in results))}")
 
     # Dump dataframe as CSV
-    csv_path = REPO_ROOT / "results_dataframe.csv"
+    csv_path = _THIS_DIR / "results_dataframe.csv"
     fieldnames = [
         "subset", "condition", "case_id", "baseline_outcome",
         "trigger_fired", "trigger_count", "behavioral_response", "evaluator_outcome",
