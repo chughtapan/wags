@@ -1,3 +1,5 @@
+
+
 # Welcome to wags
 
 <img src="docs/assets/images/wags-logo.png" alt="WAGS Logo" width="110" align="left" style="margin-right: 20px;">
@@ -38,7 +40,7 @@ wags version
 
 You should see:
 ```
-WAGS version 0.1.0
+WAGS version 0.0.0.dev0
 FastMCP version x.x.x
 ```
 
