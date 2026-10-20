@@ -191,13 +191,13 @@ appworld download data
 .venv/bin/pytest 'tests/benchmarks/bfcl/test_bfcl.py::test_bfcl[multi_turn_base_121]'
 
 # Run with specific model
-.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --model gpt-4o
+.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --model gpt-6.1-sol
 ```
 
 **AppWorld:**
 ```bash
 # Run all train tasks
-.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --dataset train --model gpt-4o
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --dataset train --model gpt-6.1-sol
 
 # Run specific task
 .venv/bin/pytest 'tests/benchmarks/appworld/test_appworld.py::test_appworld[train_001]'

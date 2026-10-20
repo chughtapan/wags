@@ -57,10 +57,10 @@ export GITHUB_PERSONAL_ACCESS_TOKEN="your_github_token"
 export GITHUB_PERSONAL_ACCOUNT_NAME="your_github_username"
 
 # LLM API Key
-# For OpenAI models (gpt-5, gpt-4o, gpt-4o-mini, etc.)
+# For OpenAI models (gpt-6.1-sol, gpt-5.6, gpt-4o-mini, etc.)
 export OPENAI_API_KEY="your_openai_key"
 
-# For Anthropic models (claude-sonnet-4-5, etc.)
+# For Anthropic models (claude-opus-5-5, claude-sonnet-5-5, etc.)
 export ANTHROPIC_API_KEY="your_anthropic_key"
 ```
 
@@ -69,23 +69,23 @@ export ANTHROPIC_API_KEY="your_anthropic_key"
 Run all 28 tasks:
 
 ```bash
-pytest tests/benchmarks/mcp_universe/test_mcp_universe.py --model gpt-5 -v
+pytest tests/benchmarks/mcp_universe/test_mcp_universe.py --model gpt-6.1-sol -v
 ```
 
 Run a single task:
 
 ```bash
-pytest tests/benchmarks/mcp_universe/test_mcp_universe.py::test_mcp_universe[github_task_0001] --model gpt-5 -v
+pytest tests/benchmarks/mcp_universe/test_mcp_universe.py::test_mcp_universe[github_task_0001] --model gpt-6.1-sol -v
 ```
 
 Run with different models:
 
 ```bash
-# GPT-4o
-pytest tests/benchmarks/mcp_universe/test_mcp_universe.py --model gpt-4o
+# Claude Opus 5.5
+pytest tests/benchmarks/mcp_universe/test_mcp_universe.py --model claude-opus-5-5
 
-# Claude Sonnet 4.5
-pytest tests/benchmarks/mcp_universe/test_mcp_universe.py --model claude-sonnet-4-5
+# Claude Sonnet 5.5
+pytest tests/benchmarks/mcp_universe/test_mcp_universe.py --model claude-sonnet-5-5
 ```
 
 ### CLI Options
