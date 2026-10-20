@@ -84,11 +84,11 @@ ignore = ["PERF203", "PLC0415", "PLR0402"]
 
 [tool.ruff.lint.per-file-ignores]
 # Handler methods have many required parameters matching API signatures
-"servers/*/handlers.py" = ["PLR0913"]
+"servers/*/handlers.py" = ["PLR0913", "PLR0917"]
 # CLI commands naturally have many parameters (one per flag/option)
 "src/wags/cli/main.py" = ["PLR0913"]
 # Pytest fixtures require many parameters
-"tests/benchmarks/appworld/test_appworld.py" = ["PLR0913"]
+"tests/benchmarks/appworld/test_appworld.py" = ["PLR0913", "PLR0917"]
 # Reporting functions naturally have high complexity due to formatting logic
 "tests/benchmarks/appworld/reporting.py" = ["C901", "PLR0912", "PLR0915"]
 

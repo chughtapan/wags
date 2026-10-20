@@ -264,7 +264,7 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
 
 
 @pytest.mark.asyncio
-async def test_mcp_universe(  # noqa: PLR0913
+async def test_mcp_universe(  # noqa: PLR0913, PLR0917
     test_id: str, model: str, temperature: float, output_dir: Path, toolset: str, request: pytest.FixtureRequest
 ) -> None:
     """Run or validate a MCP-Universe repository management test."""
