@@ -20,7 +20,7 @@ from appworld.collections.apis import ApiCollection
 from appworld.collections.models import ModelCollection
 from appworld.task import Task
 from mcp.server import ServerRequestContext
-from mcp.server.lowlevel import NotificationOptions, Server
+from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import CallToolRequestParams, CallToolResult, ListToolsResult, PaginatedRequestParams, TextContent, Tool
 
@@ -243,7 +243,7 @@ async def serve_task_mcp(task_id: str, experiment_name: str = "wags-benchmark") 
         await server.run(
             read_stream,
             write_stream,
-            server.create_initialization_options(notification_options=NotificationOptions()),
+            server.create_initialization_options(),
         )
 
     # Clean up database connections before exiting

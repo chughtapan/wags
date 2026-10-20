@@ -6,7 +6,7 @@ Enables user intervention when parameters are marked with RequiresElicitation.
 import inspect
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import Any
 
 from fastmcp.exceptions import ToolError
 from fastmcp.server.context import Context
@@ -17,7 +17,7 @@ from fastmcp.server.elicitation import (
     handle_elicit_accept,
     parse_elicit_response_type,
 )
-from fastmcp.server.middleware.middleware import CallNext, MiddlewareContext
+from fastmcp.server.middleware.middleware import MiddlewareContext
 from fastmcp.tools import InputRequiredToolResult
 from mcp.server.session import ServerSession
 from mcp.types import (
@@ -32,8 +32,6 @@ from mcp.types.version import MODERN_PROTOCOL_VERSIONS
 from pydantic import BaseModel, Field, create_model
 
 from .base import WagsMiddlewareBase
-
-ElicitationModel = TypeVar("ElicitationModel", bound=BaseModel)
 
 ElicitationOutcome = AcceptedElicitation[Any] | DeclinedElicitation | CancelledElicitation
 
@@ -83,28 +81,35 @@ class ElicitationMiddleware(WagsMiddlewareBase):
         request_context = fastmcp_context.request_context
         return request_context is not None and request_context.protocol_version in MODERN_PROTOCOL_VERSIONS
 
-    async def on_call_tool(
+    async def handle_on_tool_call(
         self,
         context: MiddlewareContext[CallToolRequestParams],
-        call_next: CallNext[CallToolRequestParams, Any],
-    ) -> Any:
-        """Elicit values for parameters with RequiresElicitation before calling the tool.
+        handler: Callable[..., Any],
+    ) -> MiddlewareContext[CallToolRequestParams] | InputRequiredToolResult:
+        """Elicit values for parameters with RequiresElicitation.
+
+        Args:
+            context: The middleware context containing the tool call request
+            handler: The handler method that will process this tool
+
+        Returns:
+            Context with any user-modified values, or an InputRequiredToolResult
+            asking a 2026-07-28 client for them
 
         Raises:
             ToolError: If user declines or cancels
         """
-        handler = self.get_tool_handler(context.message)
         fastmcp_context = context.fastmcp_context
-        if handler is None or fastmcp_context is None:
-            return await call_next(context)
+        if fastmcp_context is None:
+            return context
 
         # Skip elicitation if client doesn't support it
         if not self._supports_elicitation(fastmcp_context.session):
-            return await call_next(context)
+            return context
 
         fields = self._collect_elicitation_fields(handler)
         if not fields:
-            return await call_next(context)
+            return context
 
         model = self._build_elicitation_model(fields, context.message.arguments or {})
 
@@ -124,7 +129,7 @@ class ElicitationMiddleware(WagsMiddlewareBase):
                 if hasattr(outcome.data, field_name):
                     arguments[field_name] = getattr(outcome.data, field_name)
             updated_message = CallToolRequestParams(name=context.message.name, arguments=arguments)
-            return await call_next(context.copy(message=updated_message))
+            return context.copy(message=updated_message)
 
         action = outcome.__class__.__name__.replace("Elicitation", "").lower()
         raise ToolError(f"Elicitation was {action}: cannot proceed with tool call")

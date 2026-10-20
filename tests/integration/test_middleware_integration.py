@@ -1,4 +1,4 @@
-"""Integration tests for middleware functionality and notification handling."""
+"""Integration tests for middleware functionality."""
 
 from collections.abc import Callable
 from typing import Any

@@ -4,11 +4,8 @@ from typing import Any, overload
 
 from fastmcp import FastMCP
 from fastmcp.server import create_proxy as create_fastmcp_proxy
-from fastmcp.utilities.logging import get_logger
 
 from wags.middleware.todo import TodoServer
-
-logger = get_logger("wags.proxy")
 
 
 @overload
