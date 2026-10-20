@@ -1,15 +1,13 @@
 """Integration tests for middleware functionality and notification handling."""
 
-import asyncio
 from collections.abc import Callable
 from typing import Any
 
 import pytest
 from fastmcp import FastMCP
 from fastmcp.client import Client
+from fastmcp.exceptions import ToolError
 from fastmcp.server.middleware.middleware import CallNext, Middleware, MiddlewareContext
-from mcp.client.session import ClientSession
-from mcp.shared.context import RequestContext
 from mcp.types import CallToolRequestParams
 
 from wags import create_proxy
@@ -36,19 +34,6 @@ class LoggingMiddleware(Middleware):
     ) -> Any:
         """Log tool calls."""
         self.calls.append({"method": context.method, "tool": context.message.name, "args": context.message.arguments})
-        return await call_next(context)
-
-
-class NotificationTracker(Middleware):
-    """Test middleware that records notification events."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.notifications: list[dict[str, str]] = []
-
-    async def on_notification(self, context: MiddlewareContext[Any], call_next: CallNext[Any, Any]) -> Any:
-        """Record notification method and source for verification."""
-        self.notifications.append({"method": context.method or "unknown", "source": context.source or "unknown"})
         return await call_next(context)
 
 
@@ -136,11 +121,7 @@ class TestBasicMiddleware:
             return {"response": f"Backend processed: {message}"}
 
         # Create proxy server that forwards to the backend
-        # Note: as_proxy with in-memory backend server
-        proxy_server = FastMCP.as_proxy(
-            backend=backend_server,  # Use the FastMCP server directly as backend
-            name="test-proxy",
-        )
+        proxy_server = create_proxy(backend_server, server_name="test-proxy")
 
         # Add logging middleware to proxy
         logging_mw = LoggingMiddleware()
@@ -231,7 +212,7 @@ class TestBasicMiddleware:
                 self, context: MiddlewareContext[CallToolRequestParams], call_next: CallNext[CallToolRequestParams, Any]
             ) -> Any:
                 if context.message.name == "error_tool":
-                    raise ValueError("Middleware error")
+                    raise ToolError("Middleware error")
                 return await call_next(context)
 
         mcp.add_middleware(ErrorMiddleware())
@@ -253,77 +234,3 @@ class TestBasicMiddleware:
             # Normal tool should work fine
             result = await client.call_tool("normal_tool", {})
             assert result.data == "success"
-
-
-@pytest.mark.asyncio
-class TestNotificationHandling:
-    """Integration tests for notification handling through middleware."""
-
-    async def test_notification_routing_through_proxy(self) -> None:
-        """Test that notifications are properly routed through proxy middleware."""
-        # Set up basic MCP server
-        server = FastMCP("mcp-server")
-
-        @server.tool
-        async def test_tool() -> str:
-            return "test"
-
-        # Create proxy using overloaded create_proxy with FastMCP server
-        proxy = create_proxy(server, server_name="test-proxy")
-        tracker = NotificationTracker()
-        proxy.add_middleware(tracker)
-
-        current_roots = ["https://github.com/org1/"]
-
-        async def dynamic_roots(context: RequestContext[ClientSession, Any]) -> list[str]:
-            return current_roots
-
-        async with Client(proxy, roots=dynamic_roots) as client:
-            # Send notification from client
-            await client.send_roots_list_changed()
-
-            # Allow async notification processing
-            await asyncio.sleep(0.1)
-
-            # Verify middleware received the notification
-            assert len(tracker.notifications) == 1
-            assert tracker.notifications[0] == {"method": "notifications/roots/list_changed", "source": "client"}
-
-    async def test_notification_middleware_chain(self) -> None:
-        """Test that notifications flow through middleware chain correctly."""
-        server = FastMCP("mcp-server")
-
-        @server.tool
-        async def dummy_tool() -> str:
-            return "dummy"
-
-        # Create proxy with notification support
-        proxy = create_proxy(server, server_name="test-proxy")
-
-        # Create multiple notification tracking middleware
-        tracker1 = NotificationTracker()
-        tracker2 = NotificationTracker()
-
-        # Add middleware in order to proxy
-        proxy.add_middleware(tracker1)
-        proxy.add_middleware(tracker2)
-
-        current_roots = ["https://example.com/"]
-
-        async def dynamic_roots(context: RequestContext[ClientSession, Any]) -> list[str]:
-            return current_roots
-
-        async with Client(proxy, roots=dynamic_roots) as client:
-            await client.send_roots_list_changed()
-
-            # Allow processing time
-            await asyncio.sleep(0.1)
-
-            # Both middleware should have received the notification
-            assert len(tracker1.notifications) == 1
-            assert len(tracker2.notifications) == 1
-
-            # Both should have same notification data
-            expected = {"method": "notifications/roots/list_changed", "source": "client"}
-            assert tracker1.notifications[0] == expected
-            assert tracker2.notifications[0] == expected

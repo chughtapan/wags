@@ -4,10 +4,11 @@ import json
 from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
+import mcp.types as mt
 import pytest
 from fastmcp.exceptions import ToolError
 from fastmcp.server.middleware.middleware import MiddlewareContext
-from fastmcp.tools.tool import Tool
+from fastmcp.tools import Tool
 from mcp.types import CallToolRequestParams, ListToolsRequest
 
 from wags.middleware.groups import (
@@ -512,16 +513,14 @@ class TestToolsListChangedNotification:
     @pytest.mark.asyncio
     async def test_sent_on_enable(self) -> None:
         middleware = GroupsMiddleware(groups={"issues": GroupDefinition(description="Issues")})
-        mock_session = MagicMock()
-        mock_session.send_tool_list_changed = AsyncMock()
         mock_fastmcp_context = MagicMock()
-        mock_fastmcp_context.session = mock_session
+        mock_fastmcp_context.send_notification = AsyncMock()
 
         message = CallToolRequestParams(name="enable_tools", arguments={"groups": ["issues"]})
         context = MiddlewareContext(message=message, fastmcp_context=mock_fastmcp_context)
 
         await middleware.on_call_tool(context, AsyncMock())
-        mock_session.send_tool_list_changed.assert_called_once()
+        mock_fastmcp_context.send_notification.assert_called_once_with(mt.ToolListChangedNotification())
 
     @pytest.mark.asyncio
     async def test_sent_on_disable(self) -> None:
@@ -529,16 +528,14 @@ class TestToolsListChangedNotification:
             groups={"issues": GroupDefinition(description="Issues")},
             initial_groups=["issues"],
         )
-        mock_session = MagicMock()
-        mock_session.send_tool_list_changed = AsyncMock()
         mock_fastmcp_context = MagicMock()
-        mock_fastmcp_context.session = mock_session
+        mock_fastmcp_context.send_notification = AsyncMock()
 
         message = CallToolRequestParams(name="disable_tools", arguments={"groups": ["issues"]})
         context = MiddlewareContext(message=message, fastmcp_context=mock_fastmcp_context)
 
         await middleware.on_call_tool(context, AsyncMock())
-        mock_session.send_tool_list_changed.assert_called_once()
+        mock_fastmcp_context.send_notification.assert_called_once_with(mt.ToolListChangedNotification())
 
     @pytest.mark.asyncio
     async def test_not_sent_when_no_change(self) -> None:
@@ -546,16 +543,14 @@ class TestToolsListChangedNotification:
             groups={"issues": GroupDefinition(description="Issues")},
             initial_groups=["issues"],
         )
-        mock_session = MagicMock()
-        mock_session.send_tool_list_changed = AsyncMock()
         mock_fastmcp_context = MagicMock()
-        mock_fastmcp_context.session = mock_session
+        mock_fastmcp_context.send_notification = AsyncMock()
 
         message = CallToolRequestParams(name="enable_tools", arguments={"groups": ["issues"]})
         context = MiddlewareContext(message=message, fastmcp_context=mock_fastmcp_context)
 
         await middleware.on_call_tool(context, AsyncMock())
-        mock_session.send_tool_list_changed.assert_not_called()
+        mock_fastmcp_context.send_notification.assert_not_called()
 
 
 class TestDynamicDescriptions:

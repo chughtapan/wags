@@ -8,7 +8,6 @@ from .groups import (
     GroupsMiddleware,
     in_group,
 )
-from .roots import RootsMiddleware, requires_root
 
 __all__ = [
     "DisableToolsResult",
@@ -17,7 +16,5 @@ __all__ = [
     "GroupDefinition",
     "GroupsMiddleware",
     "RequiresElicitation",
-    "RootsMiddleware",
     "in_group",
-    "requires_root",
 ]

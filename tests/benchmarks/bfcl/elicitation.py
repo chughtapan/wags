@@ -7,8 +7,7 @@ Provides ground truth-based elicitation for complex fields.
 import ast
 from typing import TYPE_CHECKING, Any, cast
 
-from mcp.client.session import ClientSession, ElicitationFnT
-from mcp.shared.context import RequestContext
+from mcp.client.session import ClientRequestContext, ElicitationFnT
 from mcp.types import ElicitRequestParams, ElicitResult, ErrorData
 
 if TYPE_CHECKING:
@@ -154,7 +153,7 @@ class GroundTruthElicitationHandler:
 
     async def handle(
         self,
-        context: RequestContext[ClientSession, Any],
+        context: ClientRequestContext,
         params: ElicitRequestParams,
     ) -> ElicitResult | ErrorData:
         """

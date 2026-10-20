@@ -18,7 +18,7 @@ from bfcl_eval.constants.executable_backend_config import (
     MULTI_TURN_FUNC_DOC_FILE_MAPPING,
     STATELESS_CLASSES,
 )
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 
 def load_api_class(class_name: str) -> Any:
@@ -65,10 +65,10 @@ def load_scenario_from_test(test_file: str, test_id: str, class_name: str) -> di
     return {}
 
 
-def patch_tool_with_func_doc(server: FastMCP, func_docs: dict[str, dict[str, Any]]) -> None:
+def patch_tool_with_func_doc(server: MCPServer, func_docs: dict[str, dict[str, Any]]) -> None:
     """Patch registered tools with BFCL's richer function documentation.
 
-    FastMCP's introspection doesn't extract parameter descriptions from docstrings.
+    MCPServer's introspection doesn't extract parameter descriptions from docstrings.
     BFCL provides pre-compiled JSON docs with proper descriptions, so we overlay them.
     """
     for tool_name, tool in server._tool_manager._tools.items():
@@ -116,7 +116,7 @@ async def main() -> None:
     func_docs = load_func_docs(class_name)
 
     # Create server and register tools
-    server = FastMCP(f"{class_name.lower()}-api")
+    server = MCPServer(f"{class_name.lower()}-api")
 
     for method_name, method in inspect.getmembers(api, predicate=inspect.ismethod):
         if not method_name.startswith("_"):

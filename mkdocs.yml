@@ -43,7 +43,6 @@ nav:
     - Overview: middleware/overview.md
     - Groups: middleware/groups.md
     - TodoList: middleware/todo.md
-    - Roots: middleware/roots.md
     - Elicitation: middleware/elicitation.md
   - Running Evals: evals.md
 

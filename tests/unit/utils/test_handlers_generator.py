@@ -21,7 +21,7 @@ def basic_tool() -> Tool:
     return Tool(
         name="test_tool",
         description="Test tool description",
-        inputSchema={"type": "object", "properties": {}},
+        input_schema={"type": "object", "properties": {}},
     )
 
 
@@ -31,7 +31,7 @@ def tool_with_params() -> Tool:
     return Tool(
         name="create_item",
         description="Create a new item",
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {"name": {"type": "string"}, "quantity": {"type": "integer"}},
             "required": ["name"],
@@ -45,7 +45,7 @@ def tool_with_enum() -> Tool:
     return Tool(
         name="status_tool",
         description="Tool with status enum",
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {"status": {"type": "string", "enum": ["active", "inactive"]}},
             "required": ["status"],
@@ -58,7 +58,7 @@ def tool_with_boolean() -> Tool:
     """Create a Tool with boolean parameter."""
     return Tool(
         name="flag_tool",
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {"enabled": {"type": "boolean"}},
             "required": [],
@@ -69,7 +69,7 @@ def tool_with_boolean() -> Tool:
 @pytest.fixture
 def empty_tool() -> Tool:
     """Create a Tool without parameters."""
-    return Tool(name="empty_tool", inputSchema={"type": "object", "properties": {}})
+    return Tool(name="empty_tool", input_schema={"type": "object", "properties": {}})
 
 
 @pytest.fixture
@@ -77,7 +77,7 @@ def tool_with_literal() -> Tool:
     """Create a Tool with Literal type enum."""
     return Tool(
         name="tool_with_literal",
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {"choice": {"type": "string", "enum": ["a", "b", "c"]}},
         },
@@ -222,7 +222,7 @@ class TestGenerateMiddlewareStub:
         config_file.write_text(json.dumps(config_data))
 
         # Rename the tool for this test
-        test_tool = Tool(name="my_tool", inputSchema=empty_tool.inputSchema)
+        test_tool = Tool(name="my_tool", input_schema=empty_tool.input_schema)
 
         # Mock Client
         mock_mcp = AsyncMock()

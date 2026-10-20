@@ -80,9 +80,6 @@ mcp:
         - servers/your-server
       env:
         API_KEY: ${YOUR_API_KEY}
-      roots:
-        - uri: https://example.com/allowed
-          name: "Allowed Resources"
 ```
 
 Now you can connect to your server with:
@@ -94,5 +91,4 @@ wags run --servers your-server
 ## Learn More
 
 - **[Middleware Overview](middleware/overview.md)** - Understand how middleware works
-- **[Roots](middleware/roots.md)** - Access control with URI templates
 - **[Elicitation](middleware/elicitation.md)** - Parameter review and collection

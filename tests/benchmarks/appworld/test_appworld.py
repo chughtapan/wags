@@ -220,7 +220,7 @@ async def _run_appworld_test(
         model=model,
         servers=["appworld"],
         instruction=system_instruction,
-        request_params=RequestParams(maxTokens=16000, max_iterations=500),
+        request_params=RequestParams(max_tokens=16000, max_iterations=500),
     )
     async def run_test() -> None:
         async with agent.run() as agent_app:

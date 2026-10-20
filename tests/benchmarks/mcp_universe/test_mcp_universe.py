@@ -78,7 +78,7 @@ def _log_message(msg: Any, turn_idx: int, logger: StructuredEventLogger) -> int:
     if hasattr(msg, "tool_results") and msg.tool_results:
         for tool_id, result in msg.tool_results.items():
             content = _extract_text_content(result.content) if hasattr(result, "content") else []
-            is_error = getattr(result, "isError", False)
+            is_error = getattr(result, "is_error", False)
             logger.log_tool_result(turn_idx, tool_id, content or str(result), is_error)
 
     if getattr(msg, "role", None) == "assistant" and hasattr(msg, "content"):
@@ -139,7 +139,7 @@ async def _run_mcp_universe_test(test_id: str, model: str, temperature: float, o
         servers=["github"],
         tools=tools_config,
         instruction=test_dir / "instruction.txt",
-        request_params=RequestParams(maxTokens=MAX_TOKENS, max_iterations=MAX_ITERATIONS),
+        request_params=RequestParams(max_tokens=MAX_TOKENS, max_iterations=MAX_ITERATIONS),
     )
     async def run_test() -> Path:
         async with agent.run() as agent_app:

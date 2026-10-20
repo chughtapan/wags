@@ -14,7 +14,6 @@ Tests for individual components in isolation without external dependencies.
 - No API keys required
 
 **Examples:**
-- `unit/middleware/test_roots.py` - RootsMiddleware path validation
 - `unit/utils/test_config.py` - Configuration parsing
 - `unit/middleware/test_todo.py` - TodoServer state management
 
@@ -34,7 +33,6 @@ Tests for interactions between multiple components.
 
 **Examples:**
 - `integration/test_middleware_integration.py` - Middleware chain interactions
-- `integration/test_roots_middleware.py` - RootsMiddleware with real servers
 
 **Run:**
 ```bash
@@ -256,10 +254,10 @@ Registered markers:
 .venv/bin/pytest tests/e2e/ -v --model gpt-4o
 
 # Run specific test file
-.venv/bin/pytest tests/unit/middleware/test_roots.py -v
+.venv/bin/pytest tests/unit/middleware/test_groups.py -v
 
 # Run specific test
-.venv/bin/pytest tests/unit/middleware/test_roots.py::test_literal_root_matching -v
+.venv/bin/pytest tests/unit/middleware/test_groups.py::TestInGroupDecorator -v
 
 # Run with coverage
 .venv/bin/pytest tests/unit/ --cov=src/wags --cov-report=html

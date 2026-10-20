@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from wags.middleware import RequiresElicitation, requires_root
+from wags.middleware import RequiresElicitation
 
 
 class GitHubHandlers:
@@ -8,12 +8,9 @@ class GitHubHandlers:
         # Search method is safe: nothing to be done
         pass
 
-    # Ensure that client has enabled access to this repository
-    @requires_root("https://github.com/{owner}/{repo}")
     async def get_repository(self, owner: str, repo: str):
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def create_issue(
         self,
         owner: str,

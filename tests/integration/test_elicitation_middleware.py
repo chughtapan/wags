@@ -7,8 +7,7 @@ import pytest
 from fastmcp import FastMCP
 from fastmcp.client import Client
 from fastmcp.client.elicitation import ElicitResult
-from mcp.client.session import ClientSession
-from mcp.shared.context import RequestContext
+from mcp.client.session import ClientRequestContext
 from mcp.types import ElicitRequestParams
 
 from wags.middleware.elicitation import ElicitationMiddleware, RequiresElicitation
@@ -53,10 +52,11 @@ class TestHandlers:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["auto", "legacy"], ids=["modern", "handshake"])
 class TestElicitationMiddleware:
     """Integration tests for ElicitationMiddleware."""
 
-    async def test_elicitation_with_accepted_response(self) -> None:
+    async def test_elicitation_with_accepted_response(self, mode: str) -> None:
         """Test ElicitationMiddleware with accepted elicitation using real client flow."""
         mcp = FastMCP("test-server")
         handlers = TestHandlers()
@@ -73,7 +73,7 @@ class TestElicitationMiddleware:
             message: str,
             response_type: type[Any],
             params: ElicitRequestParams,
-            context: RequestContext[ClientSession, Any],
+            context: ClientRequestContext,
         ) -> dict[str, Any]:
             """Auto-accept elicitation with test values."""
             elicitation_requests.append(
@@ -92,7 +92,7 @@ class TestElicitationMiddleware:
             return await handlers.elicitation_tool(name, description, priority)
 
         # Test with client using elicitation handler
-        async with Client(mcp, elicitation_handler=test_elicitation_handler) as client:
+        async with Client(mcp, elicitation_handler=test_elicitation_handler, mode=mode) as client:
             result = await client.call_tool(
                 "elicitation_tool",
                 {
@@ -108,7 +108,7 @@ class TestElicitationMiddleware:
             assert result.data["description"] == "Test description"  # EDITED via elicitation
             assert result.data["priority"] == Priority.HIGH.value  # EDITED via elicitation
 
-    async def test_elicitation_with_declined_response(self) -> None:
+    async def test_elicitation_with_declined_response(self, mode: str) -> None:
         """Test ElicitationMiddleware with declined elicitation using real client flow."""
         mcp = FastMCP("test-server")
         handlers = TestHandlers()
@@ -122,7 +122,7 @@ class TestElicitationMiddleware:
             message: str,
             response_type: type[Any],
             params: ElicitRequestParams,
-            context: RequestContext[ClientSession, Any],
+            context: ClientRequestContext,
         ) -> ElicitResult[Any]:
             """Decline all elicitation requests."""
             # Return ElicitResult with action="decline"
@@ -134,7 +134,7 @@ class TestElicitationMiddleware:
             return await handlers.elicitation_tool(name, description, priority)
 
         # Test with client using declining handler
-        async with Client(mcp, elicitation_handler=declining_elicitation_handler) as client:
+        async with Client(mcp, elicitation_handler=declining_elicitation_handler, mode=mode) as client:
             # Should get an error when elicitation is declined
             with pytest.raises(Exception) as exc_info:
                 await client.call_tool(
@@ -149,7 +149,7 @@ class TestElicitationMiddleware:
             # Verify the error is about declined elicitation
             assert "declined" in str(exc_info.value).lower() or "elicitation" in str(exc_info.value).lower()
 
-    async def test_elicitation_multiple_fields(self) -> None:
+    async def test_elicitation_multiple_fields(self, mode: str) -> None:
         """Test ElicitationMiddleware collecting multiple fields in one elicitation."""
         mcp = FastMCP("test-server")
         handlers = TestHandlers()
@@ -166,7 +166,7 @@ class TestElicitationMiddleware:
             message: str,
             response_type: type[Any],
             params: ElicitRequestParams,
-            context: RequestContext[ClientSession, Any],
+            context: ClientRequestContext,
         ) -> dict[str, Any]:
             """Provide multiple field values."""
             elicitation_count.append(1)
@@ -180,7 +180,7 @@ class TestElicitationMiddleware:
             return await handlers.multi_elicitation_tool(base_value, multiplier, notes)
 
         # Test with client
-        async with Client(mcp, elicitation_handler=multi_field_handler) as client:
+        async with Client(mcp, elicitation_handler=multi_field_handler, mode=mode) as client:
             result = await client.call_tool(
                 "multi_elicitation_tool",
                 {
@@ -195,7 +195,7 @@ class TestElicitationMiddleware:
             assert result.data["result"] == 50  # 10 * 5 (edited multiplier)
             assert result.data["notes"] == "Test notes from elicitation"  # Edited notes
 
-    async def test_no_elicitation_passthrough(self) -> None:
+    async def test_no_elicitation_passthrough(self, mode: str) -> None:
         """Test that tools without elicitation annotations work normally."""
         mcp = FastMCP("test-server")
         handlers = TestHandlers()
@@ -211,7 +211,7 @@ class TestElicitationMiddleware:
             message: str,
             response_type: type[Any],
             params: ElicitRequestParams,
-            context: RequestContext[ClientSession, Any],
+            context: ClientRequestContext,
         ) -> dict[str, Any]:
             elicitation_called.append(1)
             return {}
@@ -222,7 +222,7 @@ class TestElicitationMiddleware:
             return await handlers.simple_tool(name, value)
 
         # Test with client
-        async with Client(mcp, elicitation_handler=tracking_handler) as client:
+        async with Client(mcp, elicitation_handler=tracking_handler, mode=mode) as client:
             result = await client.call_tool("simple_tool", {"name": "test", "value": 10})
 
             # No elicitation should have been triggered

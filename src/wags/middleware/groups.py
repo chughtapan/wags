@@ -13,7 +13,7 @@ from typing import Any, TypeVar
 import mcp.types as mt
 from fastmcp.exceptions import ToolError
 from fastmcp.server.middleware.middleware import CallNext, MiddlewareContext
-from fastmcp.tools.tool import Tool, ToolResult
+from fastmcp.tools import Tool, ToolResult
 from pydantic import BaseModel
 
 from wags.middleware.base import WagsMiddlewareBase
@@ -324,10 +324,8 @@ class GroupsMiddleware(WagsMiddlewareBase):
 
     async def _send_tools_list_changed(self, context: MiddlewareContext) -> None:
         """Send tools/list_changed notification to client."""
-        if context.fastmcp_context and hasattr(context.fastmcp_context, "session"):
-            session = context.fastmcp_context.session
-            if hasattr(session, "send_tool_list_changed"):
-                await session.send_tool_list_changed()
+        if context.fastmcp_context:
+            await context.fastmcp_context.send_notification(mt.ToolListChangedNotification())
 
     async def on_call_tool(
         self,

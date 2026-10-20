@@ -8,15 +8,39 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, TypeVar
 
-from fastmcp.server.elicitation import AcceptedElicitation, CancelledElicitation, DeclinedElicitation
-from fastmcp.server.middleware.middleware import MiddlewareContext
+from fastmcp.exceptions import ToolError
+from fastmcp.server.context import Context
+from fastmcp.server.elicitation import (
+    AcceptedElicitation,
+    CancelledElicitation,
+    DeclinedElicitation,
+    handle_elicit_accept,
+    parse_elicit_response_type,
+)
+from fastmcp.server.middleware.middleware import CallNext, MiddlewareContext
+from fastmcp.tools import InputRequiredToolResult
 from mcp.server.session import ServerSession
-from mcp.types import CallToolRequestParams
+from mcp.types import (
+    CallToolRequestParams,
+    ElicitRequest,
+    ElicitRequestFormParams,
+    ElicitResult,
+    InputRequiredResult,
+    InputResponse,
+)
+from mcp.types.version import MODERN_PROTOCOL_VERSIONS
 from pydantic import BaseModel, Field, create_model
 
 from .base import WagsMiddlewareBase
 
 ElicitationModel = TypeVar("ElicitationModel", bound=BaseModel)
+
+ElicitationOutcome = AcceptedElicitation[Any] | DeclinedElicitation | CancelledElicitation
+
+ELICITATION_MESSAGE = "Please provide the required information"
+
+# Key for the elicitation request in InputRequiredResult.input_requests
+ELICITATION_INPUT_KEY = "wags/elicitation"
 
 
 @dataclass
@@ -41,64 +65,87 @@ class ElicitationMiddleware(WagsMiddlewareBase):
     When tool handlers have parameters with RequiresElicitation annotations,
     this middleware presents those values to the user for review and
     potential modification. Aborts execution if the user declines.
+
+    Handshake-era connections are elicited with a server-initiated request.
+    2026-07-28 connections receive an InputRequiredResult and the answer is
+    read from the client's retry (SEP-2322).
     """
 
     def _supports_elicitation(self, session: ServerSession) -> bool:
         """Check if client supports elicitation."""
-        if not hasattr(session, "client_params") or not session.client_params:
-            return False
-        capabilities = session.client_params.capabilities
+        capabilities = session.client_capabilities
         if not capabilities:
             return False
         return capabilities.elicitation is not None
 
-    async def handle_on_tool_call(
+    def _is_modern_protocol(self, fastmcp_context: Context) -> bool:
+        """Check if the connection negotiated a protocol era without server-initiated requests."""
+        request_context = fastmcp_context.request_context
+        return request_context is not None and request_context.protocol_version in MODERN_PROTOCOL_VERSIONS
+
+    async def on_call_tool(
         self,
         context: MiddlewareContext[CallToolRequestParams],
-        handler: Callable[..., Any],
-    ) -> MiddlewareContext[CallToolRequestParams]:
-        """Handle elicitation for parameters with RequiresElicitation.
-
-        Args:
-            context: The middleware context containing the tool call request
-            handler: The handler method that will process this tool
-
-        Returns:
-            Context with any user-modified values
+        call_next: CallNext[CallToolRequestParams, Any],
+    ) -> Any:
+        """Elicit values for parameters with RequiresElicitation before calling the tool.
 
         Raises:
-            ValueError: If user declines or cancels
+            ToolError: If user declines or cancels
         """
-        # Check once if we have a valid context
-        if not context.fastmcp_context or not hasattr(context.fastmcp_context, "session"):
-            return context
+        handler = self.get_tool_handler(context.message)
+        fastmcp_context = context.fastmcp_context
+        if handler is None or fastmcp_context is None:
+            return await call_next(context)
 
         # Skip elicitation if client doesn't support it
-        if not self._supports_elicitation(context.fastmcp_context.session):
-            return context
+        if not self._supports_elicitation(fastmcp_context.session):
+            return await call_next(context)
 
         fields = self._collect_elicitation_fields(handler)
         if not fields:
-            return context
+            return await call_next(context)
 
         model = self._build_elicitation_model(fields, context.message.arguments or {})
-        result = await context.fastmcp_context.elicit(
-            message="Please provide the required information",
-            response_type=model,
-        )
 
-        if isinstance(result, AcceptedElicitation):
+        outcome: ElicitationOutcome
+        if self._is_modern_protocol(fastmcp_context):
+            responses = fastmcp_context.input_responses or {}
+            response = responses.get(ELICITATION_INPUT_KEY)
+            if response is None:
+                return self._request_input(model)
+            outcome = self._parse_input_response(response, model)
+        else:
+            outcome = await fastmcp_context.elicit(message=ELICITATION_MESSAGE, response_type=model)
+
+        if isinstance(outcome, AcceptedElicitation):
             arguments = dict(context.message.arguments or {})
             for field_name in fields:
-                if hasattr(result.data, field_name):
-                    arguments[field_name] = getattr(result.data, field_name)
+                if hasattr(outcome.data, field_name):
+                    arguments[field_name] = getattr(outcome.data, field_name)
             updated_message = CallToolRequestParams(name=context.message.name, arguments=arguments)
-            return context.copy(message=updated_message)
-        elif isinstance(result, (DeclinedElicitation, CancelledElicitation)):
-            action = result.__class__.__name__.replace("Elicitation", "").lower()
-            raise ValueError(f"Elicitation was {action}: cannot proceed with tool call")
+            return await call_next(context.copy(message=updated_message))
 
-        return context
+        action = outcome.__class__.__name__.replace("Elicitation", "").lower()
+        raise ToolError(f"Elicitation was {action}: cannot proceed with tool call")
+
+    def _request_input(self, model: type[BaseModel]) -> InputRequiredToolResult:
+        """Build an InputRequiredResult asking the client to fill in the elicitation form."""
+        config = parse_elicit_response_type(model)
+        request = ElicitRequest(
+            params=ElicitRequestFormParams(message=ELICITATION_MESSAGE, requested_schema=config.schema)
+        )
+        return InputRequiredToolResult(InputRequiredResult(input_requests={ELICITATION_INPUT_KEY: request}))
+
+    def _parse_input_response(self, response: InputResponse, model: type[BaseModel]) -> ElicitationOutcome:
+        """Convert a client's input response into an elicitation outcome."""
+        if not isinstance(response, ElicitResult):
+            raise ToolError(f"Expected an elicitation response, got {type(response).__name__}")
+        if response.action == "accept":
+            return handle_elicit_accept(parse_elicit_response_type(model), response.content)
+        if response.action == "decline":
+            return DeclinedElicitation()
+        return CancelledElicitation()
 
     def _collect_elicitation_fields(self, handler: Callable[..., Any]) -> dict[str, tuple[Any, RequiresElicitation]]:
         """Collect parameters with RequiresElicitation annotations.
@@ -127,7 +174,7 @@ class ElicitationMiddleware(WagsMiddlewareBase):
         self,
         fields: dict[str, tuple[Any, RequiresElicitation]],
         current_args: dict[str, Any],
-    ) -> Any:
+    ) -> type[BaseModel]:
         """Build Pydantic model for elicitation dialog.
 
         Args:
