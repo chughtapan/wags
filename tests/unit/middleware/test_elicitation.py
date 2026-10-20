@@ -209,17 +209,18 @@ async def test_no_elicitation_capability_skips_elicitation() -> None:
     # Mock a context with no elicitation capability
     mock_fastmcp_context = Mock()
     mock_session = Mock()
-    mock_client_params = Mock()
     mock_capabilities = Mock()
     mock_capabilities.elicitation = None  # No elicitation capability
 
-    mock_client_params.capabilities = mock_capabilities
-    mock_session.client_params = mock_client_params
+    mock_session.client_capabilities = mock_capabilities
     mock_fastmcp_context.session = mock_session
 
     context = MiddlewareContext(message=message, fastmcp_context=mock_fastmcp_context)
 
+    async def call_next(context: MiddlewareContext[CallToolRequestParams]) -> Any:
+        return context
+
     # Should pass through without elicitation
-    handler = handlers.string_elicitation_tool
-    result = await middleware.handle_on_tool_call(context, handler)
+    result = await middleware.on_call_tool(context, call_next)
     assert result == context  # Passes through unchanged without elicitation
+    mock_fastmcp_context.elicit.assert_not_called()

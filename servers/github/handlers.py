@@ -1,6 +1,6 @@
 from typing import Annotated, Any, Literal
 
-from wags.middleware import RequiresElicitation, requires_root
+from wags.middleware import RequiresElicitation
 
 # Note: This is a handlers class for use with ElicitationMiddleware
 # Usage: middleware = ElicitationMiddleware(handlers=GithubHandlers())
@@ -9,7 +9,6 @@ from wags.middleware import RequiresElicitation, requires_root
 class GithubHandlers:
     """Auto-generated handlers for MCP server."""
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def create_or_update_file(
         self,
         owner: str,
@@ -35,12 +34,10 @@ class GithubHandlers:
         """Create a new GitHub repository in your account"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def get_file_contents(self, owner: str, repo: str, path: str, branch: str | None = None) -> None:
         """Get the contents of a file or directory from a GitHub repository"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def push_files(
         self,
         owner: str,
@@ -52,7 +49,6 @@ class GithubHandlers:
         """Push multiple files to a GitHub repository in a single commit"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def create_issue(
         self,
         owner: str,
@@ -71,7 +67,6 @@ class GithubHandlers:
         """Create a new issue in a GitHub repository"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def create_pull_request(
         self,
         owner: str,
@@ -91,24 +86,20 @@ class GithubHandlers:
         """Create a new pull request in a GitHub repository"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def fork_repository(self, owner: str, repo: str, organization: str | None = None) -> None:
         """Fork a GitHub repository to your account or specified organization"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def create_branch(self, owner: str, repo: str, branch: str, from_branch: str | None = None) -> None:
         """Create a new branch in a GitHub repository"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def list_commits(
         self, owner: str, repo: str, sha: str | None = None, page: float | None = None, perPage: float | None = None
     ) -> None:
         """Get list of commits of a branch in a GitHub repository"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def list_issues(
         self,
         owner: str,
@@ -124,7 +115,6 @@ class GithubHandlers:
         """List issues in a GitHub repository with filtering options"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def update_issue(
         self,
         owner: str,
@@ -140,7 +130,6 @@ class GithubHandlers:
         """Update an existing issue in a GitHub repository"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def add_issue_comment(
         self,
         owner: str,
@@ -196,17 +185,14 @@ class GithubHandlers:
         """Search for users on GitHub"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def get_issue(self, owner: str, repo: str, issue_number: float) -> None:
         """Get details of a specific issue in a GitHub repository."""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def get_pull_request(self, owner: str, repo: str, pull_number: float) -> None:
         """Get details of a specific pull request"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def list_pull_requests(
         self,
         owner: str,
@@ -222,7 +208,6 @@ class GithubHandlers:
         """List and filter repository pull requests"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def create_pull_request_review(
         self,
         owner: str,
@@ -238,7 +223,6 @@ class GithubHandlers:
         """Create a review on a pull request"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def merge_pull_request(
         self,
         owner: str,
@@ -255,29 +239,24 @@ class GithubHandlers:
         """Merge a pull request"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def get_pull_request_files(self, owner: str, repo: str, pull_number: float) -> None:
         """Get the list of files changed in a pull request"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def get_pull_request_status(self, owner: str, repo: str, pull_number: float) -> None:
         """Get the combined status of all status checks for a pull request"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def update_pull_request_branch(
         self, owner: str, repo: str, pull_number: float, expected_head_sha: str | None = None
     ) -> None:
         """Update a pull request branch with the latest changes from the base branch"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def get_pull_request_comments(self, owner: str, repo: str, pull_number: float) -> None:
         """Get the review comments on a pull request"""
         pass
 
-    @requires_root("https://github.com/{owner}/{repo}")
     async def get_pull_request_reviews(self, owner: str, repo: str, pull_number: float) -> None:
         """Get the reviews on a pull request"""
         pass

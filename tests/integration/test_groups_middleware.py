@@ -1,7 +1,9 @@
 """Integration tests for GroupsMiddleware with FastMCP."""
 
+import asyncio
 from typing import Any
 
+import mcp.types as mt
 import pytest
 from fastmcp import FastMCP
 from fastmcp.client import Client
@@ -173,6 +175,35 @@ class TestGroupsMiddlewareIntegration:
             # Now visible
             tools = await client.list_tools()
             assert "create_issue" in {t.name for t in tools}
+
+    @pytest.mark.parametrize("mode", ["auto", "legacy"], ids=["modern", "handshake"])
+    async def test_enable_tools_notifies_tool_list_changed(self, mode: str) -> None:
+        """Test enable_tools sends tools/list_changed to the client in both protocol eras."""
+        backend = FastMCP("backend")
+
+        @backend.tool
+        async def create_issue(owner: str, repo: str, title: str) -> dict[str, Any]:
+            return {"created": f"{owner}/{repo}: {title}"}
+
+        proxy = create_proxy(backend, server_name="proxy")
+        proxy.add_middleware(
+            GroupsMiddleware(
+                groups={"issues": GroupDefinition(description="Issue tracking")},
+                handlers=IssuesHandlers(),
+            )
+        )
+
+        received: list[Any] = []
+
+        async def message_handler(message: Any) -> None:
+            if isinstance(message, mt.ToolListChangedNotification):
+                received.append(message)
+
+        async with Client(proxy, mode=mode, message_handler=message_handler) as client:
+            await client.call_tool("enable_tools", {"groups": ["issues"]})
+            await asyncio.sleep(0.1)
+
+        assert len(received) == 1
 
     async def test_disable_tools_hides_tools(self) -> None:
         """Test disable_tools hides group's tools."""

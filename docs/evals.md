@@ -57,16 +57,20 @@ appworld download data
 
 ### With Different Models
 
+`--model` takes any [fast-agent model name](https://fast-agent.ai/models/) (default: `gpt-4o-mini`). Provider keys are read from `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc., or from `fastagent.secrets.yaml`.
+
 ```bash
-# Use GPT-4o (default)
-.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --model gpt-4o
+# GPT-6.1 Sol
+.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --model gpt-6.1-sol
 
-# Use Claude
-.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --model claude-3-5-sonnet-20241022
+# Claude Opus 5.5 (alias: opus)
+.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --model claude-opus-5-5
 
-# Use GPT-4o-mini
-.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --model gpt-4o-mini
+# Claude Sonnet 5.5 (alias: sonnet)
+.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --model claude-sonnet-5-5
 ```
+
+fast-agent parses the pytest command line in benchmark and e2e tests, and its `-p` (`--prompt-file`) collides with pytest's `-p` plugin flag. Pass pytest plugin options through `PYTEST_ADDOPTS` instead (e.g. `PYTEST_ADDOPTS="-p no:cacheprovider"`).
 
 ### Custom Output Directory
 
@@ -91,7 +95,7 @@ Validate existing logs without running new tests:
 **AppWorld:**
 ```bash
 # Validate logs (auto-detects from results/{model}/{dataset}/)
-.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-4o --dataset train
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-6.1-sol --dataset train
 ```
 
 ### AppWorld Results Organization
@@ -100,15 +104,15 @@ AppWorld tests automatically organize results during execution:
 
 ```bash
 # Run tests - results automatically organized
-.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --dataset train --model gpt-4o
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --dataset train --model gpt-6.1-sol
 
 # Results automatically written to:
-# - results/gpt-4o/train/outputs/raw/ (conversation logs)
-# - results/gpt-4o/train/failure_reports/ (auto-generated for failed tests)
-# - experiments/outputs/gpt-4o/train/ (AppWorld evaluation data)
+# - results/gpt-6.1-sol/train/outputs/raw/ (conversation logs)
+# - results/gpt-6.1-sol/train/failure_reports/ (auto-generated for failed tests)
+# - experiments/outputs/gpt-6.1-sol/train/ (AppWorld evaluation data)
 
 # Clean up large experiment directories after tests
-rm -rf experiments/outputs/gpt-4o/  # Frees ~15GB
+rm -rf experiments/outputs/gpt-6.1-sol/  # Frees ~15GB
 ```
 
 **AppWorld-specific options:**

@@ -25,6 +25,12 @@ class TestMessageSerializer:
         assert len(serialized["content"]) == 1
         assert serialized["content"][0]["text"] == "Hello, world!"
 
+    def test_strip_server_prefix(self) -> None:
+        """Test that fast-agent's server namespace is removed from tool names."""
+        assert MessageSerializer.strip_server_prefix("gorillafilesystem__cd") == "cd"
+        assert MessageSerializer.strip_server_prefix("mock-github-groups__create_issue") == "create_issue"
+        assert MessageSerializer.strip_server_prefix("list_issues") == "list_issues"
+
     def test_preserves_tool_calls(self) -> None:
         """Test that tool calls are preserved in serialization."""
         # Create a message with tool calls
@@ -51,7 +57,7 @@ class TestMessageSerializer:
     def test_preserves_tool_results(self) -> None:
         """Test that tool results are preserved in serialization."""
         # Create a message with tool results
-        tool_result = CallToolResult(content=[TextContent(type="text", text="Tool output")], isError=False)
+        tool_result = CallToolResult(content=[TextContent(type="text", text="Tool output")], is_error=False)
 
         msg = PromptMessageExtended(role="user", content=[], tool_results={"tool_123": tool_result})
 

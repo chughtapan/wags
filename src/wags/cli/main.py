@@ -49,7 +49,8 @@ def run(
         instruction_file: Path to instruction file (defaults to src/wags/utils/agent_instructions.txt)
         model: Model to use (defaults to gpt-4o)
     """
-    from fast_agent.cli.commands.go import run_async_agent
+    from fast_agent import FastAgent
+    from fast_agent.config import get_settings
 
     if config_path is None:
         config_path = Path("servers/fastagent.config.yaml")
@@ -66,20 +67,26 @@ def run(
         console.print(f"[red]Error:[/red] Instruction file not found: {instruction_file}")
         sys.exit(1)
 
+    if servers:
+        server_names = servers.split(",")
+    else:
+        mcp_settings = get_settings(config_path).mcp
+        server_names = list(mcp_settings.servers) if mcp_settings else []
+
+    fast = FastAgent("wags", config_path=str(config_path), parse_cli_args=False)
+
+    @fast.agent(
+        name="agent",
+        instruction=instruction_file.read_text(encoding="utf-8"),
+        servers=server_names,
+        model=model,
+    )
+    async def agent_loop() -> None:
+        async with fast.run() as agent:
+            await agent.interactive()
+
     try:
-        run_async_agent(
-            name="wags",
-            instruction=instruction_file.read_text(encoding="utf-8"),
-            config_path=str(config_path),
-            servers=servers,
-            urls=None,
-            auth=None,
-            model=model,
-            message=None,
-            prompt_file=None,
-            stdio_commands=None,
-            agent_name="agent",
-        )
+        asyncio.run(agent_loop())
     except KeyboardInterrupt:
         console.print("\n[dim]Agent stopped[/dim]")
 

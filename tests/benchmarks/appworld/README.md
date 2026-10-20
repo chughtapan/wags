@@ -16,20 +16,20 @@ appworld download data
 ## Run Tests
 
 ```bash
-# Run first task from train dataset (automatically organized to results/gpt-4o/train/)
-pytest tests/benchmarks/appworld/test_appworld.py --dataset train --limit 1 --model gpt-4o
+# Run first task from train dataset (automatically organized to results/gpt-6.1-sol/train/)
+pytest tests/benchmarks/appworld/test_appworld.py --dataset train --limit 1 --model gpt-6.1-sol
 
 # Run first 5 train tasks
-pytest tests/benchmarks/appworld/test_appworld.py --dataset train --limit 5 --model gpt-4o
+pytest tests/benchmarks/appworld/test_appworld.py --dataset train --limit 5 --model gpt-6.1-sol
 
 # Run all dev tasks
-pytest tests/benchmarks/appworld/test_appworld.py --dataset dev --model gpt-4o
+pytest tests/benchmarks/appworld/test_appworld.py --dataset dev --model gpt-6.1-sol
 
 # Run specific task (use actual task IDs like 82e2fac_1, not train_001)
 pytest 'tests/benchmarks/appworld/test_appworld.py::test_appworld[82e2fac_1]'
 
-# Validate existing results (auto-detects from results/gpt-4o/train/)
-pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-4o --dataset train
+# Validate existing results (auto-detects from results/gpt-6.1-sol/train/)
+pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-6.1-sol --dataset train
 ```
 
 ## CLI Options
@@ -50,7 +50,7 @@ pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-4o
 
 ### Model Selection
 ```bash
---model gpt-4o  # LLM model to use (default: gpt-4o-mini)
+--model gpt-6.1-sol  # LLM model to use (default: gpt-4o-mini)
 --temperature 0.001  # Temperature for sampling (default: 0.001)
 ```
 
@@ -109,7 +109,7 @@ experiments/outputs/{model}/{dataset}/    # AppWorld evaluation data (~15GB)
 After tests complete, clean up large experiment directories:
 
 ```bash
-rm -rf experiments/outputs/gpt-4o/  # Frees ~15GB
+rm -rf experiments/outputs/gpt-6.1-sol/  # Frees ~15GB
 ```
 
 ## Debugging
@@ -117,11 +117,11 @@ rm -rf experiments/outputs/gpt-4o/  # Frees ~15GB
 ### Inspect Test Output
 ```bash
 # Structured logs
-cat results/gpt-4o/train/outputs/raw/<task_id>_structured.jsonl
+cat results/gpt-6.1-sol/train/outputs/raw/<task_id>_structured.jsonl
 
 # Complete message history
-cat results/gpt-4o/train/outputs/raw/<task_id>_complete.json
+cat results/gpt-6.1-sol/train/outputs/raw/<task_id>_complete.json
 
 # Failure report (auto-generated for failed tests)
-cat results/gpt-4o/train/failure_reports/failure_report_<task_id>.md
+cat results/gpt-6.1-sol/train/failure_reports/failure_report_<task_id>.md
 ```

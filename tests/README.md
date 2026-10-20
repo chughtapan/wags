@@ -14,7 +14,6 @@ Tests for individual components in isolation without external dependencies.
 - No API keys required
 
 **Examples:**
-- `unit/middleware/test_roots.py` - RootsMiddleware path validation
 - `unit/utils/test_config.py` - Configuration parsing
 - `unit/middleware/test_todo.py` - TodoServer state management
 
@@ -34,7 +33,6 @@ Tests for interactions between multiple components.
 
 **Examples:**
 - `integration/test_middleware_integration.py` - Middleware chain interactions
-- `integration/test_roots_middleware.py` - RootsMiddleware with real servers
 
 **Run:**
 ```bash
@@ -65,6 +63,8 @@ Tests with real LLMs using FastAgent patterns.
 .venv/bin/pytest tests/e2e/ -v --model gpt-4o-mini
 ```
 
+fast-agent parses the pytest command line in these tests, and its `-p` (`--prompt-file`) collides with pytest's `-p` plugin flag. Pass pytest plugin options through `PYTEST_ADDOPTS` instead (e.g. `PYTEST_ADDOPTS="-p no:cacheprovider"`).
+
 ### 4. Benchmark Tests (`benchmarks/`)
 Large-scale evaluation suites including BFCL and AppWorld.
 
@@ -85,7 +85,7 @@ UV_GIT_LFS=1 uv pip install -e ".[dev,evals]"
 **Run BFCL:**
 ```bash
 # Run all BFCL tests
-.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --model gpt-4o
+.venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py --model gpt-6.1-sol
 
 # Run specific category
 .venv/bin/pytest tests/benchmarks/bfcl/test_bfcl.py -k "multi_turn_base"
@@ -100,13 +100,13 @@ appworld install
 appworld download data
 
 # Run all train tasks (results automatically organized to results/{model}/{dataset}/)
-.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --dataset train --model gpt-4o
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --dataset train --model gpt-6.1-sol
 
 # Run specific task
 .venv/bin/pytest 'tests/benchmarks/appworld/test_appworld.py::test_appworld[train_001]'
 
 # Validate existing results (auto-detects from results/{model}/{dataset}/)
-.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-4o --dataset train
+.venv/bin/pytest tests/benchmarks/appworld/test_appworld.py --validate-only --model gpt-6.1-sol --dataset train
 ```
 
 ### 5. Smoke Tests (`smoke/`)
@@ -256,10 +256,10 @@ Registered markers:
 .venv/bin/pytest tests/e2e/ -v --model gpt-4o
 
 # Run specific test file
-.venv/bin/pytest tests/unit/middleware/test_roots.py -v
+.venv/bin/pytest tests/unit/middleware/test_groups.py -v
 
 # Run specific test
-.venv/bin/pytest tests/unit/middleware/test_roots.py::test_literal_root_matching -v
+.venv/bin/pytest tests/unit/middleware/test_groups.py::TestInGroupDecorator -v
 
 # Run with coverage
 .venv/bin/pytest tests/unit/ --cov=src/wags --cov-report=html

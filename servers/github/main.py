@@ -5,7 +5,7 @@ from pathlib import Path
 from handlers import GithubHandlers
 
 from wags import create_proxy, load_config
-from wags.middleware import ElicitationMiddleware, RootsMiddleware
+from wags.middleware import ElicitationMiddleware
 
 # Load config and create proxy server
 config = load_config(Path(__file__).parent / "config.json")
@@ -15,7 +15,6 @@ mcp = create_proxy(config, "github-proxy")
 handlers = GithubHandlers()
 
 # Add middleware stack
-mcp.add_middleware(RootsMiddleware(handlers=handlers))
 mcp.add_middleware(ElicitationMiddleware(handlers=handlers))
 
 # Run the server when executed directly

@@ -10,6 +10,7 @@ from collections.abc import Callable
 from typing import Any, get_args, get_origin
 
 from fastmcp.server.middleware.middleware import CallNext, Middleware, MiddlewareContext
+from fastmcp.tools import ToolResult
 from mcp.types import CallToolRequestParams
 
 
@@ -56,14 +57,17 @@ class WagsMiddlewareBase(Middleware):
         """Intercept tool calls and process them through the middleware chain."""
         handler = self.get_tool_handler(context.message)
         if handler:
-            context = await self.handle_on_tool_call(context, handler)
+            processed = await self.handle_on_tool_call(context, handler)
+            if isinstance(processed, ToolResult):
+                return processed
+            context = processed
         return await call_next(context)
 
     async def handle_on_tool_call(
         self,
         context: MiddlewareContext[CallToolRequestParams],
         handler: Callable[..., Any],
-    ) -> MiddlewareContext[CallToolRequestParams]:
+    ) -> MiddlewareContext[CallToolRequestParams] | ToolResult:
         """Process a tool call with custom logic.
 
         Subclasses may override this method to implement their specific
@@ -75,7 +79,8 @@ class WagsMiddlewareBase(Middleware):
             handler: The handler method that will process this tool
 
         Returns:
-            The context, either unchanged or modified using context.copy()
+            The context, either unchanged or modified using context.copy(),
+            or a ToolResult returned to the client without calling the tool
         """
         return context
 

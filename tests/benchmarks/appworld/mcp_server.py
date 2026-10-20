@@ -19,10 +19,10 @@ from appworld.collections.api_docs import ApiDocCollection
 from appworld.collections.apis import ApiCollection
 from appworld.collections.models import ModelCollection
 from appworld.task import Task
-from mcp.server.lowlevel import NotificationOptions, Server
-from mcp.server.models import InitializationOptions
+from mcp.server import ServerRequestContext
+from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import TextContent, Tool
+from mcp.types import CallToolRequestParams, CallToolResult, ListToolsResult, PaginatedRequestParams, TextContent, Tool
 
 
 @dataclass
@@ -159,20 +159,22 @@ def build_tool_schemas(
     return api_docs
 
 
-def format_tool_response(response: dict[str, Any]) -> tuple[list[TextContent], dict[str, Any]]:
+def format_tool_response(response: dict[str, Any]) -> CallToolResult:
     """
     Format tool response in MCP 'both' format.
 
-    Returns tuple of (text_content, structured_data) following AppWorld's pattern.
+    Returns text content and structured data following AppWorld's pattern.
     This allows MCP clients to use either human-readable text or structured data.
 
     See: https://github.com/modelcontextprotocol/python-sdk#structured-output-support
     """
-    response_text = [TextContent(type="text", text=json.dumps(response, indent=2))]
-    return response_text, response
+    return CallToolResult(
+        content=[TextContent(type="text", text=json.dumps(response, indent=2))],
+        structured_content=response,
+    )
 
 
-def format_error_response(tool_name: str, error: Exception) -> tuple[list[TextContent], dict[str, Any]]:
+def format_error_response(tool_name: str, error: Exception) -> CallToolResult:
     """
     Format error response in MCP 'both' format.
 
@@ -180,10 +182,11 @@ def format_error_response(tool_name: str, error: Exception) -> tuple[list[TextCo
     """
     error_msg = f"Error executing tool {tool_name}: {error}"
     print(error_msg, file=sys.stderr)
-    return [TextContent(type="text", text=error_msg)], {
-        "error": str(error),
-        "is_error": True,
-    }
+    return CallToolResult(
+        content=[TextContent(type="text", text=error_msg)],
+        structured_content={"error": str(error), "is_error": True},
+        is_error=True,
+    )
 
 
 async def serve_task_mcp(task_id: str, experiment_name: str = "wags-benchmark") -> None:
@@ -196,29 +199,24 @@ async def serve_task_mcp(task_id: str, experiment_name: str = "wags-benchmark") 
     collections = load_collections(config, db_paths)
     api_docs = build_tool_schemas(config.allowed_apps, config.allowed_api_names)
 
-    # Create MCP server
-    server_name = "AppWorld" if len(config.allowed_apps) > 1 else f"AppWorld: {config.allowed_apps[0].title()}"
-    server = Server(server_name)
+    tools = [
+        Tool(
+            name=api_doc["name"],
+            description=api_doc["description"],
+            input_schema=api_doc["input_schema"],
+            output_schema=api_doc["output_schema"],
+        )
+        for api_doc in api_docs
+    ]
 
-    # Register list_tools handler
-    @server.list_tools()
-    async def list_tools() -> list[Tool]:
+    async def list_tools(ctx: ServerRequestContext[Any], params: PaginatedRequestParams | None) -> ListToolsResult:
         """List available tools with AppWorld's MCP schemas."""
-        tools: list[Tool] = []
-        for api_doc in api_docs:
-            tool = Tool(
-                name=api_doc["name"],
-                description=api_doc["description"],
-                inputSchema=api_doc["input_schema"],
-                outputSchema=api_doc["output_schema"],
-            )
-            tools.append(tool)
-        return tools
+        return ListToolsResult(tools=tools)
 
-    # Register call_tool handler
-    @server.call_tool()
-    async def call_tool(name: str, arguments: dict[str, Any]) -> Any:
+    async def call_tool(ctx: ServerRequestContext[Any], params: CallToolRequestParams) -> CallToolResult:
         """Call AppWorld API and save databases on task completion."""
+        name = params.name
+        arguments = params.arguments or {}
         app_name = api_name = name
         if name.count("__") >= 1:
             app_name, api_name = name.split("__", 1)
@@ -236,19 +234,16 @@ async def serve_task_mcp(task_id: str, experiment_name: str = "wags-benchmark") 
         except Exception as e:
             return format_error_response(name, e)
 
+    # Create MCP server
+    server_name = "AppWorld" if len(config.allowed_apps) > 1 else f"AppWorld: {config.allowed_apps[0].title()}"
+    server = Server(server_name, version="1.0.0", on_list_tools=list_tools, on_call_tool=call_tool)
+
     # Run MCP server in stdio mode
     async with stdio_server() as (read_stream, write_stream):
         await server.run(
             read_stream,
             write_stream,
-            InitializationOptions(
-                server_name=server_name,
-                server_version="1.0.0",
-                capabilities=server.get_capabilities(
-                    notification_options=NotificationOptions(),
-                    experimental_capabilities={},
-                ),
-            ),
+            server.create_initialization_options(),
         )
 
     # Clean up database connections before exiting

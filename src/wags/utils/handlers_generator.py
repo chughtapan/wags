@@ -70,13 +70,13 @@ def generate_method_stub(tool: Tool) -> str:
     """Generate a method stub for a tool."""
     method_name = sanitize_method_name(tool.name)
 
-    # Parse parameters from inputSchema
+    # Parse parameters from input_schema
     params = []
     params.append("self")
 
-    if tool.inputSchema and isinstance(tool.inputSchema, dict):
-        properties = tool.inputSchema.get("properties", {})
-        required = tool.inputSchema.get("required", [])
+    if tool.input_schema and isinstance(tool.input_schema, dict):
+        properties = tool.input_schema.get("properties", {})
+        required = tool.input_schema.get("required", [])
 
         # Process required parameters first
         for param_name in required:
@@ -119,8 +119,8 @@ def generate_handlers_class(class_name: str, tools: list[Tool]) -> str:
     needs_literal = any(
         "enum" in prop
         for tool in tools
-        if tool.inputSchema and isinstance(tool.inputSchema, dict)
-        for prop in tool.inputSchema.get("properties", {}).values()
+        if tool.input_schema and isinstance(tool.input_schema, dict)
+        for prop in tool.input_schema.get("properties", {}).values()
     )
 
     # Generate imports
@@ -160,7 +160,7 @@ class {class_name}:
 async def introspect_server(config_path: Path) -> list[Tool]:
     """Connect to MCP server and get its tools."""
     config = load_config(config_path)
-    client = Client(config, roots=[])
+    client = Client(config)
     async with client:
         tools = await client.list_tools()
     return tools
