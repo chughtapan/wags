@@ -5,6 +5,7 @@ Tests the GitHub server proxied through wags middleware.
 
 import pytest
 from fast_agent import FastAgent
+from fast_agent.mcp.common import create_namespaced_name
 
 from tests.utils.fastagent_helpers import get_tool_calls, get_tool_results
 
@@ -38,7 +39,7 @@ class TestGitHubServer:
                 # Find the GitHub list_issues call
                 github_call = None
                 for tool_id, request in tool_calls:
-                    if request.params.name == "github-list_issues":
+                    if request.params.name == create_namespaced_name("github", "list_issues"):
                         github_call = (tool_id, request)
                         break
 

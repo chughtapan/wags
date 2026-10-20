@@ -8,6 +8,7 @@ import json
 from datetime import datetime
 from typing import Any
 
+from fast_agent.mcp.common import get_resource_name
 from fast_agent.types import PromptMessageExtended
 from mcp.types import CallToolRequest, CallToolResult
 
@@ -112,11 +113,9 @@ class MessageSerializer:
             tool_name: Tool name potentially with server prefix
 
         Returns:
-            Tool name without prefix (e.g., 'github-list_issues' -> 'list_issues')
+            Tool name without prefix (e.g., 'github__list_issues' -> 'list_issues')
         """
-        if "-" in tool_name:
-            return tool_name.split("-", 1)[1]
-        return tool_name
+        return get_resource_name(tool_name)
 
     @staticmethod
     def _serialize_content_item(content: Any) -> dict[str, Any]:
